@@ -1,0 +1,158 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      xymon_ref:
+        description: 'xymon-monitoring/xymon ref to build (branch, tag or sha)'
+        required: false
+        default: 'main'
+
+permissions:
+  contents: read
+
+env:
+  XYMON_REF: ${{ github.event.inputs.xymon_ref || 'main' }}
+
+jobs:
+  rpm:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ matrix.image }}
+      # rpmbuild needs no privileges; running straight in a distro container
+      # avoids mock's need for nspawn/loop devices on a hosted runner.
+      options: --security-opt seccomp=unconfined
+    continue-on-error: ${{ matrix.experimental || false }}
+    strategy:
+      fail-fast: false
+      # Targets are pinned, never floating. A moving tag such as
+      # fedora:latest silently changes the dist tag when a new release
+      # comes out, which moves the published repository path underneath
+      # users with no commit to point at. Adding or retiring a target is
+      # a deliberate one-line change here.
+      #
+      # Fedora ships N and N-1; retire a release when it goes EOL rather
+      # than accumulating dead trees.
+      # Published EL builds run on AlmaLinux, a rebuild of *released* RHEL,
+      # so they cannot pick up a symbol version RHEL does not ship. CentOS
+      # Stream is the development branch for the next RHEL minor -- building
+      # there risks a package that installs on Stream and fails on RHEL --
+      # so Stream is carried as a canary instead.
+      matrix:
+        include:
+          - name: el8
+            image: almalinux:8
+            family: el
+          - name: el9
+            image: almalinux:9
+            family: el
+          - name: el10
+            image: almalinux:10
+            family: el
+          - name: fc43
+            image: fedora:43
+            family: fedora
+          - name: fc44
+            image: fedora:44
+            family: fedora
+          # Canaries: early warning for the next RHEL minor and the next
+          # Fedora. Never published, and allowed to fail.
+          - name: stream9
+            image: quay.io/centos/centos:stream9
+            family: el
+            experimental: true
+          - name: stream10
+            image: quay.io/centos/centos:stream10
+            family: el
+            experimental: true
+          - name: fedora-rawhide
+            image: fedora:rawhide
+            family: fedora
+            experimental: true
+
+    steps:
+      # EL needs CRB (c-ares-devel) and EPEL (rrdtool-devel); Fedora has
+      # everything in the base repos.
+      - name: Enable build repositories
+        run: |
+          set -eux
+          dnf -y install dnf-plugins-core git-core rpm-build rpmdevtools
+          if [ "${{ matrix.family }}" = "el" ]; then
+            ver=$(rpm -E %rhel)
+            dnf -y install \
+              "https://dl.fedoraproject.org/pub/epel/epel-release-latest-${ver}.noarch.rpm"
+            # The CRB/PowerTools repo is named differently across EL versions.
+            dnf config-manager --set-enabled crb 2>/dev/null \
+              || dnf config-manager --set-enabled powertools 2>/dev/null \
+              || dnf config-manager --set-enabled codeready-builder 2>/dev/null \
+              || true
+          fi
+
+      - name: Checkout packaging
+        uses: actions/checkout@v6
+
+      - name: Checkout xymon source
+        run: |
+          set -eux
+          git clone --filter=blob:none https://github.com/xymon-monitoring/xymon.git src
+          git -C src checkout "${XYMON_REF}"
+
+      # A tagged release builds as X.Y.Z-1; anything else builds as a
+      # pre-release of the upcoming version, X.Y.Z-0.<date>git<sha>, which
+      # sorts below the eventual -1. See README.md.
+      - name: Compute version
+        id: ver
+        run: |
+          set -eux
+          base=$(cat rpm/baseversion)
+          ref=$(git -C src rev-parse --short=7 HEAD)
+          if tag=$(git -C src describe --exact-match --tags 2>/dev/null); then
+            base="${tag#rel-}"
+            echo "snapshot=" >> "$GITHUB_OUTPUT"
+          else
+            date=$(git -C src log -1 --format=%cd --date=format:%Y%m%d)
+            echo "snapshot=0.${date}git${ref}" >> "$GITHUB_OUTPUT"
+          fi
+          echo "base=${base}" >> "$GITHUB_OUTPUT"
+
+      - name: Create source tarball
+        run: |
+          set -eux
+          rpmdev-setuptree
+          git -C src archive --format=tar \
+              --prefix="xymon-${{ steps.ver.outputs.base }}/" HEAD \
+            | gzip -9 > ~/rpmbuild/SOURCES/xymon-${{ steps.ver.outputs.base }}.tar.gz
+          cp rpm/sources/* ~/rpmbuild/SOURCES/
+
+      - name: Install build dependencies
+        run: dnf -y builddep rpm/xymon.spec
+
+      - name: Build
+        run: |
+          set -eux
+          rpmbuild -ba rpm/xymon.spec \
+            --define "baseversion ${{ steps.ver.outputs.base }}" \
+            ${{ steps.ver.outputs.snapshot && format('--define "gitsnapshot {0}"', steps.ver.outputs.snapshot) || '' }}
+
+      - name: Verify version ordering
+        run: ./tests/vercmp.sh
+
+      - name: Collect packages
+        run: |
+          set -eux
+          mkdir -p out
+          find ~/rpmbuild/RPMS ~/rpmbuild/SRPMS -name '*.rpm' -exec cp {} out/ \;
+          ls -l out
+
+      # A green rpmbuild says nothing about whether the package installs.
+      - name: Install test
+        run: ./tests/install.sh out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpm-${{ matrix.name }}
+          path: out/*.rpm
+          if-no-files-found: error

@@ -1,0 +1,270 @@
+#
+# Xymon RPM package
+#
+# Built from the xymon-monitoring/xymon source tree, not from a patched
+# fork: this spec carries no source patches at all. Fixes belong upstream.
+#
+# Versioning (see README.md)
+#   release   rpmbuild --define 'baseversion 4.3.31'
+#             -> xymon-4.3.31-1.el10.x86_64.rpm
+#   snapshot  rpmbuild --define 'baseversion 4.3.31' \
+#                      --define 'gitsnapshot 0.20260730git3a07523'
+#             -> xymon-4.3.31-0.20260730git3a07523.el10.x86_64.rpm
+#
+# The leading 0. in a snapshot release sorts below the eventual -1, so a
+# snapshot user is absorbed into the stable channel when the release lands.
+#
+%{!?baseversion: %global baseversion 4.3.31}
+%{?gitsnapshot: %global xymonrelease %{gitsnapshot}}
+%{!?gitsnapshot: %global xymonrelease 1}
+
+# xymonping is a setuid-root ICMP helper. Upstream's own CI builds it, so
+# it is on by default; --without xymonping falls back to fping at runtime.
+%bcond_without xymonping
+
+# The SELinux policy modules ship as sources but are not compiled yet --
+# that needs checkpolicy/selinux-policy-devel and a policy review.
+%bcond_with selinux
+
+%global xymonhome  %{_prefix}/lib/xymon
+
+Name:           xymon
+Version:        %{baseversion}
+Release:        %{xymonrelease}%{?dist}
+Summary:        Xymon network and systems monitor
+License:        GPL-2.0-only
+URL:            https://github.com/xymon-monitoring/xymon
+Source0:        xymon-%{version}.tar.gz
+
+# Runtime integration files. Provenance is deliberate -- see README.md.
+#   from Terabithia's xymon-4.3.30 SRPM (correct for a 4.3.x base):
+Source1:        xymonlaunch.service
+Source2:        xymon.server-init
+Source3:        xymon.client-init
+#   byte-identical in Terabithia and upstream devel:
+Source4:        xymonlaunch.service.preset
+Source5:        xymon-tmpfiles.conf
+#   from upstream devel via PR #46:
+Source6:        xymon.logrotate
+Source7:        xymonlaunch.default
+Source8:        xymon-client.default
+Source9:        xymon.te
+Source10:       xymon-client.te
+Source11:       xymon-sysctl.conf
+Source12:       bb.xml
+#   written here: Fedora's rpm generates Requires: user(xymon)/group(xymon)
+#   for any package owning files with a non-root owner, and only a
+#   sysusers.d snippet generates the matching Provides.
+Source13:       xymon.sysusers
+
+BuildRequires:  gcc
+BuildRequires:  make
+BuildRequires:  c-ares-devel
+BuildRequires:  openldap-devel
+BuildRequires:  openssl-devel
+BuildRequires:  pcre2-devel
+BuildRequires:  rrdtool-devel
+BuildRequires:  libtirpc-devel
+BuildRequires:  zlib-devel
+BuildRequires:  systemd-rpm-macros
+%{?systemd_requires}
+%if %{with selinux}
+BuildRequires:  checkpolicy
+BuildRequires:  selinux-policy-devel
+%endif
+
+Requires(pre):  shadow-utils
+Requires:       xymon-client = %{version}-%{release}
+
+%description
+Xymon is a system for monitoring servers, networks and applications. It
+polls network services, collects data reported by clients, raises alerts,
+and renders the results as a web front-end backed by RRD graphs.
+
+This package contains the server.
+
+%package client
+Summary:        Client for the Xymon network monitor
+Requires(pre):  shadow-utils
+# The client owns the account definition; the server package pulls it in
+# through its Requires above, so the user exists before either unpacks.
+%{?sysusers_requires_compat}
+
+%description client
+Client-side data collection for Xymon. It gathers CPU, memory, filesystem,
+process and log data from the local system and reports it to a Xymon
+server, which evaluates the data against its configured thresholds.
+
+%prep
+%setup -q
+
+%build
+# The distribution's hardening flags are deliberately NOT injected here.
+# On main there is no working way to do it:
+#
+#   - on the make command line, a CFLAGS= assignment overrides makefile `+=`
+#     and drops lib/Makefile's own -I../include, so the build cannot find
+#     its headers;
+#   - via the environment, build/Makefile.Linux assigns CFLAGS with a plain
+#     `=` and discards it -- while LDFLAGS *does* survive, so exporting both
+#     compiles without -fPIC but links with -pie and fails on the resulting
+#     R_X86_64_32 relocation.
+#
+# xymon-monitoring/xymon#163 changes Makefile.Linux to `?=` plus `+=`, which
+# makes the environment route work. Until it merges, the package is built
+# with Xymon's own -g -O2 and carries no FORTIFY/stack-protector/PIE.
+# Restoring the flags afterwards is two `export` lines here.
+#
+# One consequence has to be handled: Fedora and EL10 ship gcc with
+# --enable-default-pie, so the link defaults to -pie while Xymon's flags
+# compile without -fPIC, and the link dies on an R_X86_64_32 relocation.
+# EL8/EL9 gcc does not default that way, which is why only the newer
+# targets hit it. LDFLAGS is the one variable the build does take from the
+# environment, so turn the default back off there. This line goes away with
+# #163, which lets the matching -fPIE reach the compiler instead.
+export LDFLAGS="-no-pie"
+
+# XYMONHOSTNAME is deliberately baked as "localhost": the value would
+# otherwise be the build host's name, which is meaningless to every
+# consumer of the package. %%post rewrites it to the real hostname on
+# first install. This mirrors what Terabithia's spec does, and is the
+# packaging-side answer to the build-time-hostname problem (TBT 40).
+USEXYMONPING=%{?with_xymonping:y}%{!?with_xymonping:n} \
+ENABLESSL=y \
+ENABLELDAP=y \
+ENABLELDAPSSL=y \
+XYMONUSER=xymon \
+XYMONTOPDIR=%{xymonhome} \
+XYMONVAR=%{_sharedstatedir}/xymon \
+XYMONLOGDIR=%{_localstatedir}/log/xymon \
+XYMONHOSTNAME=localhost \
+XYMONHOSTIP=127.0.0.1 \
+XYMONHOSTURL=/xymon \
+XYMONCGIURL=/xymon-cgi \
+SECUREXYMONCGIURL=/xymon-seccgi \
+CGIDIR=%{xymonhome}/cgi-bin \
+SECURECGIDIR=%{xymonhome}/cgi-secure \
+HTTPDGID=apache \
+MANROOT=%{_mandir} \
+INSTALLBINDIR=%{xymonhome}/server/bin \
+INSTALLETCDIR=%{_sysconfdir}/xymon \
+INSTALLWEBDIR=%{_sysconfdir}/xymon/web \
+INSTALLEXTDIR=%{xymonhome}/server/ext \
+INSTALLTMPDIR=%{_sharedstatedir}/xymon/tmp \
+INSTALLWWWDIR=%{_sharedstatedir}/xymon/www \
+./configure --server
+
+%make_build PKGBUILD=1
+
+%install
+%make_install INSTALLROOT=%{buildroot} PKGBUILD=1
+
+# systemd: one unit drives xymonlaunch, which supervises everything else.
+install -Dpm 0644 %{SOURCE1}  %{buildroot}%{_unitdir}/xymonlaunch.service
+install -Dpm 0644 %{SOURCE4}  %{buildroot}%{_presetdir}/50-xymonlaunch.preset
+install -Dpm 0644 %{SOURCE5}  %{buildroot}%{_tmpfilesdir}/xymon.conf
+install -Dpm 0644 %{SOURCE6}  %{buildroot}%{_sysconfdir}/logrotate.d/xymon
+install -Dpm 0644 %{SOURCE7}  %{buildroot}%{_sysconfdir}/sysconfig/xymonlaunch
+install -Dpm 0644 %{SOURCE8}  %{buildroot}%{_sysconfdir}/sysconfig/xymon-client
+install -Dpm 0644 %{SOURCE11} %{buildroot}%{_sysctldir}/70-xymon.conf
+%if %{defined _sysusersdir}
+install -Dpm 0644 %{SOURCE13} %{buildroot}%{_sysusersdir}/xymon.conf
+%endif
+
+# The unit invokes these by absolute path.
+install -d %{buildroot}%{_bindir} %{buildroot}%{_sbindir}
+ln -sf %{xymonhome}/server/bin/xymon    %{buildroot}%{_bindir}/xymon
+ln -sf %{xymonhome}/server/bin/xymoncmd %{buildroot}%{_bindir}/xymoncmd
+ln -sf %{xymonhome}/server/bin/xymonlaunch %{buildroot}%{_sbindir}/xymonlaunch
+
+# The web server config is generated by the build (xymond/Makefile:142)
+# into the Xymon etc dir; move it where httpd actually reads it.
+install -d %{buildroot}%{_sysconfdir}/httpd/conf.d
+mv %{buildroot}%{_sysconfdir}/xymon/xymon-apache.conf \
+   %{buildroot}%{_sysconfdir}/httpd/conf.d/xymon-apache.conf
+
+# Shipped as reference material only, so %%doc them from the build dir --
+# %%doc cannot take a %%{SOURCEn} path directly.
+cp -p %{SOURCE9} %{SOURCE10} %{SOURCE12} .
+
+# The client tree ships its own tmp/logs as real dirs; redirect them.
+rm -rf %{buildroot}%{xymonhome}/client/tmp %{buildroot}%{xymonhome}/client/logs
+ln -sf %{_tmppath}            %{buildroot}%{xymonhome}/client/tmp
+ln -sf %{_localstatedir}/log/xymon %{buildroot}%{xymonhome}/client/logs
+
+%pre client
+%if %{defined sysusers_create_compat}
+%sysusers_create_compat %{SOURCE13}
+%else
+# EL8 predates the sysusers rpm macros; create the account by hand there.
+getent group xymon >/dev/null || groupadd -r xymon
+getent passwd xymon >/dev/null || \
+    useradd -r -g xymon -d %{xymonhome} -s /sbin/nologin \
+            -c "Xymon monitor" xymon
+%endif
+exit 0
+
+%post
+%systemd_post xymonlaunch.service
+%tmpfiles_create %{_tmpfilesdir}/xymon.conf
+# Replace the placeholder baked in at build time (see %%build).
+if [ $1 -eq 1 ]; then
+    sed -i -e "s/^XYMONSERVERHOSTNAME=.*/XYMONSERVERHOSTNAME=\"$(uname -n)\"/" \
+           -e "s/^XYMONSERVERWWWNAME=.*/XYMONSERVERWWWNAME=\"$(uname -n)\"/" \
+        %{_sysconfdir}/xymon/xymonserver.cfg || :
+fi
+
+%preun
+%systemd_preun xymonlaunch.service
+
+%postun
+%systemd_postun_with_restart xymonlaunch.service
+
+%files
+%license COPYING
+%doc README README.CLIENT RELEASENOTES CREDITS Changes
+%{_mandir}/man*/*
+%{_bindir}/xymon
+%{_bindir}/xymoncmd
+%{_sbindir}/xymonlaunch
+%{_unitdir}/xymonlaunch.service
+%{_presetdir}/50-xymonlaunch.preset
+%{_tmpfilesdir}/xymon.conf
+%{_sysctldir}/70-xymon.conf
+%config(noreplace) %{_sysconfdir}/logrotate.d/xymon
+%config(noreplace) %{_sysconfdir}/sysconfig/xymonlaunch
+%config(noreplace) %{_sysconfdir}/httpd/conf.d/xymon-apache.conf
+%dir %{_sysconfdir}/xymon
+%dir %{_sysconfdir}/xymon/tasks.d
+%dir %{_sysconfdir}/xymon/web
+%config(noreplace) %{_sysconfdir}/xymon/*
+%dir %{xymonhome}
+%{xymonhome}/server
+%{xymonhome}/cgi-bin
+%{xymonhome}/cgi-secure
+%attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
+%attr(-,xymon,xymon) %{_sharedstatedir}/xymon
+%attr(0775,xymon,apache) %dir %{_sharedstatedir}/xymon/www/rep
+%attr(0775,xymon,apache) %dir %{_sharedstatedir}/xymon/www/snap
+%if %{with xymonping}
+%attr(4750,root,xymon) %{xymonhome}/server/bin/xymonping
+%endif
+# Reference only until the policy is reviewed and compiled (%%bcond selinux).
+%doc xymon.te
+%doc xymon-client.te
+%doc bb.xml
+
+%files client
+%license COPYING
+%doc README.CLIENT
+%if %{defined _sysusersdir}
+%{_sysusersdir}/xymon.conf
+%endif
+%config(noreplace) %{_sysconfdir}/sysconfig/xymon-client
+%dir %{xymonhome}
+%{xymonhome}/client
+%attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
+%attr(0750,root,xymon) %{xymonhome}/client/bin/logfetch
+%attr(0750,root,xymon) %{xymonhome}/client/bin/clientupdate
+
+%changelog
