@@ -151,9 +151,14 @@ jobs:
       - name: Install test
         run: ./tests/install.sh out
 
+      # The prefix is what the publish job selects on. Canaries build and
+      # install-test like everything else, but must never reach users: a
+      # Stream build carries the same .el9/.el10 dist tag as the AlmaLinux
+      # one, so publishing both would make it a race which of the two a
+      # user receives.
       - uses: actions/upload-artifact@v4
         with:
-          name: rpm-${{ matrix.name }}
+          name: ${{ matrix.experimental && 'canary' || 'pub' }}-${{ matrix.name }}
           path: out/*.rpm
           if-no-files-found: error
 
@@ -209,7 +214,7 @@ jobs:
         if: steps.key.outputs.ok == 'true'
         uses: actions/download-artifact@v4
         with:
-          pattern: rpm-*
+          pattern: pub-*
           path: artifacts
 
       - name: Check out the published repository
