@@ -22,9 +22,16 @@
 # it is on by default; --without xymonping falls back to fping at runtime.
 %bcond_without xymonping
 
-# The SELinux policy modules ship as sources but are not compiled yet --
-# that needs checkpolicy/selinux-policy-devel and a policy review.
+# The SELinux policy modules. Off by default: the policy compiles and is
+# shipped compiled by the Terabithia packages, but nothing in CI runs
+# enforcing SELinux, so a green build proves only that it compiles, not
+# that it is correct. Enable with --with selinux once someone has verified
+# it on an enforcing machine.
+#
+# The modules declare no new types -- they `require` existing ones and add
+# allow rules -- so there is no .fc and nothing to label.
 %bcond_with selinux
+%global selinux_variants targeted mls minimum
 
 %global xymonhome  %{_prefix}/lib/xymon
 
@@ -71,6 +78,8 @@ BuildRequires:  systemd-rpm-macros
 %if %{with selinux}
 BuildRequires:  checkpolicy
 BuildRequires:  selinux-policy-devel
+Requires(post):   policycoreutils
+Requires(postun): policycoreutils
 %endif
 
 Requires(pre):  shadow-utils
@@ -196,8 +205,32 @@ INSTALLWWWDIR=%{_sharedstatedir}/xymon/www \
 
 %make_build PKGBUILD=1
 
+%if %{with selinux}
+# Built in a subdirectory so the sed below does not touch the copies
+# shipped as documentation. `VERSION` is a literal placeholder in both
+# files and has to be substituted before checkmodule will accept them.
+mkdir -p selinux-build
+cp -p %{SOURCE9} %{SOURCE10} selinux-build/
+sed -i 's/\bVERSION\b/%{version}/' selinux-build/*.te
+for v in %{selinux_variants}; do
+    make -C selinux-build -f /usr/share/selinux/devel/Makefile NAME="$v"
+    mv selinux-build/xymon.pp        "selinux-build/xymon.pp.$v"
+    mv selinux-build/xymon-client.pp "selinux-build/xymon-client.pp.$v"
+    make -C selinux-build -f /usr/share/selinux/devel/Makefile NAME="$v" clean
+done
+%endif
+
 %install
 %make_install INSTALLROOT=%{buildroot} PKGBUILD=1
+
+%if %{with selinux}
+for v in %{selinux_variants}; do
+    install -Dpm 0644 "selinux-build/xymon.pp.$v" \
+        %{buildroot}%{_datadir}/selinux/"$v"/xymon.pp
+    install -Dpm 0644 "selinux-build/xymon-client.pp.$v" \
+        %{buildroot}%{_datadir}/selinux/"$v"/xymon-client.pp
+done
+%endif
 
 # systemd: one unit drives xymonlaunch, which supervises everything else.
 install -Dpm 0644 %{SOURCE1}  %{buildroot}%{_unitdir}/xymonlaunch.service
@@ -271,12 +304,27 @@ if [ $1 -eq 1 ]; then
            -e "s/^XYMONSERVERWWWNAME=.*/XYMONSERVERWWWNAME=\"$(uname -n)\"/" \
         %{_sysconfdir}/xymon/xymonserver.cfg || :
 fi
+%if %{with selinux}
+# Never fatal: a container or a machine with SELinux disabled has no
+# working semodule, and failing there would abort an otherwise fine
+# installation.
+for v in %{selinux_variants}; do
+    semodule -s "$v" -i %{_datadir}/selinux/"$v"/xymon.pp >/dev/null 2>&1 || :
+done
+%endif
 
 %preun
 %systemd_preun xymonlaunch.service
 
 %postun
 %systemd_postun_with_restart xymonlaunch.service
+%if %{with selinux}
+if [ $1 -eq 0 ]; then
+    for v in %{selinux_variants}; do
+        semodule -s "$v" -r xymon >/dev/null 2>&1 || :
+    done
+fi
+%endif
 
 %files
 %license COPYING
@@ -312,10 +360,31 @@ fi
 %if %{with xymonping}
 %attr(4750,root,xymon) %{xymonhome}/server/bin/xymonping
 %endif
+%if %{with selinux}
+%{_datadir}/selinux/*/xymon.pp
+%endif
 # Reference only until the policy is reviewed and compiled (%%bcond selinux).
 %doc xymon.te
 %doc xymon-client.te
 %doc bb.xml
+
+%post client
+%if %{with selinux}
+for v in %{selinux_variants}; do
+    semodule -s "$v" -i %{_datadir}/selinux/"$v"/xymon-client.pp >/dev/null 2>&1 || :
+done
+%endif
+exit 0
+
+%postun client
+%if %{with selinux}
+if [ $1 -eq 0 ]; then
+    for v in %{selinux_variants}; do
+        semodule -s "$v" -r xymon-client >/dev/null 2>&1 || :
+    done
+fi
+%endif
+exit 0
 
 %files client
 %license COPYING
@@ -329,6 +398,9 @@ fi
 %attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
 %attr(0750,root,xymon) %{xymonhome}/client/bin/logfetch
 %attr(0750,root,xymon) %{xymonhome}/client/bin/clientupdate
+%if %{with selinux}
+%{_datadir}/selinux/*/xymon-client.pp
+%endif
 
 %files client-local
 %license COPYING

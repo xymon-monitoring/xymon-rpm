@@ -182,8 +182,15 @@ It is kept for provenance and is never built.
   to its children on `main`. That arrives with
   [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172). Use
   `systemctl restart` until then.
-- The SELinux policy modules ship as documentation only; compiling them
-  needs a policy review.
+- The SELinux policy modules are wired up but **off by default**. Building
+  with `--with selinux` compiles them for the `targeted`, `mls` and
+  `minimum` variants and loads them with `semodule`, which is what the
+  Terabithia packages ship. They are off here because nothing in CI runs
+  enforcing SELinux, so a green build proves only that the policy compiles.
+  The modules also predate the current layout: their comments reference
+  `/var/cache/xymon` for `rep`/`snap`, which this packaging does not use,
+  so those rules would be inert. Turning them on wants verification on an
+  enforcing machine first.
 - `XYMONSERVERHOSTNAME` is baked as `localhost` at build time and rewritten
   from `uname -n` in `%post`, because a package must not carry the build
   host's name. A runtime resolution upstream would make this unnecessary.

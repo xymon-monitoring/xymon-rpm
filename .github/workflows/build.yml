@@ -72,6 +72,16 @@ jobs:
             image: fedora:rawhide
             family: fedora
             experimental: true
+          # Proves the SELinux policy still compiles. It is off by default
+          # in the shipped packages because nothing here runs enforcing
+          # SELinux, so this only demonstrates that the modules build --
+          # not that they are correct. Without this leg the wiring would
+          # never be exercised at all.
+          - name: selinux
+            image: almalinux:10
+            family: el
+            experimental: true
+            rpmopts: --with selinux
 
     steps:
       # EL needs CRB (c-ares-devel) and EPEL (rrdtool-devel); Fedora has
@@ -133,7 +143,7 @@ jobs:
       - name: Build
         run: |
           set -eux
-          rpmbuild -ba rpm/xymon.spec \
+          rpmbuild -ba rpm/xymon.spec ${{ matrix.rpmopts || '' }} \
             --define "baseversion ${{ steps.ver.outputs.base }}" \
             ${{ steps.ver.outputs.snapshot && format('--define "gitsnapshot {0}"', steps.ver.outputs.snapshot) || '' }}
 
