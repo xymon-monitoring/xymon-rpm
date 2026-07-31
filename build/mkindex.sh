@@ -76,9 +76,13 @@ done
 	<a href="https://github.com/xymon-monitoring/xymon-rpm">xymon-rpm</a>.</p>
 
 	<h2>Install</h2>
-	<pre>curl -o /etc/yum.repos.d/xymon.repo $base/xymon.repo
+	<pre>dnf install $base/xymon-release-1-1.noarch.rpm
 	dnf install xymon          # server
 	dnf install xymon-client   # client only</pre>
+	<p>The first command adds the repository and installs the signing key
+	in one step. If you would rather not install a package to do that,
+	fetch <a href="xymon.repo">xymon.repo</a> into
+	<code>/etc/yum.repos.d/</code> instead.</p>
 
 	<p>Supported: EL8, EL9, EL10 and Fedora 43, 44 on x86_64.</p>
 

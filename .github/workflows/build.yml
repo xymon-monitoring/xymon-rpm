@@ -3,6 +3,11 @@ name: build
 on:
   push:
   pull_request:
+  # Nightly rebuild of main. This is the drift detector: if an upstream
+  # change moves an install path or a configure flag, this goes red the
+  # next day rather than at the next release.
+  schedule:
+    - cron: '17 3 * * *'
   workflow_dispatch:
     inputs:
       xymon_ref:
@@ -191,7 +196,7 @@ jobs:
       contents: write
     steps:
       - name: Install tooling
-        run: dnf -y install createrepo_c rpm-sign gnupg2 git-core findutils
+        run: dnf -y install createrepo_c rpm-sign rpm-build rpmdevtools gnupg2 git-core findutils
 
       - name: Checkout packaging
         uses: actions/checkout@v6
@@ -256,7 +261,20 @@ jobs:
           set -eu
           ./build/publish.sh artifacts published
           cp RPM-GPG-KEY-xymon published/RPM-GPG-KEY-xymon
-          ./build/mkrepofile.sh > published/xymon.repo
+          ./build/mkrepofile.sh remote > published/xymon.repo
+
+          # The bootstrap package. Built here rather than in the matrix
+          # because it is noarch and carries no dist tag, so one build
+          # serves every target -- and it needs the signing key, which
+          # only this job has. Its copy of the repo file points at the key
+          # it installs itself, so adding the repository needs no network
+          # fetch of the key and no trust decision by the user.
+          rpmdev-setuptree
+          ./build/mkrepofile.sh local > ~/rpmbuild/SOURCES/xymon.repo
+          cp RPM-GPG-KEY-xymon ~/rpmbuild/SOURCES/
+          rpmbuild -bb rpm/xymon-release.spec
+          rpm --addsign ~/rpmbuild/RPMS/noarch/xymon-release-*.rpm
+          cp ~/rpmbuild/RPMS/noarch/xymon-release-*.rpm published/
           # GitHub Pages has no autoindex, so without these every directory
           # in a browser is a bare 404.
           ./build/mkindex.sh published
