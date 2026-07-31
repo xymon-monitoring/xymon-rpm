@@ -81,7 +81,7 @@ jobs:
             image: almalinux:10
             family: el
             experimental: true
-            rpmopts: --with selinux
+            rpmdefine: _with_selinux 1
 
     steps:
       # EL needs CRB (c-ares-devel) and EPEL (rrdtool-devel); Fedora has
@@ -137,13 +137,19 @@ jobs:
             | gzip -9 > ~/rpmbuild/SOURCES/xymon-${{ steps.ver.outputs.base }}.tar.gz
           cp rpm/sources/* ~/rpmbuild/SOURCES/
 
+      # The define has to reach builddep as well as rpmbuild: conditional
+      # BuildRequires are invisible to dependency resolution otherwise, and
+      # the build then fails on deps that were never asked for.
       - name: Install build dependencies
-        run: dnf -y builddep rpm/xymon.spec
+        run: |
+          dnf -y builddep ${{ matrix.rpmdefine && format('-D "{0}"', matrix.rpmdefine) || '' }} \
+            rpm/xymon.spec
 
       - name: Build
         run: |
           set -eux
-          rpmbuild -ba rpm/xymon.spec ${{ matrix.rpmopts || '' }} \
+          rpmbuild -ba rpm/xymon.spec \
+            ${{ matrix.rpmdefine && format('--define "{0}"', matrix.rpmdefine) || '' }} \
             --define "baseversion ${{ steps.ver.outputs.base }}" \
             ${{ steps.ver.outputs.snapshot && format('--define "gitsnapshot {0}"', steps.ver.outputs.snapshot) || '' }}
 
