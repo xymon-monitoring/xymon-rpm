@@ -10,6 +10,20 @@ changing in Xymon itself is fixed upstream, not here.
 
 Building green on every target below, signed and published from `main`.
 
+## Packages
+
+| Package | Contents |
+| --- | --- |
+| `xymon` | the server |
+| `xymon-client` | client-side data collection |
+| `xymon-devel` | headers and static libraries for building modules |
+| `xymon-tools` | diagnostic programs: stackio, locator, tree, availability, loadhosts |
+
+`xymon-devel` and `xymon-tools` exist because Xymon's build discards both:
+`make install` places no headers or static libraries anywhere, and `lib/`
+has no install rule at all, so the five tools its `all` target builds are
+thrown away with the build tree.
+
 ## Installing
 
 ```sh

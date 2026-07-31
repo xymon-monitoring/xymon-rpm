@@ -34,8 +34,14 @@ check() {
 }
 
 echo "== checking =="
-check "both packages are installed" \
-	"rpm -q xymon xymon-client"
+check "all packages are installed" \
+	"rpm -q xymon xymon-client xymon-devel xymon-tools"
+
+# The devel package is only useful if the relative includes still resolve,
+# so compile against it rather than merely checking the files exist.
+check "a module can be compiled against xymon-devel" \
+	"printf '#include \"libxymon.h\"\\nint main(void){return 0;}\\n' > /tmp/t.c &&
+	 cc -I/usr/include/xymon/include -c /tmp/t.c -o /tmp/t.o" 
 
 # %pre creates the account; if shadow-utils were missing from Requires(pre)
 # the scriptlet would have failed silently on a minimal image.
@@ -70,6 +76,12 @@ check "%post rewrote XYMONSERVERHOSTNAME away from localhost" \
 
 # Ask the package rather than probing a path: the section, the name and the
 # compression suffix all vary (EL uses gzip, Fedora zstd).
+check "the diagnostic tools are executable" \
+	"test -x /usr/lib/xymon/server/bin/stackio -a -x /usr/lib/xymon/server/bin/loadhosts"
+
+check "the static library is packaged" \
+	"ls /usr/lib*/xymon/libxymon.a"
+
 check "manual pages are packaged" \
 	"rpm -ql xymon | grep -q '/share/man/'"
 

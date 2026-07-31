@@ -95,6 +95,31 @@ Client-side data collection for Xymon. It gathers CPU, memory, filesystem,
 process and log data from the local system and reports it to a Xymon
 server, which evaluates the data against its configured thresholds.
 
+%package devel
+Summary:        Headers and static libraries for building Xymon modules
+
+%description devel
+Headers and static libraries for building worker modules and other
+components against Xymon.
+
+Xymon's build installs neither, so they are collected here from the build
+tree. `include/` and `lib/` are kept as siblings under a single directory
+because libxymon.h reaches its remaining headers by relative path
+("../lib/..."), so flattening them would break every include. Build
+against it with:
+
+    cc -I%{_includedir}/xymon/include ... -L%{_libdir}/xymon -lxymon
+
+%package tools
+Summary:        Diagnostic tools for the Xymon server
+
+%description tools
+Small standalone programs for inspecting Xymon's configuration parsing and
+internal structures: stackio, locator, tree, availability and loadhosts.
+
+They are built by Xymon's own makefiles but never installed, since lib/ has
+no install rule. Most administrators will not need them.
+
 %prep
 %setup -q
 
@@ -187,6 +212,24 @@ mv %{buildroot}%{_sysconfdir}/xymon/xymon-apache.conf \
 # %%doc cannot take a %%{SOURCEn} path directly.
 cp -p %{SOURCE9} %{SOURCE10} %{SOURCE12} .
 
+# Development files. The build installs neither headers nor the static
+# libraries, so take them from the build tree. include/ and lib/ must stay
+# siblings: libxymon.h pulls in 64 further headers as "../lib/...", so a
+# flat include directory would break on the first #include.
+install -d %{buildroot}%{_includedir}/xymon/include \
+           %{buildroot}%{_includedir}/xymon/lib \
+           %{buildroot}%{_libdir}/xymon
+install -pm 0644 include/*.h %{buildroot}%{_includedir}/xymon/include/
+install -pm 0644 lib/*.h     %{buildroot}%{_includedir}/xymon/lib/
+install -pm 0644 lib/*.a     %{buildroot}%{_libdir}/xymon/
+
+# Diagnostic tools. lib/Makefile builds these in its `all` target but has
+# no install rule at all, so they are otherwise discarded with the build
+# tree.
+for t in stackio locator tree availability loadhosts; do
+    install -pm 0755 "lib/$t" %{buildroot}%{xymonhome}/server/bin/"$t"
+done
+
 # The client tree ships its own tmp/logs as real dirs; redirect them.
 rm -rf %{buildroot}%{xymonhome}/client/tmp %{buildroot}%{xymonhome}/client/logs
 ln -sf %{_tmppath}            %{buildroot}%{xymonhome}/client/tmp
@@ -240,6 +283,11 @@ fi
 %config(noreplace) %{_sysconfdir}/xymon/*
 %dir %{xymonhome}
 %{xymonhome}/server
+%exclude %{xymonhome}/server/bin/stackio
+%exclude %{xymonhome}/server/bin/locator
+%exclude %{xymonhome}/server/bin/tree
+%exclude %{xymonhome}/server/bin/availability
+%exclude %{xymonhome}/server/bin/loadhosts
 %{xymonhome}/cgi-bin
 %{xymonhome}/cgi-secure
 %attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
@@ -266,5 +314,21 @@ fi
 %attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
 %attr(0750,root,xymon) %{xymonhome}/client/bin/logfetch
 %attr(0750,root,xymon) %{xymonhome}/client/bin/clientupdate
+
+%files devel
+%license COPYING
+%dir %{_includedir}/xymon
+%{_includedir}/xymon/include
+%{_includedir}/xymon/lib
+%dir %{_libdir}/xymon
+%{_libdir}/xymon/*.a
+
+%files tools
+%license COPYING
+%{xymonhome}/server/bin/stackio
+%{xymonhome}/server/bin/locator
+%{xymonhome}/server/bin/tree
+%{xymonhome}/server/bin/availability
+%{xymonhome}/server/bin/loadhosts
 
 %changelog
