@@ -241,6 +241,9 @@ jobs:
           ./build/publish.sh artifacts published
           cp RPM-GPG-KEY-xymon published/RPM-GPG-KEY-xymon
           ./build/mkrepofile.sh > published/xymon.repo
+          # GitHub Pages has no autoindex, so without these every directory
+          # in a browser is a bare 404.
+          ./build/mkindex.sh published
           # Pages would otherwise run the tree through Jekyll, which drops
           # directories beginning with an underscore and rewrites nothing
           # we want rewritten.
