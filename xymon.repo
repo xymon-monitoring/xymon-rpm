@@ -1,0 +1,22 @@
+[xymon]
+name=Xymon
+baseurl=https://xymon-monitoring.github.io/xymon-rpm/xymon/$releasever/$basearch/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://xymon-monitoring.github.io/xymon-rpm/RPM-GPG-KEY-xymon
+
+# Built from the tip of the development branch, several times a week.
+# Disabled by default: these are pre-releases of the next version, and a
+# machine that follows them is running code that has had no release
+# testing. Enable deliberately, per host:
+#
+#     dnf config-manager --set-enabled xymon-snapshot
+#
+[xymon-snapshot]
+name=Xymon (development snapshots)
+baseurl=https://xymon-monitoring.github.io/xymon-rpm/xymon-snapshot/$releasever/$basearch/
+enabled=0
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://xymon-monitoring.github.io/xymon-rpm/RPM-GPG-KEY-xymon
