@@ -1,0 +1,51 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Xymon RPM packages</title>
+<style>
+  body { font-family: system-ui, sans-serif; line-height: 1.5;
+         max-width: 52rem; margin: 2rem auto; padding: 0 1rem; }
+  code, pre { font-family: ui-monospace, monospace; }
+  pre { background: #f6f8fa; padding: .75rem 1rem; overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  td { padding: .2rem .6rem .2rem 0; white-space: nowrap; }
+  td.size { text-align: right; color: #666; }
+  a.up { color: #666; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #0d1117; color: #e6edf3; }
+    pre { background: #161b22; }
+    a { color: #6cb6ff; } td.size, a.up { color: #9aa4ae; }
+  }
+</style>
+<h1>Xymon RPM packages</h1>
+<p>Official RPM packages for
+<a href="https://github.com/xymon-monitoring/xymon">Xymon</a>, built from
+source with no downstream patches. Packaging lives in
+<a href="https://github.com/xymon-monitoring/xymon-rpm">xymon-rpm</a>.</p>
+
+<h2>Install</h2>
+<pre>curl -o /etc/yum.repos.d/xymon.repo https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
+dnf install xymon          # server
+dnf install xymon-client   # client only</pre>
+
+<p>Supported: EL8, EL9, EL10 and Fedora 43, 44 on x86_64.</p>
+
+<h2>Channels</h2>
+<table>
+  <tr><td><a href="xymon/">xymon/</a></td>
+      <td>tagged releases &mdash; enabled by default</td></tr>
+  <tr><td><a href="xymon-snapshot/">xymon-snapshot/</a></td>
+      <td>builds from the development branch &mdash; disabled by default</td></tr>
+</table>
+
+<p>Snapshots are pre-releases of the next version and have had no release
+testing. Enable them deliberately, per host:</p>
+<pre>dnf config-manager --set-enabled xymon-snapshot</pre>
+
+<h2>Signing</h2>
+<p>Packages and repository metadata are both signed. Verify the
+<a href="RPM-GPG-KEY-xymon">public key</a> against this fingerprint,
+which is also published in the
+<a href="https://github.com/xymon-monitoring/xymon-rpm#installing">repository README</a>
+&mdash; a fingerprint served only from here would prove nothing.</p>
+<pre>BD24 FB87 154D 561B 66F6  66DF 639D E923 AA08 904A</pre>
