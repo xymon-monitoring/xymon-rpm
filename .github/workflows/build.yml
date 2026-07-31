@@ -156,3 +156,109 @@ jobs:
           name: rpm-${{ matrix.name }}
           path: out/*.rpm
           if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: rpm
+    # Never from a pull request: a fork must not be able to reach the
+    # signing key or write to the published repository.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:44
+    permissions:
+      contents: write
+    steps:
+      - name: Install tooling
+        run: dnf -y install createrepo_c rpm-sign gnupg2 git-core findutils
+
+      - name: Checkout packaging
+        uses: actions/checkout@v6
+
+      # The secrets context is not available to a job-level `if`, so the
+      # job always starts and stops here until a key is configured. That
+      # keeps the run green rather than showing a permanent red job while
+      # signing is still being set up.
+      - name: Check for a signing key
+        id: key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          if [ -n "$GPG_PRIVATE_KEY" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No GPG_PRIVATE_KEY secret configured; nothing published. See docs/signing.md."
+          fi
+
+      - name: Import the signing key
+        if: steps.key.outputs.ok == 'true'
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -eu
+          printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
+          keyid=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/{print $5; exit}')
+          # rpm --addsign cannot prompt, so the passphrase is handed to a
+          # loopback pinentry rather than a terminal.
+          cat > "$HOME/.rpmmacros" <<EOF
+          %_gpg_name $keyid
+          %_gpg_sign_cmd_extra_args --batch --pinentry-mode loopback --passphrase-file $HOME/.gpgpass
+          EOF
+          printf '%s' "$GPG_PASSPHRASE" > "$HOME/.gpgpass"
+          chmod 600 "$HOME/.gpgpass"
+          mkdir -p "$HOME/.gnupg" && chmod 700 "$HOME/.gnupg"
+          printf 'pinentry-mode loopback\npassphrase-file %s\n' "$HOME/.gpgpass" \
+            > "$HOME/.gnupg/gpg.conf"
+
+      - name: Download all packages
+        if: steps.key.outputs.ok == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: rpm-*
+          path: artifacts
+
+      - name: Check out the published repository
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          set -eu
+          git config --global --add safe.directory '*'
+          git clone --branch gh-pages --depth 1 \
+            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+            published 2>/dev/null || {
+              echo "gh-pages does not exist yet; creating it"
+              git clone --depth 1 \
+                "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
+                published
+              git -C published checkout --orphan gh-pages
+              git -C published rm -rq --cached . || true
+              find published -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+            }
+
+      - name: Sign and publish
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          set -eu
+          ./build/publish.sh artifacts published
+          cp RPM-GPG-KEY-xymon published/RPM-GPG-KEY-xymon
+          ./build/mkrepofile.sh > published/xymon.repo
+          # Pages would otherwise run the tree through Jekyll, which drops
+          # directories beginning with an underscore and rewrites nothing
+          # we want rewritten.
+          touch published/.nojekyll
+
+      - name: Commit and push
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          set -eu
+          cd published
+          git config user.name "xymon-rpm publisher"
+          git config user.email "noreply@github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "nothing new to publish"
+          else
+            git commit -m "Publish packages from ${GITHUB_SHA::7}"
+            git push origin gh-pages
+          fi

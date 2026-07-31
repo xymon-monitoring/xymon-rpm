@@ -8,10 +8,25 @@ changing in Xymon itself is fixed upstream, not here.
 
 ## Status
 
-Building green on every target below. Nothing is
-published yet:
-there is no signing key, no `repodata/`, and no public repository URL. Until
-then, packages are available as GitHub Actions artifacts.
+Building green on every target below. The publish pipeline is in place but
+**dormant**: it skips until a signing key is configured, so nothing is
+served yet. Packages are available as GitHub Actions artifacts meanwhile.
+
+To turn publishing on, follow [docs/signing.md](docs/signing.md) — it is
+one `gpg` command and two repository secrets.
+
+## Installing (once publishing is live)
+
+```sh
+curl -o /etc/yum.repos.d/xymon.repo \
+  https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
+dnf install xymon          # server
+dnf install xymon-client   # client only
+```
+
+Development snapshots built from `main` are in the same file but disabled;
+enable them per host with
+`dnf config-manager --set-enabled xymon-snapshot`.
 
 ## Targets
 
@@ -50,6 +65,9 @@ rpm/xymon.spec      the spec; no patches
 rpm/baseversion     the version main is working toward (see Versioning)
 rpm/sources/        runtime integration files (units, init, logrotate, ...)
 rpm/terabithia/     archived reference material, not built
+build/publish.sh    signs packages and folds them into the published tree
+build/mkrepofile.sh generates the .repo users install
+docs/signing.md     how to create and install the signing key
 tests/vercmp.sh     asserts the snapshot/release version ordering
 tests/install.sh    installs the built packages and checks the scriptlets
 ```
