@@ -195,22 +195,15 @@ jobs:
         if: steps.key.outputs.ok == 'true'
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
           set -eu
           printf '%s' "$GPG_PRIVATE_KEY" | gpg --batch --import
           keyid=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/{print $5; exit}')
-          # rpm --addsign cannot prompt, so the passphrase is handed to a
-          # loopback pinentry rather than a terminal.
-          cat > "$HOME/.rpmmacros" <<EOF
-          %_gpg_name $keyid
-          %_gpg_sign_cmd_extra_args --batch --pinentry-mode loopback --passphrase-file $HOME/.gpgpass
-          EOF
-          printf '%s' "$GPG_PASSPHRASE" > "$HOME/.gpgpass"
-          chmod 600 "$HOME/.gpgpass"
-          mkdir -p "$HOME/.gnupg" && chmod 700 "$HOME/.gnupg"
-          printf 'pinentry-mode loopback\npassphrase-file %s\n' "$HOME/.gpgpass" \
-            > "$HOME/.gnupg/gpg.conf"
+          # The key carries no passphrase: it would have to be stored in a
+          # second secret beside the key itself, so it would guard nothing
+          # that reading the first secret does not already give away. See
+          # docs/signing.md.
+          printf '%%_gpg_name %s\n' "$keyid" > "$HOME/.rpmmacros"
 
       - name: Download all packages
         if: steps.key.outputs.ok == 'true'

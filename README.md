@@ -8,14 +8,9 @@ changing in Xymon itself is fixed upstream, not here.
 
 ## Status
 
-Building green on every target below. The publish pipeline is in place but
-**dormant**: it skips until a signing key is configured, so nothing is
-served yet. Packages are available as GitHub Actions artifacts meanwhile.
+Building green on every target below, signed and published from `main`.
 
-To turn publishing on, follow [docs/signing.md](docs/signing.md) — it is
-one `gpg` command and two repository secrets.
-
-## Installing (once publishing is live)
+## Installing
 
 ```sh
 curl -o /etc/yum.repos.d/xymon.repo \
@@ -23,6 +18,16 @@ curl -o /etc/yum.repos.d/xymon.repo \
 dnf install xymon          # server
 dnf install xymon-client   # client only
 ```
+
+Packages and repository metadata are signed. Verify the key you receive
+against the fingerprint published here:
+
+```
+Xymon Project (RPM signing key)
+BD24 FB87 154D 561B 66F6  66DF 639D E923 AA08 904A
+```
+
+See [docs/signing.md](docs/signing.md).
 
 Development snapshots built from `main` are in the same file but disabled;
 enable them per host with

@@ -1,139 +1,123 @@
 # Package signing
 
-Packages are signed so that `dnf` can verify they came from this project and
-were not modified in transit. Without a signature a user has no way to tell a
-real Xymon package from one someone else published.
+Packages and repository metadata are signed so `dnf` can verify they came
+from this project and were not modified in transit. Both `gpgcheck` and
+`repo_gpgcheck` are enabled in the shipped `.repo` file, so the package
+*list* is verified as well as the packages themselves.
 
-The signing key is held by the project and used by CI. Everything below is
-done **once**, by a maintainer, on their own machine.
+## The current key
 
-## 1. Generate the key
+```
+Xymon Project (RPM signing key)
+RSA 4096, created 2026-07-31, expires 2029-07-30
 
-```sh
-gpg --full-generate-key
+BD24 FB87 154D 561B 66F6  66DF 639D E923 AA08 904A
 ```
 
-Answer the prompts:
+The public half is `RPM-GPG-KEY-xymon` in this repository and is served at
+`/RPM-GPG-KEY-xymon` alongside the packages. **Check the fingerprint above
+against the key you fetched** — a fingerprint that only lives on the same
+server as the packages proves nothing, which is why it is also recorded
+here and in the README.
 
-| Prompt | Answer |
-| --- | --- |
-| kind of key | `RSA and RSA` (option 1) |
-| keysize | `4096` |
-| valid for | `3y` |
-| Real name | `Xymon Project` |
-| Email address | a project address, not a personal one |
-| Comment | `RPM signing key` |
+The user id deliberately carries no email address. There is no project
+mailbox to point at, and inventing one would bake a wrong address into a
+key users trust for years. An address can be added later with
+`gpg --edit-key … adduid` **without changing the fingerprint**.
 
-RSA rather than the more modern ed25519, because EL8's rpm predates
-reliable EdDSA support and EL8 is a supported target until 2029.
+## Where the private half lives
 
-Three years rather than never, because a key that leaks and cannot expire
-is a problem forever. Renewing is one command and does not invalidate
-already-signed packages.
+Two places:
 
-Use a passphrase. CI needs it as a separate secret, so it is protecting
-against someone reading the secret store, not against convenience.
+- the generating maintainer's GnuPG keyring
+- the `GPG_PRIVATE_KEY` secret in this repository, which the publish job
+  imports
 
-## 2. Note the fingerprint
+### There is no passphrase, on purpose
 
-```sh
-gpg --list-keys --fingerprint "Xymon Project"
-```
+The obvious instinct is to protect the key with a passphrase. In this
+design it buys nothing: CI cannot type one, so it would have to be stored
+in a second repository secret directly beside the key. Anyone able to read
+`GPG_PRIVATE_KEY` can read `GPG_PASSPHRASE` too, so the passphrase guards
+only against an attacker who can read one secret but not the other — which
+is not a threat that exists here.
 
-Take the long hex string. It goes in this repository's README and in the
-`xymon-release` package, so users can verify the key they fetched is the
-key the project published. Publishing it in more than one place is the
-point — a fingerprint that only lives on the same server as the packages
-proves nothing.
+What the passphrase *would* protect is the copy in the maintainer's local
+keyring. If you want that, the right shape is a passphrase-protected
+primary key with a separate unprotected signing subkey exported to CI,
+rather than a passphrase that also has to be handed to the CI job.
 
-## 3. Make a revocation certificate, before you need it
+### Who can sign
 
-```sh
-gpg --output xymon-revoke.asc --gen-revoke "Xymon Project"
-```
-
-This is the "cancel this key" statement. Generate it now, while the key is
-healthy, and store it somewhere **other than GitHub** — if the key is
-compromised because GitHub was, the revocation certificate must not be in
-the same place. A maintainer's password manager or an offline copy is fine.
-
-Without it, a leaked key cannot be cleanly retired.
-
-## 4. Export the two halves
-
-```sh
-# Public half: commit this to the repository.
-gpg --armor --export "Xymon Project" > RPM-GPG-KEY-xymon
-
-# Private half: this is the secret. Do not commit it.
-gpg --armor --export-secret-keys "Xymon Project" > private.asc
-```
-
-## 5. Load the private half into CI
-
-In this repository: **Settings → Secrets and variables → Actions → New
-repository secret**.
-
-| Secret name | Contents |
-| --- | --- |
-| `GPG_PRIVATE_KEY` | the entire contents of `private.asc`, including the `-----BEGIN`/`-----END` lines |
-| `GPG_PASSPHRASE` | the passphrase chosen in step 1 |
-
-GitHub encrypts both. They can be replaced or deleted but never read back
-out, and they are not exposed to workflow runs from forks.
-
-Then delete the local copy:
-
-```sh
-rm private.asc
-```
-
-The key itself remains in your GnuPG keyring; only the exported file goes.
-
-## 6. Commit the public half
-
-```sh
-git add RPM-GPG-KEY-xymon
-git commit -m "Add the RPM signing public key"
-```
-
-Publishing starts working on the next build.
-
-## What CI does with it
-
-The publish job imports the private key, signs each RPM with
-`rpm --addsign`, and signs the repository metadata (`repomd.xml`) so that
-the package *list* is verifiable too, not only the packages. Both
-`gpgcheck` and `repo_gpgcheck` are enabled in the shipped `.repo` file.
-
-## Who can sign
-
-Anyone able to change a workflow in this repository can cause something to
+Anyone who can change a workflow in this repository can cause something to
 be signed. That is the same set of people who can already change the source
 that gets built, so it does not widen the trust boundary much — but it is
-worth being explicit about.
+worth stating rather than leaving implicit.
 
-If the project later wants a stronger separation, the upgrade path is to
-add a second key: a release key kept offline for tagged releases, leaving
-this one for nightly snapshots. `xymon-release` can ship both keys, so that
-change does not break existing installations.
+If stronger separation is ever wanted, the upgrade path is a second key: a
+release key kept offline for tagged releases, leaving this one for nightly
+snapshots. `xymon-release` can ship both keys, so that change would not
+break existing installations.
+
+## Revocation certificate
+
+GnuPG generated one automatically at key creation:
+
+```
+~/.gnupg/openpgp-revocs.d/BD24FB87154D561B66F666DF639DE923AA08904A.rev
+```
+
+This is the "cancel this key" statement, and it is the thing that makes a
+compromised key retirable. **Copy it somewhere that is neither this machine
+nor GitHub** — a password manager or offline storage. If the key leaks
+because one of those was compromised, the revocation certificate must not
+have been sitting in the same place.
 
 ## If the key is compromised
 
-1. Publish the revocation certificate from step 3.
-2. Generate a new key and repeat this document.
-3. Ship a new `xymon-release` containing both the revocation and the new
-   key, so existing installations learn about both.
+1. Publish the revocation certificate above.
+2. Generate a replacement (see below) and load it into `GPG_PRIVATE_KEY`.
+3. Ship an `xymon-release` containing both the revocation and the new key,
+   so existing installations learn about both.
 4. Re-sign and re-publish the packages that should remain installable.
 
 ## Renewing before expiry
 
+Expiry stops *new* signatures, not existing ones; packages already signed
+stay valid.
+
 ```sh
 gpg --edit-key "Xymon Project"
-> expire          # choose a new period
+> expire            # choose a new period
 > save
 gpg --armor --export "Xymon Project" > RPM-GPG-KEY-xymon
 ```
 
-Commit the refreshed public key. Packages signed under the old expiry stay
-valid; expiry stops *new* signatures, not old ones.
+Commit the refreshed public key. The fingerprint does not change, so
+nothing on the user side has to be updated.
+
+## Generating a replacement key
+
+```sh
+cat > keyparams <<'EOF'
+Key-Type: RSA
+Key-Length: 4096
+Key-Usage: sign
+Name-Real: Xymon Project (RPM signing key)
+Expire-Date: 3y
+%no-protection
+%commit
+EOF
+gpg --batch --generate-key keyparams && rm keyparams
+
+gpg --armor --export "Xymon Project" > RPM-GPG-KEY-xymon
+gpg --armor --export-secret-keys "Xymon Project" \
+  | gh secret set GPG_PRIVATE_KEY --repo xymon-monitoring/xymon-rpm
+```
+
+RSA rather than ed25519 because EL8's rpm predates reliable EdDSA support
+and EL8 is a supported target until 2029. Three years rather than never,
+because a key that leaks and cannot expire is a problem forever.
+
+Piping the export straight into `gh secret set` means the private key is
+never written to a file or displayed.
