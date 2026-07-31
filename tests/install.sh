@@ -35,7 +35,7 @@ check() {
 
 echo "== checking =="
 check "all packages are installed" \
-	"rpm -q xymon xymon-client xymon-devel xymon-tools"
+	"rpm -q xymon xymon-client xymon-client-local xymon-devel xymon-tools"
 
 # The devel package is only useful if the relative includes still resolve,
 # so compile against it rather than merely checking the files exist.
@@ -76,6 +76,9 @@ check "%post rewrote XYMONSERVERHOSTNAME away from localhost" \
 
 # Ask the package rather than probing a path: the section, the name and the
 # compression suffix all vary (EL uses gzip, Fedora zstd).
+check "xymond_client ships for local analysis" \
+	"test -x /usr/lib/xymon/server/bin/xymond_client"
+
 check "the diagnostic tools are executable" \
 	"test -x /usr/lib/xymon/server/bin/stackio -a -x /usr/lib/xymon/server/bin/loadhosts"
 

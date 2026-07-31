@@ -95,6 +95,21 @@ Client-side data collection for Xymon. It gathers CPU, memory, filesystem,
 process and log data from the local system and reports it to a Xymon
 server, which evaluates the data against its configured thresholds.
 
+%package client-local
+Summary:        Local threshold analysis for the Xymon client
+Requires:       xymon-client = %{version}-%{release}
+
+%description client-local
+Installs xymond_client on a client machine, so thresholds can be evaluated
+locally instead of on the server. Configure it through localclient.cfg,
+which the xymon-client package installs, and add --local to the client's
+entry in clientlaunch.cfg.
+
+The binary is the same one the server uses, and is deliberately shared
+with the xymon package rather than moved out of it: a Xymon server needs
+xymond_client for its own analysis, so removing it there to place it here
+would break every server that did not also install this package.
+
 %package devel
 Summary:        Headers and static libraries for building Xymon modules
 
@@ -314,6 +329,12 @@ fi
 %attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
 %attr(0750,root,xymon) %{xymonhome}/client/bin/logfetch
 %attr(0750,root,xymon) %{xymonhome}/client/bin/clientupdate
+
+%files client-local
+%license COPYING
+%{xymonhome}/server/bin/xymond_client
+%{_mandir}/man8/xymond_client.8*
+%{_mandir}/man5/analysis.cfg.5*
 
 %files devel
 %license COPYING

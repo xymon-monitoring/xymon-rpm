@@ -16,6 +16,7 @@ Building green on every target below, signed and published from `main`.
 | --- | --- |
 | `xymon` | the server |
 | `xymon-client` | client-side data collection |
+| `xymon-client-local` | xymond_client on a client, for local threshold analysis |
 | `xymon-devel` | headers and static libraries for building modules |
 | `xymon-tools` | diagnostic programs: stackio, locator, tree, availability, loadhosts |
 
