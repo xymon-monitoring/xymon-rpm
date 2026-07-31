@@ -27,11 +27,25 @@ key users trust for years. An address can be added later with
 
 ## Where the private half lives
 
-Two places:
+Three places:
 
-- the generating maintainer's GnuPG keyring
+- `rpm-signing/` in the private organisation repository
+  [xymon-monitoring/private](https://github.com/xymon-monitoring/private),
+  together with the revocation certificate and a copy of the public half
 - the `GPG_PRIVATE_KEY` secret in this repository, which the publish job
   imports
+- the generating maintainer's GnuPG keyring
+
+The first of those is the one that matters for continuity. A repository
+secret cannot be read back out, so GitHub's copy lets CI keep signing but
+would not let anyone renew, recover or revoke the key. Without the copy in
+`private`, losing one laptop would mean a key nobody could ever retire —
+which is the failure mode xymon-monitoring/xymon-problems#5 describes, and
+what makes the Terabithia and bitweaver repositories fragile.
+
+The trade is that **everyone with read access to `private` can sign as the
+Xymon project**. That access list is the real definition of who can sign,
+and should be reviewed on that basis.
 
 ### There is no passphrase, on purpose
 
@@ -61,17 +75,19 @@ break existing installations.
 
 ## Revocation certificate
 
-GnuPG generated one automatically at key creation:
+GnuPG generated one automatically at key creation. It is stored as
+`rpm-signing/xymon-rpm-signing.revocation.asc` in
+[xymon-monitoring/private](https://github.com/xymon-monitoring/private),
+and the original remains at
+`~/.gnupg/openpgp-revocs.d/BD24FB87154D561B66F666DF639DE923AA08904A.rev`
+on the generating machine.
 
-```
-~/.gnupg/openpgp-revocs.d/BD24FB87154D561B66F666DF639DE923AA08904A.rev
-```
-
-This is the "cancel this key" statement, and it is the thing that makes a
-compromised key retirable. **Copy it somewhere that is neither this machine
-nor GitHub** — a password manager or offline storage. If the key leaks
-because one of those was compromised, the revocation certificate must not
-have been sitting in the same place.
+This is the "cancel this key" statement, and it is what makes a compromised
+key retirable. Note that it currently lives in the same place as the key it
+revokes: an attacker who reaches `private` gets both. That is acceptable
+here because reaching `private` already means being able to sign, so the
+revocation certificate is not the weakest link — but a third copy held
+outside GitHub would be a genuine improvement.
 
 ## If the key is compromised
 
