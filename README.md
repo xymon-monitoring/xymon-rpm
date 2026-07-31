@@ -121,6 +121,23 @@ becoming. If upstream starts bumping `version.h` at the opening of each
 development cycle, this file goes away and the spec reads `version.h`
 directly.
 
+## Retention
+
+The stable channel keeps every package forever. People pin versions and
+roll back, so removing a published release breaks them.
+
+The snapshot channel keeps the newest **5 builds** per release and
+architecture, and prunes older ones on each publish; set
+`XYMON_SNAPSHOT_KEEP` to change it. Snapshots are pre-releases of an
+untested version, shipped disabled by default, so they are disposable —
+and without pruning the published tree would grow without bound against
+GitHub Pages' size and bandwidth limits.
+
+Retention counts *builds*, not files. One build produces several packages,
+and dropping only some of them would leave a repository that resolves to a
+missing dependency. Anything removed is named in the publish log rather
+than dropped silently.
+
 ## Where the files in `rpm/sources/` come from
 
 Xymon's systemd, init, logrotate and SELinux integration files were written

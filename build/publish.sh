@@ -79,6 +79,43 @@ find "$artifacts" -name '*.rpm' | while read -r pkg; do
 	fi
 done
 
+# --- snapshot retention ------------------------------------------------
+#
+# The stable channel keeps everything forever: people pin versions and roll
+# back, so removing a published release breaks them. Snapshots are
+# disposable by definition -- they are pre-releases of a version that has
+# not been tested, shipped disabled by default -- so they are pruned to
+# stop the published tree growing without bound.
+#
+# Retention is per package directory and counts *builds*, not files: one
+# build produces several packages, and dropping half of one would leave a
+# repository that resolves to a missing dependency.
+keep=${XYMON_SNAPSHOT_KEEP:-5}
+if [ -d "$repodir/xymon-snapshot" ]; then
+	echo "== pruning snapshots (keeping the newest $keep builds per directory) =="
+	find "$repodir/xymon-snapshot" -name '*.rpm' -printf '%h\n' | sort -u | while read -r dir; do
+		# Build id is the Release field: 0.<YYYYMMDD>git<sha>. Fixed-width
+		# date first means a plain reverse sort is newest-first.
+		all=$(ls "$dir"/*.rpm 2>/dev/null \
+			| sed -E 's/.*-(0\.[0-9]{8}git[0-9a-f]+)\..*/\1/' \
+			| sort -ru)
+		total=$(echo "$all" | grep -c .)
+		[ "$total" -le "$keep" ] && continue
+		# Read line by line rather than iterating an unquoted variable:
+		# word-splitting behaviour differs between shells, and getting it
+		# wrong here deletes the wrong files.
+		echo "$all" | tail -n +$((keep + 1)) | while read -r b; do
+			[ -n "$b" ] || continue
+			n=$(ls "$dir"/*"$b"* 2>/dev/null | wc -l | tr -d ' ')
+			rm -f "$dir"/*"$b"*
+			# Say what was removed rather than pruning silently: a
+			# repository that quietly loses builds looks like one that
+			# never had them.
+			echo "  - ${dir#"$repodir"/}: dropped build $b ($n packages)"
+		done
+	done
+fi
+
 echo "== regenerating metadata =="
 # Every directory that actually holds packages gets its own metadata; that
 # is what a dnf baseurl points at.
