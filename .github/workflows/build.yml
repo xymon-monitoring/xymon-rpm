@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       xymon_ref:
-        description: 'xymon-monitoring/xymon ref to build (branch, tag or sha)'
+        description: 'Ref to build: a branch, tag, sha, or pr/NNN'
         required: false
         default: 'main'
 
@@ -109,11 +109,27 @@ jobs:
       - name: Checkout packaging
         uses: actions/checkout@v6
 
+      # Accepts a branch, a tag, a sha, or a pull request -- either as
+      # "pr/163" or as the full "refs/pull/163/head". A plain clone does not
+      # fetch refs/pull/*, so a PR reference has to be asked for explicitly
+      # before it can be checked out.
       - name: Checkout xymon source
         run: |
           set -eux
           git clone --filter=blob:none https://github.com/xymon-monitoring/xymon.git src
-          git -C src checkout "${XYMON_REF}"
+          case "${XYMON_REF}" in
+          pr/*|refs/pull/*)
+            pr=$(echo "${XYMON_REF}" | tr -dc '0-9')
+            git -C src fetch origin "pull/${pr}/head:pr-${pr}"
+            git -C src checkout "pr-${pr}"
+            # Say which commit a PR build actually came from: the head of a
+            # pull request moves, so "pr/163" alone does not identify a build.
+            echo "::notice::built from PR #${pr} at $(git -C src rev-parse --short HEAD)"
+            ;;
+          *)
+            git -C src checkout "${XYMON_REF}"
+            ;;
+          esac
 
       # A tagged release builds as X.Y.Z-1; anything else builds as a
       # pre-release of the upcoming version, X.Y.Z-0.<date>git<sha>, which

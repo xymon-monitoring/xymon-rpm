@@ -214,6 +214,25 @@ actually unpack, so a path probe can fail on a package that is correct.
 The service itself is not started — containers have no running init.
 `systemd-analyze verify` is the closest check available without PID 1.
 
+## Building a branch or a pull request
+
+Actions → **build** → *Run workflow*, and give a ref:
+
+| Input | Builds |
+| --- | --- |
+| `main` | the default |
+| `devel` | the 4.4 development branch |
+| `pr/163` | pull request 163 in xymon-monitoring/xymon |
+| any sha or tag | that exact commit |
+
+Nothing is published: publishing only happens for `main`, so a branch or
+pull request build produces downloadable artifacts and nothing else. Use it
+to check that a change still packages and that the resulting RPM installs,
+before merging it.
+
+Because a pull request's head moves, the run logs the exact commit it
+built, so an artifact can always be traced back to a specific revision.
+
 ## Building locally
 
 ```sh
