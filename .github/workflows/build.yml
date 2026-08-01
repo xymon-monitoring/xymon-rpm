@@ -202,9 +202,20 @@ jobs:
   publish:
     name: publish
     needs: rpm
-    # Never from a pull request: a fork must not be able to reach the
-    # signing key or write to the published repository.
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    # Publish only genuine builds of xymon's main branch.
+    #
+    # Never from a pull request against this repository: a fork must not be
+    # able to reach the signing key or write to the published tree. And
+    # never from a manual run of some other ref -- a workflow_dispatch still
+    # reports github.ref as refs/heads/main, so without the last clause a
+    # one-off build of a branch or pull request would be published as though
+    # it were main.
+    if: >-
+      github.event_name != 'pull_request'
+      && github.ref == 'refs/heads/main'
+      && (github.event.inputs.xymon_ref == ''
+          || github.event.inputs.xymon_ref == null
+          || github.event.inputs.xymon_ref == 'main')
     runs-on: ubuntu-latest
     container:
       image: fedora:44
