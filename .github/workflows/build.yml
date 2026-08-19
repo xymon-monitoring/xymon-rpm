@@ -152,6 +152,10 @@ jobs:
             echo "snapshot=" >> "$GITHUB_OUTPUT"
           else
             date=$(git -C src log -1 --format=%cd --date=format:%Y%m%d)
+            # The packaging checkout is owned by the runner user, not the
+            # container user, and git refuses mismatched ownership. src is
+            # immune only because it was cloned inside the container.
+            git config --global --add safe.directory "$(pwd)"
             pkgdate=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y%m%d%H%M)
             pkgref=$(git rev-parse --short=7 HEAD)
             echo "snapshot=0.${date}git${ref}.${pkgdate}p${pkgref}" >> "$GITHUB_OUTPUT"
