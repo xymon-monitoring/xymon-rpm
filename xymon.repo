@@ -1,3 +1,7 @@
+# HIGHLY EXPERIMENTAL: this packaging is new and has seen no production
+# use. Layout, versioning and repository structure may still change
+# without notice -- do not point production machines at it yet.
+#
 [xymon]
 name=Xymon
 baseurl=https://xymon-monitoring.github.io/xymon-rpm/xymon/$releasever/$basearch/
