@@ -46,13 +46,13 @@ Source0:        xymon-%{version}.tar.gz
 # Runtime integration files. Provenance is deliberate -- see README.md.
 #   from Terabithia's xymon-4.3.30 SRPM (correct for a 4.3.x base):
 Source1:        xymonlaunch.service
-Source2:        xymon.server-init
-Source3:        xymon.client-init
 #   byte-identical in Terabithia and upstream devel:
 Source4:        xymonlaunch.service.preset
 Source5:        xymon-tmpfiles.conf
-#   from upstream devel via PR #46:
+#   adapted here: devel's postrotate signals xymonlaunch, which main
+#   cannot act on until xymon#172 -- see README.md:
 Source6:        xymon.logrotate
+#   from upstream devel via PR #46:
 Source7:        xymonlaunch.default
 Source8:        xymon-client.default
 Source9:        xymon.te

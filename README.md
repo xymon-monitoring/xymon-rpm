@@ -146,13 +146,15 @@ in `main`; PR [xymon#46](https://github.com/xymon-monitoring/xymon/pull/46)
 proposes to bring them over. Until it merges they are vendored here.
 
 Three of them differ between the 4.4 branch and the 4.3.x line, and the
-4.3.x form is the correct one for a build from `main`:
+4.3.x form is the correct one for a build from `main`; a fourth is
+adapted locally:
 
 | File | Taken from | Why |
 | --- | --- | --- |
 | `xymonlaunch.service` | Terabithia 4.3.30 SRPM | the `devel` copy passes `xymoncmd --no-env`, and `--no-env` does not exist in `main` — it arrives with the `lib/stdopt.c` rework tracked in [xymon#106](https://github.com/xymon-monitoring/xymon/issues/106) |
 | `xymon.server-init` | Terabithia 4.3.30 SRPM | same |
 | `xymon.client-init` | Terabithia 4.3.30 SRPM | same |
+| `xymon.logrotate` | adapted here | the `devel` copy's postrotate sends `SIGHUP` to `xymonlaunch`, which `main` does not relay to its children ([xymon#172](https://github.com/xymon-monitoring/xymon/pull/172)), and no init script is shipped that could reopen the logs — so the fragment uses `copytruncate` instead |
 | everything else | upstream `devel` via PR #46 | identical in both, or 4.4-neutral |
 
 When the `stdopt` group lands in `main`, those three switch back to the
@@ -181,7 +183,9 @@ It is kept for provenance and is never built.
 - `ExecReload` sends `SIGHUP` to `xymonlaunch`, which does not yet relay it
   to its children on `main`. That arrives with
   [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172). Use
-  `systemctl restart` until then.
+  `systemctl restart` until then. The logrotate fragment sits behind the
+  same gate: it uses `copytruncate` because no signal reopens the logs,
+  and switches to the upstream postrotate form when #172 lands.
 - The SELinux policy modules are wired up but **off by default**. Building
   with `--with selinux` compiles them for the `targeted`, `mls` and
   `minimum` variants and loads them with `semodule`, which is what the
