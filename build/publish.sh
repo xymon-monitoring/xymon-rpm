@@ -100,17 +100,22 @@ if [ -d "$repodir/xymon-snapshot" ]; then
 		# build.yml) is deliberately not part of the id: rebuilds of one
 		# upstream commit are one build for retention purposes, kept and
 		# pruned as a unit.
+		# -n/p: a filename that does not match the pattern vanishes
+		# instead of passing through whole, where it would later feed a
+		# glob that cannot match and abort the script under pipefail.
 		all=$(ls "$dir"/*.rpm 2>/dev/null \
-			| sed -E 's/.*-(0\.[0-9]{8}git[0-9a-f]+)\..*/\1/' \
+			| sed -nE 's/.*-(0\.[0-9]{8}git[0-9a-f]+)\..*/\1/p' \
 			| sort -ru)
-		total=$(echo "$all" | grep -c .)
+		total=$(echo "$all" | grep -c . || :)
 		[ "$total" -le "$keep" ] && continue
 		# Read line by line rather than iterating an unquoted variable:
 		# word-splitting behaviour differs between shells, and getting it
 		# wrong here deletes the wrong files.
 		echo "$all" | tail -n +$((keep + 1)) | while read -r b; do
 			[ -n "$b" ] || continue
-			n=$(ls "$dir"/*"$b"* 2>/dev/null | wc -l | tr -d ' ')
+			# find, not ls: ls exits non-zero on no match, and pipefail
+			# would abort the publish mid-prune with stale metadata.
+			n=$(find "$dir" -maxdepth 1 -name "*$b*" | wc -l | tr -d ' ')
 			rm -f "$dir"/*"$b"*
 			# Say what was removed rather than pruning silently: a
 			# repository that quietly loses builds looks like one that
@@ -122,8 +127,13 @@ fi
 
 echo "== regenerating metadata =="
 # Every directory that actually holds packages gets its own metadata; that
-# is what a dnf baseurl points at.
+# is what a dnf baseurl points at. The tree root is not one of them: the
+# bootstrap xymon-release rpm lives there, and running createrepo_c on the
+# root would generate a signed repodata recursively merging every channel,
+# distro and arch. Remove the one an earlier run created.
+rm -rf "$repodir/repodata"
 find "$repodir" -name '*.rpm' -printf '%h\n' | sort -u | while read -r dir; do
+	[ "$dir" = "$repodir" ] && continue
 	createrepo_c --update --quiet "$dir"
 	# Sign the metadata as well as the packages, so the package *list* is
 	# verifiable too. Without this, repo_gpgcheck=1 cannot be used and a

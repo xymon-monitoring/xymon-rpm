@@ -46,6 +46,15 @@ check "the client unit and its launcher resolve" \
 	 test -x /usr/lib/xymon/client/bin/xymonclient-run &&
 	 test -x /usr/lib/xymon/client/bin/xymonlaunch"
 
+# Without net-tools the ifstat/ports/route client sections arrive empty,
+# and nothing errors -- the data is just missing on the server.
+check "net-tools arrived with the client" \
+	"command -v netstat && command -v ifconfig"
+
+# An upgrade must not reset the server address a user configured.
+check "the client configs are marked config" \
+	"rpm -qc xymon-client | grep -q client/etc/xymonclient.cfg"
+
 check "systemd accepts the client unit" \
 	"systemd-analyze verify --man=no /usr/lib/systemd/system/xymon-client.service"
 
@@ -99,6 +108,16 @@ check "/usr/sbin/xymonlaunch resolves" \
 check "%post rewrote XYMONSERVERHOSTNAME away from localhost" \
 	"grep -q '^XYMONSERVERHOSTNAME=' /etc/xymon/xymonserver.cfg && \
 	 ! grep -q '^XYMONSERVERHOSTNAME=\"localhost\"' /etc/xymon/xymonserver.cfg"
+
+# The shipped apache config points AuthUserFile here; if the file is
+# missing every /xymon-seccgi request is a 500, and if it is not
+# apache-owned the critical-editor CGI cannot save.
+check "the web auth files exist and are apache-owned" \
+	"stat -c '%U:%G' /etc/xymon/xymonpasswd | grep -qx apache:apache &&
+	 stat -c '%U:%G' /etc/xymon/xymongroups | grep -qx apache:apache"
+
+check "critical.cfg is writable by the web CGIs" \
+	"stat -c '%U' /etc/xymon/critical.cfg | grep -qx apache"
 
 # Ask the package rather than probing a path: the section, the name and the
 # compression suffix all vary (EL uses gzip, Fedora zstd).

@@ -22,10 +22,11 @@ EnvironmentFile=-/etc/sysconfig/xymonlaunch
 EnvironmentFile=-/etc/sysconfig/xymon-client
 ExecStart=/usr/lib/xymon/client/bin/xymonclient-run $XYMONLAUNCHOPTS
 
-# Kill xymonlaunch, but don't send kills to the underlying procs, since
-# they might be doing important things (like flushing caches).
-KillMode=process
-SendSIGKILL=no
+# Unlike the server unit, the whole cgroup is killed on stop: the client's
+# children are only the report script and its sampling vmstat -- there are
+# no checkpoints to protect, and leaving them behind makes every restart
+# log "unit process remains running". A lost in-flight report is resent at
+# the next interval.
 RestartSec=6
 Restart=on-failure
 

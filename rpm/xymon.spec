@@ -63,11 +63,13 @@ Source3:        xymonclient-run
 Source4:        xymonlaunch.service.preset
 Source5:        xymon-tmpfiles.conf
 #   adapted here: devel's postrotate signals xymonlaunch, which main
-#   cannot act on until xymon#172 -- see README.md:
+#   cannot act on until xymon#172; and devel's xymon-client.default
+#   documents XYMONSERVERS, which only patched clients read -- see
+#   README.md:
 Source6:        xymon.logrotate
+Source8:        xymon-client.default
 #   from upstream devel via PR #46:
 Source7:        xymonlaunch.default
-Source8:        xymon-client.default
 Source9:        xymon.te
 Source10:       xymon-client.te
 Source11:       xymon-sysctl.conf
@@ -103,6 +105,13 @@ Requires:       xymon-client = %{version}-%{release}
 # EL8/EL9 rpm does not, and there the dirs would silently fall back to
 # root's group.
 Requires:       httpd-filesystem
+%if %{without xymonping}
+# Without the setuid xymonping helper, xymonnet shells out to fping.
+Requires:       fping
+%endif
+# semanage, for the file-context labeling in %%post. Weak on purpose: a
+# container or a disabled-SELinux host works without it.
+Recommends:     policycoreutils-python-utils
 
 %description
 Xymon is a system for monitoring servers, networks and applications. It
@@ -118,6 +127,12 @@ Requires(pre):  shadow-utils
 # through its Requires above, so the user exists before either unpacks.
 %{?sysusers_requires_compat}
 %{?systemd_requires}
+# xymonclient-linux.sh hardcodes ifconfig, netstat and route with no
+# ip/ss fallback; without them the ifstat/ports/route sections silently
+# arrive empty.
+Requires:       net-tools
+# The client ships /etc/logrotate.d/xymon; nothing rotates it otherwise.
+Recommends:     logrotate
 
 %description client
 Client-side data collection for Xymon. It gathers CPU, memory, filesystem,
@@ -280,6 +295,13 @@ install -d %{buildroot}%{_sysconfdir}/httpd/conf.d
 mv %{buildroot}%{_sysconfdir}/xymon/xymon-apache.conf \
    %{buildroot}%{_sysconfdir}/httpd/conf.d/xymon-apache.conf
 
+# That config points AuthUserFile/AuthGroupFile at these; the build never
+# creates them, and without the password file every /xymon-seccgi request
+# is a 500. Shipped empty: no user can authenticate until the admin adds
+# one with htpasswd.
+touch %{buildroot}%{_sysconfdir}/xymon/xymonpasswd
+touch %{buildroot}%{_sysconfdir}/xymon/xymongroups
+
 # Shipped as reference material only, so %%doc them from the build dir --
 # %%doc cannot take a %%{SOURCEn} path directly.
 cp -p %{SOURCE9} %{SOURCE10} %{SOURCE12} .
@@ -328,6 +350,21 @@ if [ $1 -eq 1 ]; then
            -e "s/^XYMONSERVERWWWNAME=.*/XYMONSERVERWWWNAME=\"$(uname -n)\"/" \
         %{_sysconfdir}/xymon/xymonserver.cfg || :
 fi
+# Label the web-facing paths so httpd can reach them on an enforcing
+# host: the default policy has no contexts for /usr/lib/xymon, so the
+# CGIs are lib_t and the www tree var_lib_t, both denied to httpd_t.
+# Best-effort by design -- semanage only exists where the SELinux tooling
+# is installed, and a container or disabled-SELinux host needs none of
+# this.
+if command -v semanage >/dev/null 2>&1; then
+    semanage fcontext -a -t httpd_sys_script_exec_t '%{xymonhome}/cgi-bin(/.*)?'    2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_script_exec_t '%{xymonhome}/cgi-secure(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_content_t '%{_sharedstatedir}/xymon/www(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_rw_content_t '%{_sharedstatedir}/xymon/www/rep(/.*)?'  2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_rw_content_t '%{_sharedstatedir}/xymon/www/snap(/.*)?' 2>/dev/null || :
+    restorecon -R %{xymonhome}/cgi-bin %{xymonhome}/cgi-secure \
+        %{_sharedstatedir}/xymon/www 2>/dev/null || :
+fi
 %if %{with selinux}
 # Never fatal: a container or a machine with SELinux disabled has no
 # working semodule, and failing there would abort an otherwise fine
@@ -342,6 +379,13 @@ done
 
 %postun
 %systemd_postun_with_restart xymonlaunch.service
+if [ $1 -eq 0 ] && command -v semanage >/dev/null 2>&1; then
+    semanage fcontext -d '%{xymonhome}/cgi-bin(/.*)?'    2>/dev/null || :
+    semanage fcontext -d '%{xymonhome}/cgi-secure(/.*)?' 2>/dev/null || :
+    semanage fcontext -d '%{_sharedstatedir}/xymon/www(/.*)?'      2>/dev/null || :
+    semanage fcontext -d '%{_sharedstatedir}/xymon/www/rep(/.*)?'  2>/dev/null || :
+    semanage fcontext -d '%{_sharedstatedir}/xymon/www/snap(/.*)?' 2>/dev/null || :
+fi
 %if %{with selinux}
 if [ $1 -eq 0 ]; then
     for v in %{selinux_variants}; do
@@ -367,6 +411,13 @@ fi
 %dir %{_sysconfdir}/xymon/tasks.d
 %dir %{_sysconfdir}/xymon/web
 %config(noreplace) %{_sysconfdir}/xymon/*
+# Apache-writable overrides of the glob above (the later entry wins, as
+# with logfetch below): the critical-editor CGI writes critical.cfg, and
+# httpd reads the auth files the shipped apache config points at.
+%config(noreplace) %attr(0644,apache,apache) %{_sysconfdir}/xymon/critical.cfg
+%config(noreplace) %attr(0644,apache,apache) %{_sysconfdir}/xymon/critical.cfg.bak
+%config(noreplace) %attr(0600,apache,apache) %{_sysconfdir}/xymon/xymonpasswd
+%config(noreplace) %attr(0600,apache,apache) %{_sysconfdir}/xymon/xymongroups
 %dir %{xymonhome}
 %{xymonhome}/server
 %exclude %{xymonhome}/server/bin/stackio
@@ -428,6 +479,11 @@ exit 0
 %config(noreplace) %{_sysconfdir}/sysconfig/xymon-client
 %dir %{xymonhome}
 %{xymonhome}/client
+# The editable client configs; without noreplace an upgrade silently
+# resets XYMSRV to the baked-in 127.0.0.1.
+%config(noreplace) %{xymonhome}/client/etc/xymonclient.cfg
+%config(noreplace) %{xymonhome}/client/etc/clientlaunch.cfg
+%config(noreplace) %{xymonhome}/client/etc/localclient.cfg
 %attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
 %attr(0750,root,xymon) %{xymonhome}/client/bin/logfetch
 %attr(0750,root,xymon) %{xymonhome}/client/bin/clientupdate

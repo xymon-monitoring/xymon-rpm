@@ -223,20 +223,25 @@ jobs:
   publish:
     name: publish
     needs: rpm
-    # Publish only genuine builds of xymon's main branch.
+    # Publish only genuine builds of xymon's main branch or of a release
+    # tag.
     #
     # Never from a pull request against this repository: a fork must not be
     # able to reach the signing key or write to the published tree. And
     # never from a manual run of some other ref -- a workflow_dispatch still
     # reports github.ref as refs/heads/main, so without the last clause a
     # one-off build of a branch or pull request would be published as though
-    # it were main.
+    # it were main. A dispatched rel-* ref IS the release flow, so it
+    # publishes; if someone names an upstream *branch* rel-*, the Compute
+    # version step still versions it as a snapshot (only an exact tag match
+    # builds as X.Y.Z-n), so it cannot impersonate a release.
     if: >-
       github.event_name != 'pull_request'
       && github.ref == 'refs/heads/main'
       && (github.event.inputs.xymon_ref == ''
           || github.event.inputs.xymon_ref == null
-          || github.event.inputs.xymon_ref == 'main')
+          || github.event.inputs.xymon_ref == 'main'
+          || startsWith(github.event.inputs.xymon_ref, 'rel-'))
     runs-on: ubuntu-latest
     container:
       image: fedora:44
@@ -329,7 +334,17 @@ jobs:
           cp RPM-GPG-KEY-xymon ~/rpmbuild/SOURCES/
           rpmbuild -bb rpm/xymon-release.spec
           rpm --addsign ~/rpmbuild/RPMS/noarch/xymon-release-*.rpm
-          cp ~/rpmbuild/RPMS/noarch/xymon-release-*.rpm published/
+          # Same immutability rule as every other package: a published
+          # NEVRA is never overwritten. Shipping a changed repo file or
+          # key means bumping Version in rpm/xymon-release.spec.
+          for f in ~/rpmbuild/RPMS/noarch/xymon-release-*.rpm; do
+            b=$(basename "$f")
+            if [ -e "published/$b" ]; then
+              echo "already published, leaving alone: $b"
+            else
+              cp -p "$f" "published/$b"
+            fi
+          done
           # GitHub Pages has no autoindex, so without these every directory
           # in a browser is a bare 404.
           ./build/mkindex.sh published

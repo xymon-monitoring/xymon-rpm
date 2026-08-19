@@ -1,25 +1,19 @@
-# Configure the Xymon client settings.
-
-# You MUST set the list of Xymon servers that this
-# client reports to.
-# It is good to use IP-addresses here instead of DNS 
-# names - DNS might not work if there's a problem.
+# Settings for the Xymon client (read by the xymon-client systemd unit).
 #
-# E.g. (a single Xymon server)
-#   XYMONSERVERS="192.168.1.1" 
-# or (multiple servers)
-#   XYMONSERVERS="10.0.0.1 192.168.1.1" 
+# The address of the Xymon server is NOT set here: upstream's client
+# reads it from its own environment file, so set XYMSRV (one server) or
+# XYMSERVERS plus XYMSRV="0.0.0.0" (several) in
+#
+#     /usr/lib/xymon/client/etc/xymonclient.cfg
+#
+# which is preserved across upgrades. The XYMONSERVERS variable that
+# other distributions document here is read only by their patched
+# clients, not by this packaging.
 
-XYMONSERVERS=""
-
-# The defaults usually suffice for the rest of this file, 
-# but you can tweak the hostname that the client reports 
-# data with.
+# The hostname the client reports data under, when it must differ from
+# `uname -n`:
 # CLIENTHOSTNAME=""
 
-# Red Hat EL version 3 uses a different vmstat layout
-# than all other Linux versions. So for a client running this
-# particular OS, set CLIENTOS as below.
-# Do NOT set this on any other Red Hat version.
+# Red Hat EL version 3 uses a different vmstat layout than all other
+# Linux versions. Set this ONLY on that particular OS:
 # CLIENTOS="rhel3"
-

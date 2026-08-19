@@ -138,6 +138,7 @@ bring them over. Until it merges they are vendored here:
 | --- | --- | --- |
 | `xymonlaunch.service`, `xymon.server-init`, `xymon.client-init` | Terabithia 4.3.30 SRPM | the `devel` copies pass `xymoncmd --no-env`, which does not exist in `main` until the `lib/stdopt.c` rework ([xymon#106](https://github.com/xymon-monitoring/xymon/issues/106)); they switch back to the `devel` copies when it lands |
 | `xymon.logrotate` | adapted here | the `devel` copy's postrotate HUPs `xymonlaunch`, which `main` does not relay ([xymon#172](https://github.com/xymon-monitoring/xymon/pull/172)); `copytruncate` until it does |
+| `xymon-client.default` | adapted here | the `devel` copy documents `XYMONSERVERS`, which only patched clients read; on `main` the server address lives in `xymonclient.cfg`, and the file now says so |
 | `xymon-client.service`, `xymonclient-run` | written here | upstream has no client unit — its `runclient.sh` backgrounds `xymonlaunch`, which systemd cannot supervise — so `xymonclient-run` is its foreground equivalent; `xymonlaunch.service`'s upstream `Alias=xymon-client.service` is dropped so it cannot shadow the real unit |
 | everything else | upstream `devel` via PR #46 | identical in both, or 4.4-neutral |
 
@@ -164,6 +165,10 @@ for provenance only; it is never built.
   SELinux, so a green build only proves they compile — and their rules
   still reference `/var/cache/xymon`, which this layout does not use.
   Turning them on wants verification on an enforcing machine first.
+  Independently of the modules, `%post` labels the CGI and www paths
+  (`httpd_sys_script_exec_t` etc.) when `semanage` is present, since the
+  default policy knows nothing about `/usr/lib/xymon` — that part, too,
+  is asserted only as far as a non-enforcing container can.
 - `XYMONSERVERHOSTNAME` is baked as `localhost` and rewritten from
   `uname -n` in `%post`, because a package must not carry the build
   host's name.
@@ -185,10 +190,11 @@ Every build runs two checks:
 ## Building a branch or a pull request
 
 Actions → **build** → *Run workflow* with a ref: `main` (the default),
-`devel`, `pr/163`, or any sha or tag. Nothing is published — only `main`
-publishes — and the run logs the exact commit it built, since a pull
-request's head moves. The `releasenum` input re-releases a tag with
-packaging fixes (see Versioning).
+`devel`, `pr/163`, or any sha or tag. Only `main` and dispatched `rel-*`
+tags publish — a tag build is the release flow — everything else produces
+downloadable artifacts and nothing more. The run logs the exact commit it
+built, since a pull request's head moves. The `releasenum` input
+re-releases a tag with packaging fixes (see Versioning).
 
 ## Building locally
 

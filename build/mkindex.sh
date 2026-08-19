@@ -67,6 +67,12 @@ find "$repodir" -type d ! -path '*/.git*' ! -name repodata | while read -r dir; 
 done
 
 # --- root landing page ------------------------------------------------
+
+# Name the bootstrap package that is actually in the tree, newest if the
+# version was ever bumped -- a hardcoded filename 404s the moment it is.
+relrpm=$(cd "$repodir" && ls xymon-release-*.noarch.rpm 2>/dev/null | sort -V | tail -1)
+relrpm=${relrpm:-xymon-release-1-1.noarch.rpm}
+
 {
 	html_head "Xymon RPM packages"
 	cat <<-EOF
@@ -76,7 +82,7 @@ done
 	<a href="https://github.com/xymon-monitoring/xymon-rpm">xymon-rpm</a>.</p>
 
 	<h2>Install</h2>
-	<pre>dnf install $base/xymon-release-1-1.noarch.rpm
+	<pre>dnf install $base/$relrpm
 	dnf install xymon          # server
 	dnf install xymon-client   # client only</pre>
 	<p>The first command adds the repository and installs the signing key
