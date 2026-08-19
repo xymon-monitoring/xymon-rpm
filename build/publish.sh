@@ -94,8 +94,12 @@ keep=${XYMON_SNAPSHOT_KEEP:-5}
 if [ -d "$repodir/xymon-snapshot" ]; then
 	echo "== pruning snapshots (keeping the newest $keep builds per directory) =="
 	find "$repodir/xymon-snapshot" -name '*.rpm' -printf '%h\n' | sort -u | while read -r dir; do
-		# Build id is the Release field: 0.<YYYYMMDD>git<sha>. Fixed-width
-		# date first means a plain reverse sort is newest-first.
+		# Build id is the upstream half of the Release field,
+		# 0.<YYYYMMDD>git<sha>. Fixed-width date first means a plain
+		# reverse sort is newest-first. The packaging suffix (see
+		# build.yml) is deliberately not part of the id: rebuilds of one
+		# upstream commit are one build for retention purposes, kept and
+		# pruned as a unit.
 		all=$(ls "$dir"/*.rpm 2>/dev/null \
 			| sed -E 's/.*-(0\.[0-9]{8}git[0-9a-f]+)\..*/\1/' \
 			| sort -ru)

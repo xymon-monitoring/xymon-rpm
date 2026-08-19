@@ -132,8 +132,15 @@ jobs:
           esac
 
       # A tagged release builds as X.Y.Z-1; anything else builds as a
-      # pre-release of the upcoming version, X.Y.Z-0.<date>git<sha>, which
-      # sorts below the eventual -1. See README.md.
+      # pre-release of the upcoming version,
+      # X.Y.Z-0.<date>git<sha>.<pkgdate>p<pkgsha>, which sorts below the
+      # eventual -1. The first pair names the upstream commit, the second
+      # the packaging commit: a published NEVRA is immutable, so without
+      # the second pair a packaging-only change rebuilds the same NEVRA as
+      # the previous run and is never published until upstream happens to
+      # move. The datetime does the ordering (rpm compares sha segments
+      # alphabetically, which means nothing); UTC so it only moves
+      # forward. See README.md.
       - name: Compute version
         id: ver
         run: |
@@ -145,7 +152,9 @@ jobs:
             echo "snapshot=" >> "$GITHUB_OUTPUT"
           else
             date=$(git -C src log -1 --format=%cd --date=format:%Y%m%d)
-            echo "snapshot=0.${date}git${ref}" >> "$GITHUB_OUTPUT"
+            pkgdate=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y%m%d%H%M)
+            pkgref=$(git rev-parse --short=7 HEAD)
+            echo "snapshot=0.${date}git${ref}.${pkgdate}p${pkgref}" >> "$GITHUB_OUTPUT"
           fi
           echo "base=${base}" >> "$GITHUB_OUTPUT"
 

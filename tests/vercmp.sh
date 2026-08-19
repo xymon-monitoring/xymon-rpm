@@ -34,9 +34,26 @@ below "4.3.30-1.el10" "4.3.31-0.20260730git3a07523.el10"
 # Snapshots advance among themselves, by date then by nothing else.
 below "4.3.31-0.20260730git3a07523.el10" "4.3.31-0.20260731gitdeadbee.el10"
 
+# A packaging-only change must republish even when upstream has not moved,
+# so the packaging commit's UTC datetime and sha extend the release. A
+# digit segment outranks the dist tag's alpha segment, which is what lets
+# the extended form upgrade over an already-published unextended build of
+# the same upstream commit.
+below "4.3.31-0.20260818gitcb9fede.el10" \
+      "4.3.31-0.20260818gitcb9fede.202608191459pcf991fe.el10"
+
+# Packaging commits advance among themselves, by datetime.
+below "4.3.31-0.20260818gitcb9fede.202608191459pcf991fe.el10" \
+      "4.3.31-0.20260818gitcb9fede.202608201000pdeadbee.el10"
+
+# A newer upstream commit outranks any packaging suffix of an older one.
+below "4.3.31-0.20260818gitcb9fede.202608302359pfffffff.el10" \
+      "4.3.31-0.20260819gitaaaaaaa.202608190000p1111111.el10"
+
 # The real release supersedes every snapshot of itself. This is the one
 # that a naive "Release: 1 + snapshot suffix" scheme gets backwards.
 below "4.3.31-0.20260731gitdeadbee.el10" "4.3.31-1.el10"
+below "4.3.31-0.20260819gitaaaaaaa.202608190000p1111111.el10" "4.3.31-1.el10"
 
 # And the next release supersedes the previous one.
 below "4.3.31-1.el10" "4.3.32-1.el10"

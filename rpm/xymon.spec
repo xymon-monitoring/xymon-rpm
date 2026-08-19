@@ -8,8 +8,12 @@
 #   release   rpmbuild --define 'baseversion 4.3.31'
 #             -> xymon-4.3.31-1.el10.x86_64.rpm
 #   snapshot  rpmbuild --define 'baseversion 4.3.31' \
-#                      --define 'gitsnapshot 0.20260730git3a07523'
-#             -> xymon-4.3.31-0.20260730git3a07523.el10.x86_64.rpm
+#                      --define 'gitsnapshot 0.20260730git3a07523.202607301210pab12cd3'
+#             -> xymon-4.3.31-0.20260730git3a07523.202607301210pab12cd3.el10.x86_64.rpm
+#
+# The snapshot string names the upstream commit and then the packaging
+# commit; CI computes it (see build.yml). Only its leading 0. matters to
+# this spec.
 #
 # The leading 0. in a snapshot release sorts below the eventual -1, so a
 # snapshot user is absorbed into the stable channel when the release lands.

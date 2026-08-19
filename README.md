@@ -100,15 +100,23 @@ silently.
 | Built from | Version | Release |
 | --- | --- | --- |
 | tag `rel-X.Y.Z` | `X.Y.Z` | `1%{?dist}` |
-| `main` | contents of `rpm/baseversion` | `0.<date>git<sha>%{?dist}` |
+| `main` | contents of `rpm/baseversion` | `0.<date>git<sha>.<pkgdate>p<pkgsha>%{?dist}` |
 
 A snapshot is a *pre-release of the next version*, so its `Release` starts
-with `0.`:
+with `0.`. The first date/sha pair names the upstream commit; the second
+names the commit of *this* repository, because a published NEVRA is
+immutable — without it, a packaging-only fix rebuilds the same NEVRA as
+the previous run and is never published until upstream happens to move.
+The packaging datetime (UTC) does the ordering; rpm treats a digit
+segment as newer than the dist tag's alpha segment, so the extended form
+also upgrades over unextended builds published before it existed.
 
 ```
-4.3.30-1                     ->  4.3.31-0.20260730git3a07523   upgrade
-4.3.31-0.20260730git3a07523  ->  4.3.31-0.20260731gitdeadbee   upgrade
-4.3.31-0.20260731gitdeadbee  ->  4.3.31-1                      upgrade
+4.3.30-1
+ -> 4.3.31-0.20260730git3a07523.202607301210pab12cd3   upgrade
+ -> 4.3.31-0.20260731gitdeadbee.202607301210pab12cd3   upgrade (upstream moved)
+ -> 4.3.31-0.20260731gitdeadbee.202608011535p9f8e7d6   upgrade (packaging moved)
+ -> 4.3.31-1                                           upgrade (release lands)
 ```
 
 A snapshot user is therefore absorbed into the stable channel when the
@@ -135,7 +143,8 @@ GitHub Pages' size and bandwidth limits.
 
 Retention counts *builds*, not files. One build produces several packages,
 and dropping only some of them would leave a repository that resolves to a
-missing dependency. Anything removed is named in the publish log rather
+missing dependency. Rebuilds of one upstream commit under different
+packaging commits count as a single build, kept and pruned as a unit. Anything removed is named in the publish log rather
 than dropped silently.
 
 ## Where the files in `rpm/sources/` come from
