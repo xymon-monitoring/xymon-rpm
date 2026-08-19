@@ -6,9 +6,10 @@ Documentation=man:xymon(7) man:xymonlaunch(8) man:xymon(1)
 After=network.target
 
 [Install]
-# Compatibility with "xymon" and "xymon-client"
+# Compatibility with "xymon". The upstream copy also aliases
+# "xymon-client", but this packaging ships a real xymon-client.service,
+# which the alias symlink would shadow on enable.
 Alias=xymon.service
-Alias=xymon-client.service
 WantedBy=multi-user.target
 
 

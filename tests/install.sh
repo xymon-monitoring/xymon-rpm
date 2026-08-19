@@ -13,13 +13,6 @@ set -eu
 
 rpmdir=${1:-out}
 
-echo "== installing =="
-# Skip debuginfo/debugsource: they add nothing here and drag in sources.
-set -- $(find "$rpmdir" -name '*.rpm' \
-	! -name '*debuginfo*' ! -name '*debugsource*' ! -name '*.src.rpm')
-[ "$#" -gt 0 ] || { echo "no packages found in $rpmdir"; exit 1; }
-dnf -y install "$@"
-
 fail=0
 check() {
 	if out=$(eval "$2" 2>&1); then
@@ -32,6 +25,39 @@ check() {
 		fail=1
 	fi
 }
+
+# A client host installs xymon-client and nothing else, so prove that
+# stands on its own before the rest is layered on top -- installed
+# together, the server package masks everything the client is missing.
+echo "== installing the client alone =="
+client_rpm=$(find "$rpmdir" -name 'xymon-client-[0-9]*.rpm' ! -name '*debuginfo*')
+[ -n "$client_rpm" ] || { echo "no xymon-client package in $rpmdir"; exit 1; }
+dnf -y install "$client_rpm"
+
+echo "== checking the client-only install =="
+check "the client installed without the server" \
+	"rpm -q xymon-client && ! rpm -q xymon"
+
+check "the xymon user exists on a client-only host" \
+	"id xymon"
+
+check "the client unit and its launcher resolve" \
+	"test -f /usr/lib/systemd/system/xymon-client.service &&
+	 test -x /usr/lib/xymon/client/bin/xymonclient-run &&
+	 test -x /usr/lib/xymon/client/bin/xymonlaunch"
+
+check "systemd accepts the client unit" \
+	"systemd-analyze verify --man=no /usr/lib/systemd/system/xymon-client.service"
+
+check "log rotation ships with the client" \
+	"test -f /etc/logrotate.d/xymon"
+
+echo "== installing everything =="
+# Skip debuginfo/debugsource: they add nothing here and drag in sources.
+set -- $(find "$rpmdir" -name '*.rpm' \
+	! -name '*debuginfo*' ! -name '*debugsource*' ! -name '*.src.rpm')
+[ "$#" -gt 0 ] || { echo "no packages found in $rpmdir"; exit 1; }
+dnf -y install "$@"
 
 echo "== checking =="
 check "all packages are installed" \

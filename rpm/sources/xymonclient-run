@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# Foreground equivalent of upstream client/runclient.sh "start", for the
+# xymon-client systemd unit. runclient.sh computes this environment,
+# forks xymonlaunch and exits; a Type=simple unit needs the same
+# environment with xymonlaunch kept in the foreground.
+#
+# CLIENTHOSTNAME and CLIENTOS arrive from /etc/sysconfig/xymon-client
+# via the unit, when set there. Everything else the client tasks need
+# comes from clientlaunch.cfg's ENVFILE (xymonclient.cfg), exactly as
+# with runclient.sh.
+
+XYMONCLIENTHOME=/usr/lib/xymon/client
+MACHINEDOTS="${CLIENTHOSTNAME:-$(uname -n)}"
+SERVEROSTYPE="${CLIENTOS:-$(uname -s | tr '[ABCDEFGHIJKLMNOPQRSTUVWXYZ/]' '[abcdefghijklmnopqrstuvwxyz_]')}"
+MACHINE="$(echo "$MACHINEDOTS" | sed -e 's/\./,/g')"
+XYMONOSSCRIPT="xymonclient-$SERVEROSTYPE.sh"
+export XYMONCLIENTHOME MACHINEDOTS MACHINE SERVEROSTYPE XYMONOSSCRIPT
+
+exec "$XYMONCLIENTHOME/bin/xymonlaunch" --no-daemon \
+     --config="$XYMONCLIENTHOME/etc/clientlaunch.cfg" "$@"

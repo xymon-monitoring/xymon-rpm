@@ -15,7 +15,7 @@ Building green on every target below, signed and published from `main`.
 | Package | Contents |
 | --- | --- |
 | `xymon` | the server |
-| `xymon-client` | client-side data collection |
+| `xymon-client` | client-side data collection; self-contained, with its own `xymon-client.service` |
 | `xymon-client-local` | xymond_client on a client, for local threshold analysis |
 | `xymon-devel` | headers and static libraries for building modules |
 | `xymon-tools` | diagnostic programs: stackio, locator, tree, availability, loadhosts |
@@ -33,6 +33,18 @@ curl -o /etc/yum.repos.d/xymon.repo \
 dnf install xymon          # server
 dnf install xymon-client   # client only
 ```
+
+A server runs `xymonlaunch.service`, which supervises everything --
+including the client's tasks, through `tasks.cfg`. A client-only host
+sets the server's address (`XYMSRV`) in
+`/usr/lib/xymon/client/etc/xymonclient.cfg` and runs
+
+```sh
+systemctl enable --now xymon-client
+```
+
+The two units conflict on purpose: running both on a server would report
+duplicate client data.
 
 Packages and repository metadata are signed. Verify the key you receive
 against the fingerprint published here:
@@ -99,7 +111,7 @@ silently.
 
 | Built from | Version | Release |
 | --- | --- | --- |
-| tag `rel-X.Y.Z` | `X.Y.Z` | `1%{?dist}` |
+| tag `rel-X.Y.Z` | `X.Y.Z` | `<n>%{?dist}`, default `1` |
 | `main` | contents of `rpm/baseversion` | `0.<date>git<sha>.<pkgdate>p<pkgsha>%{?dist}` |
 
 A snapshot is a *pre-release of the next version*, so its `Release` starts
@@ -122,6 +134,12 @@ also upgrades over unextended builds published before it existed.
 A snapshot user is therefore absorbed into the stable channel when the
 release lands, rather than being stranded above it. `tests/vercmp.sh`
 asserts all of this in CI.
+
+Stable builds get the same treatment as snapshots when packaging alone
+changes: rebuilding `X.Y.Z-1` would collide with the published NEVRA and
+be refused, so a packaging-only fix to a released version is shipped by
+re-dispatching a build of the same tag with the `releasenum` input
+bumped, producing `X.Y.Z-2`.
 
 `rpm/baseversion` exists because upstream's `include/version.h` records the
 *last released* version (`4.3.30`, set in 2019), not the one `main` is
@@ -155,8 +173,8 @@ in `main`; PR [xymon#46](https://github.com/xymon-monitoring/xymon/pull/46)
 proposes to bring them over. Until it merges they are vendored here.
 
 Three of them differ between the 4.4 branch and the 4.3.x line, and the
-4.3.x form is the correct one for a build from `main`; a fourth is
-adapted locally:
+4.3.x form is the correct one for a build from `main`; the rest of the
+table is adapted or written here:
 
 | File | Taken from | Why |
 | --- | --- | --- |
@@ -164,6 +182,7 @@ adapted locally:
 | `xymon.server-init` | Terabithia 4.3.30 SRPM | same |
 | `xymon.client-init` | Terabithia 4.3.30 SRPM | same |
 | `xymon.logrotate` | adapted here | the `devel` copy's postrotate sends `SIGHUP` to `xymonlaunch`, which `main` does not relay to its children ([xymon#172](https://github.com/xymon-monitoring/xymon/pull/172)), and no init script is shipped that could reopen the logs — so the fragment uses `copytruncate` instead |
+| `xymon-client.service`, `xymonclient-run` | written here | upstream has no client unit: its `runclient.sh` backgrounds `xymonlaunch`, which systemd cannot supervise, so `xymonclient-run` reproduces that script's environment in the foreground; `xymonlaunch.service`'s upstream `Alias=xymon-client.service` is dropped so the alias cannot shadow the real unit |
 | everything else | upstream `devel` via PR #46 | identical in both, or 4.4-neutral |
 
 When the `stdopt` group lands in `main`, those three switch back to the
@@ -219,6 +238,9 @@ Every build runs two checks:
   `rpmbuild` cannot: that dependencies resolve, that `%pre` creates the
   account, that the unit's absolute paths resolve, that `systemd` accepts
   the unit, and that `%post` rewrote the baked-in `localhost` hostname.
+  The client is installed *alone* first and checked before the rest is
+  layered on top — installed together, the server package would mask
+  everything a client-only host is missing.
 
 Note that assertions are made against the package (`rpm -ql`) rather than
 against paths on disk where possible: container images vary in what they

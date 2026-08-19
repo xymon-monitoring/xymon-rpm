@@ -1,0 +1,33 @@
+# Runs the Xymon client on a host without the server package. Written
+# for this packaging: upstream has no client unit -- its runclient.sh
+# backgrounds xymonlaunch, which systemd cannot supervise -- so
+# xymonclient-run reproduces that script's environment in the foreground.
+#
+# On a server this unit stays off: xymonlaunch.service runs the client's
+# tasks itself through tasks.cfg, so running both would report duplicate
+# client data. The Conflicts below makes that mistake impossible.
+
+[Unit]
+Description=Xymon client
+Documentation=man:xymonlaunch(8) man:xymon(7)
+After=network-online.target
+Wants=network-online.target
+Conflicts=xymonlaunch.service
+
+[Service]
+Type=simple
+User=xymon
+# xymon-client last, so a hostname or OS override set there wins.
+EnvironmentFile=-/etc/sysconfig/xymonlaunch
+EnvironmentFile=-/etc/sysconfig/xymon-client
+ExecStart=/usr/lib/xymon/client/bin/xymonclient-run $XYMONLAUNCHOPTS
+
+# Kill xymonlaunch, but don't send kills to the underlying procs, since
+# they might be doing important things (like flushing caches).
+KillMode=process
+SendSIGKILL=no
+RestartSec=6
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

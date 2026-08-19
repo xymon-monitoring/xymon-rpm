@@ -55,6 +55,12 @@ below "4.3.31-0.20260818gitcb9fede.202608302359pfffffff.el10" \
 below "4.3.31-0.20260731gitdeadbee.el10" "4.3.31-1.el10"
 below "4.3.31-0.20260819gitaaaaaaa.202608190000p1111111.el10" "4.3.31-1.el10"
 
+# A packaging-only re-release of a tagged version (the releasenum
+# define) supersedes every earlier build of that version while staying
+# below the next version's snapshots.
+below "4.3.31-1.el10" "4.3.31-2.el10"
+below "4.3.31-2.el10" "4.3.32-0.20270101gitabcdefa.202701011200p1234abc.el10"
+
 # And the next release supersedes the previous one.
 below "4.3.31-1.el10" "4.3.32-1.el10"
 

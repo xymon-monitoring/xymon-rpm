@@ -19,8 +19,12 @@
 # snapshot user is absorbed into the stable channel when the release lands.
 #
 %{!?baseversion: %global baseversion 4.3.31}
+# releasenum exists for packaging-only re-releases of a tagged version:
+# a published NEVRA is immutable, so a fix to an already-released X.Y.Z
+# must ship as -2 rather than rebuild -1.
+%{!?releasenum: %global releasenum 1}
 %{?gitsnapshot: %global xymonrelease %{gitsnapshot}}
-%{!?gitsnapshot: %global xymonrelease 1}
+%{!?gitsnapshot: %global xymonrelease %{releasenum}}
 
 # xymonping is a setuid-root ICMP helper. Upstream's own CI builds it, so
 # it is on by default; --without xymonping falls back to fping at runtime.
@@ -50,6 +54,11 @@ Source0:        xymon-%{version}.tar.gz
 # Runtime integration files. Provenance is deliberate -- see README.md.
 #   from Terabithia's xymon-4.3.30 SRPM (correct for a 4.3.x base):
 Source1:        xymonlaunch.service
+#   written here: upstream has no client unit -- runclient.sh backgrounds
+#   xymonlaunch, which systemd cannot supervise, so xymonclient-run is
+#   its foreground equivalent:
+Source2:        xymon-client.service
+Source3:        xymonclient-run
 #   byte-identical in Terabithia and upstream devel:
 Source4:        xymonlaunch.service.preset
 Source5:        xymon-tmpfiles.conf
@@ -88,6 +97,12 @@ Requires(postun): policycoreutils
 
 Requires(pre):  shadow-utils
 Requires:       xymon-client = %{version}-%{release}
+# Owns the apache group that www/rep and www/snap are chgrp'd to, and the
+# /etc/httpd/conf.d directory the web config drops into. rpm >= 4.19
+# generates a group(apache) requirement from the %%attr on its own, but
+# EL8/EL9 rpm does not, and there the dirs would silently fall back to
+# root's group.
+Requires:       httpd-filesystem
 
 %description
 Xymon is a system for monitoring servers, networks and applications. It
@@ -102,6 +117,7 @@ Requires(pre):  shadow-utils
 # The client owns the account definition; the server package pulls it in
 # through its Requires above, so the user exists before either unpacks.
 %{?sysusers_requires_compat}
+%{?systemd_requires}
 
 %description client
 Client-side data collection for Xymon. It gathers CPU, memory, filesystem,
@@ -236,8 +252,12 @@ for v in %{selinux_variants}; do
 done
 %endif
 
-# systemd: one unit drives xymonlaunch, which supervises everything else.
+# systemd: on a server, one unit drives xymonlaunch, which supervises
+# everything else -- the client's tasks included. A client-only host uses
+# xymon-client.service instead; the units conflict by design.
 install -Dpm 0644 %{SOURCE1}  %{buildroot}%{_unitdir}/xymonlaunch.service
+install -Dpm 0644 %{SOURCE2}  %{buildroot}%{_unitdir}/xymon-client.service
+install -Dpm 0755 %{SOURCE3}  %{buildroot}%{xymonhome}/client/bin/xymonclient-run
 install -Dpm 0644 %{SOURCE4}  %{buildroot}%{_presetdir}/50-xymonlaunch.preset
 install -Dpm 0644 %{SOURCE5}  %{buildroot}%{_tmpfilesdir}/xymon.conf
 install -Dpm 0644 %{SOURCE6}  %{buildroot}%{_sysconfdir}/logrotate.d/xymon
@@ -341,7 +361,6 @@ fi
 %{_presetdir}/50-xymonlaunch.preset
 %{_tmpfilesdir}/xymon.conf
 %{_sysctldir}/70-xymon.conf
-%config(noreplace) %{_sysconfdir}/logrotate.d/xymon
 %config(noreplace) %{_sysconfdir}/sysconfig/xymonlaunch
 %config(noreplace) %{_sysconfdir}/httpd/conf.d/xymon-apache.conf
 %dir %{_sysconfdir}/xymon
@@ -373,6 +392,7 @@ fi
 %doc bb.xml
 
 %post client
+%systemd_post xymon-client.service
 %if %{with selinux}
 for v in %{selinux_variants}; do
     semodule -s "$v" -i %{_datadir}/selinux/"$v"/xymon-client.pp >/dev/null 2>&1 || :
@@ -380,7 +400,11 @@ done
 %endif
 exit 0
 
+%preun client
+%systemd_preun xymon-client.service
+
 %postun client
+%systemd_postun_with_restart xymon-client.service
 %if %{with selinux}
 if [ $1 -eq 0 ]; then
     for v in %{selinux_variants}; do
@@ -396,6 +420,11 @@ exit 0
 %if %{defined _sysusersdir}
 %{_sysusersdir}/xymon.conf
 %endif
+%{_unitdir}/xymon-client.service
+# Both the server's and the client's logs land in /var/log/xymon (the
+# client tree's logs/ is a symlink there), so the logrotate config lives
+# in the package every host has.
+%config(noreplace) %{_sysconfdir}/logrotate.d/xymon
 %config(noreplace) %{_sysconfdir}/sysconfig/xymon-client
 %dir %{xymonhome}
 %{xymonhome}/client
