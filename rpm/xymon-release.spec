@@ -8,7 +8,9 @@
 # documentation than one per distribution.
 #
 Name:           xymon-release
-Version:        1
+# A published NEVRA is immutable: bump Version whenever the repo file or
+# the key changes, or the publish step will refuse to ship the new copy.
+Version:        2
 Release:        1
 Summary:        Xymon repository configuration and signing key
 License:        GPL-2.0-only
@@ -21,6 +23,10 @@ Source1:        RPM-GPG-KEY-xymon
 %description
 Installs the package repository configuration for Xymon, along with the
 GPG key its packages and repository metadata are signed with.
+
+HIGHLY EXPERIMENTAL: this packaging is new and has seen no production
+use. Layout, versioning and repository structure may still change
+without notice.
 
 Two repositories are configured. The stable one, built from tagged
 releases, is enabled. Development snapshots built from the tip of the

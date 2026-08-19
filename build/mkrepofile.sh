@@ -27,6 +27,10 @@ esac
 # --set=9.4) expands $releasever to "9.4" and will not find the tree. Such
 # hosts should set releasever=9 in this file.
 cat <<EOF
+# HIGHLY EXPERIMENTAL: this packaging is new and has seen no production
+# use. Layout, versioning and repository structure may still change
+# without notice -- do not point production machines at it yet.
+#
 [xymon]
 name=Xymon
 baseurl=$base/xymon/\$releasever/\$basearch/

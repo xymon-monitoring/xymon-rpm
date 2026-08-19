@@ -81,6 +81,11 @@ relrpm=${relrpm:-xymon-release-1-1.noarch.rpm}
 	source with no downstream patches. Packaging lives in
 	<a href="https://github.com/xymon-monitoring/xymon-rpm">xymon-rpm</a>.</p>
 
+	<p><strong>&#9888;&#65039; Highly experimental.</strong> This packaging is
+	new and has seen no production use; layout, versioning and repository
+	structure may still change without notice. Do not point production
+	machines at it yet.</p>
+
 	<h2>Install</h2>
 	<pre>dnf install $base/$relrpm
 	dnf install xymon          # server

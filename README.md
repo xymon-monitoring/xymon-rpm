@@ -5,6 +5,12 @@ built from the upstream source tree with **no source patches** — the spec
 has zero `Patch:` lines. Anything that needs changing in Xymon itself is
 fixed upstream, not here.
 
+> [!WARNING]
+> **Highly experimental.** This packaging is new and has seen no
+> production use. Package layout, versioning, and the published
+> repository structure may still change without notice — do not point
+> production machines at it yet.
+
 ## Packages
 
 | Package | Contents |
