@@ -33,8 +33,12 @@ A **server host** (`xymon`):
 ├── cgi-bin/  cgi-secure/       the web CGIs
 └── client/                     ← the embedded client, see below
 /etc/xymon-client/              its config (same as a client host)
+/usr/share/xymon/               gifs/ help/ menu/   static web content
 /var/lib/xymon/                 rrd/ hist/ histlogs/ hostdata/ data/
-│                               acks/ disabled/ www/
+│                               acks/ disabled/
+└── www/                        pages xymongen writes, plus rep/ snap/
+                                notes/ html/ — and symlinks to the
+                                static content above
 /var/log/xymon/                 xymonlaunch.log xymond.log xymonclient.log …
 ```
 
@@ -89,6 +93,7 @@ Paths are identical in both roles; the "role" column says who ships it.
 | `/usr/lib/xymon/client/ext/`, `local/` | your own client extension scripts | both |
 | `/usr/lib/systemd/system/xymonlaunch.service` | the one service, identical in both packages | both |
 | `…/xymonlaunch.service.d/server.conf` \| `client.conf` | the per-role differences | one each |
+| `/usr/share/xymon/` | static web content: `gifs/`, `help/`, `menu/` (symlinked into `www/`) | server |
 | `/var/lib/xymon/` | server state: `rrd/`, `hist/`, `histlogs/`, `hostdata/`, `data/`, `acks/`, `disabled/`, `www/` | server |
 | `/var/log/xymon/` | all logs, both roles (`/usr/lib/xymon/client/logs` is a symlink here) | both |
 | `/run/xymon/` | runtime dir created by tmpfiles (not yet used — see the README's known gaps) | both |

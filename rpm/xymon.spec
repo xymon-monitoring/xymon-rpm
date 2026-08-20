@@ -108,42 +108,68 @@ Source13:       xymon.sysusers
 %{?_sysusersdir:%{_sysusersdir}/xymon.conf}
 }
 
-# Older builds shipped the client configuration as real files under
-# %%{xymonhome}/client/etc; it now lives in /etc/xymon-client, with that
-# path left behind as a symlink. rpm will not replace a directory with a
-# symlink on its own -- the transaction fails on the existing directory
-# -- so the way has to be cleared before anything is unpacked, which is
-# what %%pretrans is for. Admin edits are carried over rather than
-# discarded: whatever is in the old directory moves to the new one
-# unless a file is already there.
+# Layout moves have to be prepared before anything is unpacked, because
+# rpm will not replace a directory with a symlink -- the transaction
+# fails on the existing directory instead. That is what %%pretrans is
+# for. Two moves need it: the client configuration, which went from
+# %%{xymonhome}/client/etc to /etc/xymon-client, and the static web
+# content, which went from the www tree to %%{_datadir}/xymon. Both
+# leave a symlink where the directory used to be.
 #
-# Expanded into both packages: either role may be the one upgrading.
-%global migrate_client_etc %{expand:
-local old = "%{xymonhome}/client/etc"
-local new = "%{_sysconfdir}/xymon-client"
-local st = posix.stat(old)
-if st and st.type == "directory" then
-  posix.mkdir(new)
+# Contents are carried over rather than discarded, so an admin's edited
+# xymonclient.cfg or a custom gif dropped into www/gifs survives the
+# move; anything the package itself ships is simply overwritten when the
+# new files are unpacked a moment later.
+%global migrate_tree %{expand:
+-- mkdir -p: posix.mkdir makes one level only, and the new parents
+-- (/usr/share/xymon) do not exist yet on a host still running the old
+-- layout.
+local function mkdirp(path)
+  local acc = ""
+  for part in string.gmatch(path, "[^/]+") do
+    acc = acc .. "/" .. part
+    posix.mkdir(acc)
+  end
+end
+
+local function movetree(old, new)
+  local st = posix.stat(old)
+  if not (st and st.type == "directory") then return end
+  mkdirp(new)
   for i, f in ipairs(posix.dir(old) or {}) do
     if f ~= "." and f ~= ".." then
       local src = old .. "/" .. f
       local dst = new .. "/" .. f
-      if not posix.stat(dst) then
-        local fin = io.open(src, "rb")
-        if fin then
-          local data = fin:read("*a")
-          fin:close()
-          local fout = io.open(dst, "wb")
-          if fout then
-            fout:write(data)
-            fout:close()
+      local sst = posix.stat(src)
+      if sst and sst.type == "directory" then
+        movetree(src, dst)
+      else
+        -- Remove the source only once the copy is known to have
+        -- landed: deleting on a failed write would destroy whatever
+        -- the admin put there.
+        local moved = posix.stat(dst) ~= nil
+        if not moved then
+          local fin = io.open(src, "rb")
+          if fin then
+            local data = fin:read("*a")
+            fin:close()
+            local fout = io.open(dst, "wb")
+            if fout then
+              fout:write(data)
+              fout:close()
+              moved = posix.stat(dst) ~= nil
+            end
           end
         end
+        if moved then os.remove(src) end
       end
-      os.remove(src)
     end
   end
-  posix.rmdir(old)
+  -- The path has to be free for the symlink either way. If anything
+  -- could not be moved, keep it under .rpmorig rather than delete it.
+  if not posix.rmdir(old) then
+    os.rename(old, old .. ".rpmorig")
+  end
 end
 }
 
@@ -395,6 +421,36 @@ install -d %{buildroot}%{_sysconfdir}/httpd/conf.d
 mv %{buildroot}%{_sysconfdir}/xymon/xymon-apache.conf \
    %{buildroot}%{_sysconfdir}/httpd/conf.d/xymon-apache.conf
 
+# The www tree mixes two different kinds of thing. gifs, help and menu
+# are static package content -- shipped files that never change on a
+# running host -- and the FHS puts those in /usr/share. The rest is
+# state: html, notes, rep, snap and wml ship empty and are written by
+# the daemons, and xymongen writes the generated pages into www itself,
+# so XYMONWWWDIR has to stay writable and stays where it is.
+#
+# The three static trees move and are symlinked back, which keeps every
+# URL under /xymon/ and every on-disk path working unchanged -- nothing
+# in xymonserver.cfg or the CGIs has to learn a second location.
+install -d %{buildroot}%{_datadir}/xymon
+for d in gifs help menu; do
+    mv %{buildroot}%{_sharedstatedir}/xymon/www/$d %{buildroot}%{_datadir}/xymon/$d
+    ln -sf %{_datadir}/xymon/$d %{buildroot}%{_sharedstatedir}/xymon/www/$d
+done
+
+# httpd 2.4 denies every filesystem path that no Directory block grants,
+# so the symlinks above would serve 403 without this. FollowSymLinks is
+# what lets httpd cross from www into /usr/share in the first place; the
+# generated config already sets it on the www directory.
+cat >> %{buildroot}%{_sysconfdir}/httpd/conf.d/xymon-apache.conf <<EOF
+
+# Static content (gifs, help, menu) lives here and is reached through
+# symlinks in the www directory above.
+<Directory "%{_datadir}/xymon">
+    Options Indexes FollowSymLinks Includes MultiViews
+    Require all granted
+</Directory>
+EOF
+
 # That config points AuthUserFile/AuthGroupFile at these; the build never
 # creates them, and without the password file every /xymon-seccgi request
 # is a 500. Shipped empty: no user can authenticate until the admin adds
@@ -443,10 +499,16 @@ rmdir %{buildroot}%{xymonhome}/client/etc
 ln -sf %{_sysconfdir}/xymon-client %{buildroot}%{xymonhome}/client/etc
 
 %pretrans -p <lua>
-%migrate_client_etc
+%migrate_tree
+movetree("%{xymonhome}/client/etc", "%{_sysconfdir}/xymon-client")
+movetree("%{_sharedstatedir}/xymon/www/gifs", "%{_datadir}/xymon/gifs")
+movetree("%{_sharedstatedir}/xymon/www/help", "%{_datadir}/xymon/help")
+movetree("%{_sharedstatedir}/xymon/www/menu", "%{_datadir}/xymon/menu")
 
 %pretrans client -p <lua>
-%migrate_client_etc
+-- The client package ships no www tree, so it has only the one move.
+%migrate_tree
+movetree("%{xymonhome}/client/etc", "%{_sysconfdir}/xymon-client")
 
 %pre
 %create_xymon_account
@@ -477,10 +539,11 @@ if command -v semanage >/dev/null 2>&1; then
     semanage fcontext -a -t httpd_sys_script_exec_t '%{xymonhome}/cgi-bin(/.*)?'    2>/dev/null || :
     semanage fcontext -a -t httpd_sys_script_exec_t '%{xymonhome}/cgi-secure(/.*)?' 2>/dev/null || :
     semanage fcontext -a -t httpd_sys_content_t '%{_sharedstatedir}/xymon/www(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_content_t '%{_datadir}/xymon(/.*)?' 2>/dev/null || :
     semanage fcontext -a -t httpd_sys_rw_content_t '%{_sharedstatedir}/xymon/www/rep(/.*)?'  2>/dev/null || :
     semanage fcontext -a -t httpd_sys_rw_content_t '%{_sharedstatedir}/xymon/www/snap(/.*)?' 2>/dev/null || :
     restorecon -R %{xymonhome}/cgi-bin %{xymonhome}/cgi-secure \
-        %{_sharedstatedir}/xymon/www 2>/dev/null || :
+        %{_sharedstatedir}/xymon/www %{_datadir}/xymon 2>/dev/null || :
 fi
 %if %{with selinux}
 # Never fatal: a container or a machine with SELinux disabled has no
@@ -518,6 +581,7 @@ if [ $1 -eq 0 ] && command -v semanage >/dev/null 2>&1; then
     semanage fcontext -d '%{xymonhome}/cgi-bin(/.*)?'    2>/dev/null || :
     semanage fcontext -d '%{xymonhome}/cgi-secure(/.*)?' 2>/dev/null || :
     semanage fcontext -d '%{_sharedstatedir}/xymon/www(/.*)?'      2>/dev/null || :
+    semanage fcontext -d '%{_datadir}/xymon(/.*)?'                 2>/dev/null || :
     semanage fcontext -d '%{_sharedstatedir}/xymon/www/rep(/.*)?'  2>/dev/null || :
     semanage fcontext -d '%{_sharedstatedir}/xymon/www/snap(/.*)?' 2>/dev/null || :
 fi
@@ -564,6 +628,9 @@ fi
 %exclude %{xymonhome}/server/bin/loadhosts
 %{xymonhome}/cgi-bin
 %{xymonhome}/cgi-secure
+# Static web content -- gifs, help, menu -- reached through symlinks in
+# the www tree (see %%install).
+%{_datadir}/xymon
 # The embedded client: the same tree the build produces for the
 # standalone package, shipped here because the server runs it on itself
 # through tasks.cfg. One shared definition with %%files client (see the

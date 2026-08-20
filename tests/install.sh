@@ -160,6 +160,17 @@ check "server config is installed" \
 check "apache drop-in is installed" \
 	"test -f /etc/httpd/conf.d/xymon-apache.conf"
 
+# The static content moved to /usr/share; the www symlinks are what keep
+# the /xymon/ URLs serving it.
+check "static web content resolves through the www symlinks" \
+	"test -f /var/lib/xymon/www/gifs/green.gif &&
+	 test -f /usr/share/xymon/gifs/green.gif &&
+	 test -L /var/lib/xymon/www/gifs"
+
+check "the generated page directories are still writable state" \
+	"test -d /var/lib/xymon/www/rep -a ! -L /var/lib/xymon/www/rep &&
+	 test -d /var/lib/xymon/www/snap -a ! -L /var/lib/xymon/www/snap"
+
 check "unit file is installed" \
 	"test -f /usr/lib/systemd/system/xymonlaunch.service"
 

@@ -178,6 +178,12 @@ jobs:
             | gzip -9 > ~/rpmbuild/SOURCES/xymon-${{ steps.ver.outputs.base }}.tar.gz
           cp rpm/sources/* ~/rpmbuild/SOURCES/
 
+      # A lua scriptlet with a syntax error (lua comments are --, not #)
+      # fails the whole spec parse. rpmspec finds it in a second, before
+      # a build has been spent on it.
+      - name: Parse the spec
+        run: rpmspec -P rpm/xymon.spec >/dev/null
+
       # The define has to reach builddep as well as rpmbuild: conditional
       # BuildRequires are invisible to dependency resolution otherwise, and
       # the build then fails on deps that were never asked for.

@@ -124,7 +124,8 @@ of the shipped packages and ports, not from documentation.
 | Client config | `/etc/xymon-client/` | `/etc/xymon/` | `/etc/xymon-client/` | `…/www/xymon/client/etc/` |
 | Server binaries | `/usr/lib/xymon/server/bin/` | `/usr/lib/xymon/server/bin/` | `/usr/libexec/xymon/`, `/usr/sbin/xymond` | `…/www/xymon/server/bin/` |
 | Client binaries | `/usr/lib/xymon/client/bin/` | `/usr/lib/xymon/client/bin/` | `/usr/libexec/xymon-client/` | `…/www/xymon/client/bin/` |
-| Web assets | `/var/lib/xymon/www/` | `/usr/share/xymon/` | `/var/www/xymon/` | `…/www/xymon/server/www/` |
+| Web assets (static) | `/usr/share/xymon/` | `/usr/share/xymon/` | `/var/www/xymon/` | `…/www/xymon/server/www/` |
+| Web pages (generated) | `/var/lib/xymon/www/` | `/var/lib/xymon/www/` | `/var/www/xymon/` | `…/www/xymon/server/www/` |
 | Server data | `/var/lib/xymon/` | `/var/lib/xymon/` | `/var/lib/xymon/` | `…/www/xymon/data/` |
 | Logs | `/var/log/xymon/` | `/var/log/xymon/` | `/var/log/xymon/` | `/var/log/xymon/` |
 
@@ -151,7 +152,21 @@ Three degrees of intervention:
   /var/lib/xymon/tmp`, `client/logs → /var/log/xymon`, `client/tmp →
   /var/tmp`. So the layout matches upstream's documentation while
   nothing writes inside `/usr/lib`, and the spec needs no path
-  rewriting and no patches.
+  rewriting and no patches. Two links are added on top of upstream's,
+  both for the same reason — to keep editable or generated data out of
+  read-only trees, and shipped content out of `/var`: `client/etc →
+  /etc/xymon-client`, and `www/{gifs,help,menu} → /usr/share/xymon/…`.
+
+**The `www` tree holds two different kinds of thing**, which is why
+only part of it moves. `gifs`, `help` and `menu` are shipped files that
+never change on a running host, so they belong in `/usr/share`;
+`html`, `notes`, `rep`, `snap` and `wml` ship empty and are written by
+the daemons, and `xymongen` writes the generated status pages into
+`www` itself, so `XYMONWWWDIR` has to stay writable in `/var/lib`.
+Symlinking the static three back into `www` keeps every `/xymon/` URL
+and every on-disk path working, so nothing in `xymonserver.cfg` or the
+CGIs needs to learn a second location — the only addition is a
+`<Directory>` block, because httpd 2.4 denies any path no block grants.
 
 **Configuration is in `/etc` for both roles.** The server gets there
 through upstream's own `server/etc → /etc/xymon` symlink; upstream

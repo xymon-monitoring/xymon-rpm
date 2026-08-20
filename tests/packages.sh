@@ -152,6 +152,36 @@ check "only the server package ships the enable preset" \
 	"ls $work/server/usr/lib/systemd/system-preset/*xymonlaunch* >/dev/null 2>&1 &&
 	 ! ls $work/client/usr/lib/systemd/system-preset/ >/dev/null 2>&1"
 
+echo "== static web content is package data, not state =="
+
+# gifs, help and menu never change on a running host, so the FHS puts
+# them in /usr/share; only what the daemons write stays in /var/lib.
+# The symlinks are what keep every /xymon/ URL and on-disk path working
+# after the move.
+for d in gifs help menu; do
+	check "$d ships in /usr/share/xymon" \
+		"test -d $work/server/usr/share/xymon/$d &&
+		 test -n \"\$(ls -A $work/server/usr/share/xymon/$d)\""
+	check "www/$d is a symlink to it" \
+		"test -L $work/server/var/lib/xymon/www/$d &&
+		 readlink $work/server/var/lib/xymon/www/$d | grep -qx /usr/share/xymon/$d"
+done
+
+# xymongen writes the generated pages into www itself, and these
+# subdirectories are written by the daemons, so they must stay real
+# directories in /var/lib -- moving them would break a running server.
+for d in html notes rep snap; do
+	check "www/$d stays a real directory in /var/lib" \
+		"test -d $work/server/var/lib/xymon/www/$d &&
+		 ! test -L $work/server/var/lib/xymon/www/$d"
+done
+
+# httpd 2.4 denies any path no Directory block grants, so the symlinks
+# would serve 403 without this.
+check "the apache config grants access to the static tree" \
+	"grep -q '<Directory \"/usr/share/xymon\">' $work/server/etc/httpd/conf.d/xymon-apache.conf &&
+	 grep -q 'FollowSymLinks' $work/server/etc/httpd/conf.d/xymon-apache.conf"
+
 echo "== the shared client tree is identical in both packages =="
 
 # The two packages ship the same client tree from the same build. If the
