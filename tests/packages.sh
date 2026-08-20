@@ -20,6 +20,14 @@ set -eu
 
 rpmdir=${1:-out}
 
+# Absolute from here on: the unpack below runs from inside a temp
+# directory, where a relative path (CI passes "out") would no longer
+# resolve.
+rpmdir=$(cd "$rpmdir" 2>/dev/null && pwd) || {
+	echo "no such directory: ${1:-out}" >&2
+	exit 1
+}
+
 # cmp and diff come from diffutils, which a minimal image does not
 # have. Checked up front so a missing tool is one clear error rather
 # than a scatter of confusing failures.
