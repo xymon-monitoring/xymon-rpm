@@ -122,8 +122,12 @@ silently.
 | `main` | contents of `rpm/baseversion` | `0.<date>git<sha>.<pkgdate>p<pkgsha>%{?dist}` |
 
 A snapshot is a *pre-release of the next version* (its `Release` starts
-with `0.`), naming first the upstream commit and then the commit of this
-repository. The second pair exists because a published NEVRA is
+with `0.`), naming first the upstream commit and then the last commit of
+this repository that could change a package — one touching `rpm/`,
+`build/` or `.github/`. Keying that on `HEAD` instead would mint a new
+NEVRA for every documentation commit and republish an rpm identical to
+the one before it but for its name; docs-only pushes skip the build
+entirely. The second pair exists because a published NEVRA is
 immutable: without it, a packaging-only fix rebuilds the same NEVRA and
 is never published until upstream happens to move. The packaging datetime
 (UTC) does the ordering, and a digit segment outranks the dist tag, so

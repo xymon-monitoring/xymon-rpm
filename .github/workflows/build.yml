@@ -2,6 +2,11 @@ name: build
 
 on:
   push:
+    # Documentation cannot change a package, and a build that produces
+    # nothing new is ten minutes of nine runners for no result.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   pull_request:
   # Nightly rebuild of main. This is the drift detector: if an upstream
   # change moves an install path or a configure flag, this goes red the
@@ -130,6 +135,11 @@ jobs:
 
       - name: Checkout packaging
         uses: actions/checkout@v6
+        with:
+          # Full history: the packaging half of a snapshot Release names
+          # the last commit that changed what goes into a package, and
+          # finding that needs more than the tip.
+          fetch-depth: 0
 
       # Accepts a branch, a tag, a sha, or a pull request -- either as
       # "pr/163" or as the full "refs/pull/163/head". A plain clone does not
@@ -178,8 +188,13 @@ jobs:
             # container user, and git refuses mismatched ownership. src is
             # immune only because it was cloned inside the container.
             git config --global --add safe.directory "$(pwd)"
-            pkgdate=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y%m%d%H%M)
-            pkgref=$(git rev-parse --short=7 HEAD)
+            # The last commit that can change a package -- not HEAD.
+            # Keyed on HEAD, a docs or test commit mints a new NEVRA for
+            # a byte-identical rpm, and publishes a rebuild that differs
+            # from the one before it only in its name.
+            pkgpaths="rpm build .github"
+            pkgdate=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y%m%d%H%M -- $pkgpaths)
+            pkgref=$(git log -1 --format=%h --abbrev=7 -- $pkgpaths)
             echo "snapshot=0.${date}git${ref}.${pkgdate}p${pkgref}" >> "$GITHUB_OUTPUT"
           fi
           echo "base=${base}" >> "$GITHUB_OUTPUT"
