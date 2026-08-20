@@ -177,7 +177,12 @@ check "the generated page directories are still writable state" \
 # failure mode is a 403 that every file-level assertion above passes
 # straight over. httpd needs no init, so it can be exercised here.
 echo "== serving =="
-dnf -y install httpd curl >/dev/null 2>&1
+# Ask only for what is missing, and never fatally: EL9 ships
+# curl-minimal, which provides curl(1) but conflicts with the curl
+# package, so installing it unconditionally fails the whole script. A
+# genuinely absent httpd surfaces in the checks below, with context.
+command -v curl  >/dev/null 2>&1 || dnf -y install curl  >/dev/null 2>&1 || :
+command -v httpd >/dev/null 2>&1 || dnf -y install httpd >/dev/null 2>&1 || :
 
 check "the generated apache config is valid" \
 	"httpd -t"
