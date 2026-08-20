@@ -86,8 +86,9 @@ The real logs are files, not the journal: `/var/log/xymon/`. On a server
 begin with `xymonlaunch.log`, `xymond.log` and `xymonclient.log` (its
 own client run); on a client, `clientlaunch.log`.
 
-`systemctl reload` sends `SIGHUP`, which `xymonlaunch` does not yet
-relay to its children — use `restart` until upstream
+`systemctl reload` sends `SIGHUP`. `xymonlaunch` acts on it — rereading
+`tasks.cfg` and reopening its own log — but does not pass it to the
+daemons it started, so use `restart` to reach those until upstream
 [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172) merges.
 
 To see which role is running (the client names `clientlaunch.cfg`, the

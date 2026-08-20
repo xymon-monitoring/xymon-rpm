@@ -77,13 +77,13 @@ Source15:       xymonlaunch-client.conf
 Source4:        xymonlaunch.service.preset
 Source5:        xymon-tmpfiles.conf
 #   adapted here: devel's postrotate signals xymonlaunch, which main
-#   cannot act on until xymon#172; and devel's xymon-client.default
-#   documents XYMONSERVERS, which only patched clients read -- see
-#   README.md:
+#   cannot act on until xymon#172; devel's xymon-client.default documents
+#   XYMONSERVERS, which only patched clients read; and both default files
+#   name this packaging's own config paths -- see README.md:
 Source6:        xymon.logrotate
 Source8:        xymon-client.default
-#   from upstream devel via PR #46:
 Source7:        xymonlaunch.default
+#   from upstream devel via PR #46:
 Source9:        xymon.te
 Source10:       xymon-client.te
 Source11:       xymon-sysctl.conf

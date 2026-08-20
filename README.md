@@ -163,18 +163,21 @@ commit forever, which no retention setting could ever trim.
 
 ## Where the files in `rpm/sources/` come from
 
-Xymon's systemd, init, logrotate and SELinux integration files were
-written by J.C. Cleaver and live on the upstream `devel` (4.4) branch,
-not in `main`; PR
-[xymon#46](https://github.com/xymon-monitoring/xymon/pull/46) proposes to
-bring them over. Until it merges they are vendored here:
+Xymon's systemd, logrotate and SELinux integration files were written by
+J.C. Cleaver and live on the upstream `devel` (4.4) branch, not in
+`main`. PR [xymon#46](https://github.com/xymon-monitoring/xymon/pull/46)
+would bring them over — it is a broad 4.4 backport touching 44 files, of
+which they are a small part — so they are vendored here meanwhile. Most
+of what it carries has since been superseded: this packaging writes its
+own unit, and only the sysctl snippet and the systemd preset still come
+from it unchanged.
 
 | File | Taken from | Why |
 | --- | --- | --- |
-| `xymon.server-init`, `xymon.client-init` | Terabithia 4.3.30 SRPM | the `devel` copies pass `xymoncmd --no-env`, which does not exist in `main` until the `lib/stdopt.c` rework ([xymon#106](https://github.com/xymon-monitoring/xymon/issues/106)); they switch back to the `devel` copies when it lands |
 | `xymon.logrotate` | adapted here | the `devel` copy's postrotate HUPs `xymonlaunch`, which `main` does not relay ([xymon#172](https://github.com/xymon-monitoring/xymon/pull/172)); `copytruncate` until it does |
 | `xymon-client.default` | adapted here | the `devel` copy documents `XYMONSERVERS`, which only patched clients read; on `main` the server address lives in `xymonclient.cfg`, and the file now says so |
 | `xymonlaunch.service`, `xymonlaunch-run` | written here (unit started from Terabithia's) | ONE unit for both roles, shipped by both packages; `xymonlaunch-run` picks the server tree when installed, else runs the client in the foreground (upstream's `runclient.sh` starts `xymonlaunch` without `--no-daemon`, so it forks and the script exits, leaving a `Type=simple` unit nothing to supervise) |
+| `xymonlaunch.default` | adapted here | it names this packaging's own config path for the client's server address |
 | everything else | upstream `devel` via PR #46 | identical in both, or 4.4-neutral |
 
 `rpm/terabithia/` archives the reference spec and README from
@@ -189,12 +192,20 @@ for provenance only; it is never built.
   `-no-pie` on Fedora and EL10 or the link fails on an `R_X86_64_32`
   relocation. [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163)
   fixes the root cause; merging it removes both workarounds.
-- `xymon-tmpfiles.conf` creates `/run/xymon`, unused until `XYMONRUNDIR`
-  arrives with [xymon#219](https://github.com/xymon-monitoring/xymon/pull/219).
-- `ExecReload` sends `SIGHUP`, which `xymonlaunch` does not relay to its
-  children until [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172);
-  use `systemctl restart`. The logrotate `copytruncate` sits behind the
-  same gate.
+- `xymon-tmpfiles.conf` creates `/run/xymon`, which nothing uses.
+  [xymon#219](https://github.com/xymon-monitoring/xymon/pull/219) adds
+  `XYMONRUNDIR` but defaults it to `$XYMONLOGDIR`, so merging it is not
+  enough on its own: the spec has to pass `XYMONRUNDIR=/run/xymon` too.
+  Whoever wires that up should also add the tmpfiles snippet to the
+  client package, which does not ship it today — otherwise a client-only
+  host has no `/run/xymon` for its pidfiles.
+- `ExecReload` sends `SIGHUP`, which `xymonlaunch` acts on itself — it
+  rereads `tasks.cfg` and reopens its own log — but does not relay to
+  its children until
+  [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172), so
+  use `systemctl restart` to reach the daemons. The logrotate
+  `copytruncate` sits behind the same gate. #172 is stacked on #219, so
+  that one lands first.
 - The SELinux modules build with `--with selinux` (`targeted`, `mls`,
   `minimum`) but are **off by default**: nothing in CI runs enforcing
   SELinux, so a green build only proves they compile — and their rules
