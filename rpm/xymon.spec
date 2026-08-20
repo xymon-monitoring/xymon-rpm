@@ -83,10 +83,13 @@ Source5:        xymon-tmpfiles.conf
 Source6:        xymon.logrotate
 Source8:        xymon-client.default
 Source7:        xymonlaunch.default
-#   from upstream devel via PR #46:
+#   adapted from devel: the backfeed-queue tunables, which main has no
+#   equivalent for:
+Source11:       xymon-sysctl.conf
+#   copied from devel as reference material, shipped as %%doc only -- the
+#   policy modules are not compiled unless --with selinux:
 Source9:        xymon.te
 Source10:       xymon-client.te
-Source11:       xymon-sysctl.conf
 Source12:       bb.xml
 #   written here: Fedora's rpm generates Requires: user(xymon)/group(xymon)
 #   for any package owning files with a non-root owner, and only a

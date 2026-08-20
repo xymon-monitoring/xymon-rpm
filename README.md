@@ -167,22 +167,38 @@ commit forever, which no retention setting could ever trim.
 
 ## Where the files in `rpm/sources/` come from
 
-Xymon's systemd, logrotate and SELinux integration files were written by
-J.C. Cleaver and live on the upstream `devel` (4.4) branch, not in
-`main`. PR [xymon#46](https://github.com/xymon-monitoring/xymon/pull/46)
-would bring them over — it is a broad 4.4 backport touching 44 files, of
-which they are a small part — so they are vendored here meanwhile. Most
-of what it carries has since been superseded: this packaging writes its
-own unit, and only the sysctl snippet and the systemd preset still come
-from it unchanged.
+Upstream `main` ships no systemd, logrotate or SELinux integration at
+all — those live on the `devel` (4.4) branch, written by J.C. Cleaver.
+Everything needed to package for a systemd distribution is therefore
+written or adapted here. Nothing in this repository waits on an upstream
+merge to work.
 
-| File | Taken from | Why |
+| File | Origin | Why |
 | --- | --- | --- |
-| `xymon.logrotate` | adapted here | the `devel` copy's postrotate HUPs `xymonlaunch`, which `main` does not relay ([xymon#172](https://github.com/xymon-monitoring/xymon/pull/172)); `copytruncate` until it does |
-| `xymon-client.default` | adapted here | the `devel` copy documents `XYMONSERVERS`, which only patched clients read; on `main` the server address lives in `xymonclient.cfg`, and the file now says so |
-| `xymonlaunch.service`, `xymonlaunch-run` | written here (unit started from Terabithia's) | ONE unit for both roles, shipped by both packages; `xymonlaunch-run` picks the server tree when installed, else runs the client in the foreground (upstream's `runclient.sh` starts `xymonlaunch` without `--no-daemon`, so it forks and the script exits, leaving a `Type=simple` unit nothing to supervise) |
-| `xymonlaunch.default` | adapted here | it names this packaging's own config path for the client's server address |
-| everything else | upstream `devel` via PR #46 | identical in both, or 4.4-neutral |
+| `xymonlaunch.service`, `xymonlaunch-run`, `xymonlaunch-server.conf`, `xymonlaunch-client.conf` | written here | ONE unit for both roles, shipped by both packages; `xymonlaunch-run` picks the server tree when installed, else runs the client in the foreground. Upstream's `runclient.sh` starts `xymonlaunch` without `--no-daemon`, so it forks and the script exits, leaving a `Type=simple` unit nothing to supervise — [xymon#408](https://github.com/xymon-monitoring/xymon/pull/408) proposes a `foreground` mode that would replace the client half |
+| `xymonlaunch.service.preset` | written here | one line, and deliberately server-only: a fresh client must not enable itself against the baked-in `XYMSRV` |
+| `xymon.sysusers` | written here | [xymon#413](https://github.com/xymon-monitoring/xymon/pull/413) proposes it upstream |
+| `xymon-tmpfiles.conf` | written here | creates `/run/xymon`, which nothing uses yet (see Known gaps) |
+| `xymon-sysctl.conf` | adapted from `devel` | the backfeed-queue tunables; `main` has no equivalent |
+| `xymon.logrotate` | adapted from `devel` | the `devel` copy's postrotate HUPs `xymonlaunch`, which `main` does not relay ([xymon#172](https://github.com/xymon-monitoring/xymon/pull/172)); `copytruncate` until it does |
+| `xymon-client.default`, `xymonlaunch.default` | adapted from `devel` | they document `XYMONSERVERS`, which only patched clients read, and name this packaging's own config paths |
+| `xymon.te`, `xymon-client.te`, `bb.xml` | copied from `devel` | reference material, shipped as `%doc` only — the policy modules are not compiled by default (see Known gaps) |
+
+The upstream gaps these work around are proposed as small PRs rather
+than waited on:
+[#408](https://github.com/xymon-monitoring/xymon/pull/408) (client
+foreground mode),
+[#409](https://github.com/xymon-monitoring/xymon/pull/409) (install the
+`lib/` diagnostics),
+[#410](https://github.com/xymon-monitoring/xymon/pull/410) (install
+libraries and headers),
+[#411](https://github.com/xymon-monitoring/xymon/pull/411) (client-side
+`INSTALL*DIR`),
+[#412](https://github.com/xymon-monitoring/xymon/pull/412) (web server
+config location) and
+[#413](https://github.com/xymon-monitoring/xymon/pull/413)
+(`sysusers.d`). Each one lands a feature that lets this spec delete a
+workaround. They merge independently, in any order.
 
 `rpm/terabithia/` archives the reference spec and README from
 <https://repo.terabithia.org/rpms/xymon/> — a single unmirrored host —
