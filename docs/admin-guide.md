@@ -2,12 +2,12 @@
 
 A host is either a **server** (`xymon`) or a **client**
 (`xymon-client`); the packages conflict, so nothing is ever both. Both
-roles run the same service, `xymonlaunch.service`, so every command
-below is identical on every host — only the files differ.
+run the same service, `xymonlaunch.service`, so every command below is
+identical on every host — only the files differ.
 
 A server also monitors *itself*, through a client tree that is part of
-the server package and is driven from the server's own `tasks.cfg`, not
-by a second service. Finding client files on a server is normal.
+the server package and driven from the server's own `tasks.cfg`, not by
+a second service. Finding client files on a server is normal.
 
 ## The layout
 
@@ -69,10 +69,10 @@ On **both**, one service and the drop-in naming its role:
 ```
 
 Nothing writes inside `/usr/lib`: the symlinks above, and upstream's own
-(`server/etc → /etc/xymon`, `server/www → /var/lib/xymon/www`,
-`server/tmp → /var/lib/xymon/tmp`), redirect everything mutable into
-`/etc`, `/var` and `/tmp`. `/run/xymon` is created by tmpfiles and is
-not used yet — see the README's known gaps.
+(`server/etc → /etc/xymon`, `server/www → /var/lib/xymon/www`, `server/tmp
+→ /var/lib/xymon/tmp`), redirect everything mutable into `/etc`, `/var`
+and `/tmp`. `/run/xymon` is created by tmpfiles and unused — see the
+README's known gaps.
 
 ## Running the service
 

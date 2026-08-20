@@ -1,33 +1,29 @@
 #!/bin/sh
 #
-# Role dispatcher for xymonlaunch.service, written for this packaging.
-# The xymon (server) and xymon-client packages conflict, so exactly one
-# is installed; the server tree's presence decides which role runs.
+# Role dispatcher for xymonlaunch.service. The xymon and xymon-client
+# packages conflict, so exactly one is installed and its drop-in says
+# which role to run.
 #
-# Server role: what the unit's ExecStart did when it was server-only --
-# xymoncmd loads xymonserver.cfg and execs xymonlaunch on the server's
-# tasks.cfg, which includes the client's duties.
+# Server: what ExecStart did when the unit was server-only -- xymoncmd
+# loads xymonserver.cfg and execs xymonlaunch on the server's tasks.cfg,
+# which includes the client's duties.
 #
-# Client role: foreground equivalent of upstream client/runclient.sh
-# "start". runclient.sh computes this environment, forks xymonlaunch
-# and exits; a Type=simple unit needs the same environment with
-# xymonlaunch kept in the foreground. CLIENTHOSTNAME and CLIENTOS
-# arrive from /etc/sysconfig/xymon-client via the unit, when set
-# there.
-#
-# Upstream xymon#408 proposes this as "runclient.sh foreground"; when
-# that lands, the client half here becomes a call to it.
+# Client: foreground equivalent of runclient.sh "start", which computes
+# this environment, forks xymonlaunch and exits -- leaving a Type=simple
+# unit nothing to supervise. CLIENTHOSTNAME and CLIENTOS arrive from
+# /etc/sysconfig/xymon-client via the unit. xymon#408 proposes this
+# upstream as "runclient.sh foreground"; the client half becomes a call
+# to it when that lands.
 
 XYMONSERVERHOME=/usr/lib/xymon/server
 XYMONCLIENTHOME=/usr/lib/xymon/client
 
-# The role marker is the server package's unit drop-in, the same file
-# the packages' scriptlets key their swap handling off -- one encoding
-# of "which role is installed", so the two cannot disagree. Its presence
-# means the server package is installed, so a missing or unusable server
-# binary is a broken installation: fail loudly rather than silently
-# falling back to the client role, which would look healthy while the
-# whole fleet's monitoring is down.
+# The marker is the server package's drop-in -- the same file the
+# scriptlets key their swap handling off, so the two cannot disagree.
+# Its presence means the server package is installed, so an unusable
+# server binary is a broken installation: fail loudly rather than fall
+# back to the client role, which would look healthy while the fleet's
+# monitoring is down.
 if [ -e /usr/lib/systemd/system/xymonlaunch.service.d/server.conf ]; then
 	if [ ! -x "$XYMONSERVERHOME/bin/xymond" ] ||
 	   [ ! -x "$XYMONSERVERHOME/bin/xymoncmd" ] ||

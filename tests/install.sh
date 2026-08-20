@@ -1,17 +1,14 @@
 #!/bin/sh
 #
-# Install the freshly built packages and check the things a successful
-# rpmbuild cannot tell you: that the dependencies resolve, that the
-# scriptlets run, that the conflict actually excludes, and that the
-# promotion path works.
+# Install the built packages and check what a successful rpmbuild
+# cannot tell you: that dependencies resolve, scriptlets run, the
+# conflict actually excludes, and promotion works. The walk mirrors a
+# host's life -- client-only, then the refusal to layer a server on top,
+# then promotion.
 #
-# Run from the repository root with the built packages in ./out.
-# Containers have no running init, so this deliberately does not try to
-# start the service -- systemd-analyze verify is the closest check that
-# works without PID 1.
-#
-# The walk mirrors a host's life: client-only first, then the refusal
-# to layer the server on top, then promotion to a server.
+# Run from the repository root with the packages in ./out. Containers
+# have no init, so this does not start the service; systemd-analyze
+# verify is the closest check available without PID 1.
 
 set -eu
 
@@ -86,12 +83,11 @@ check "log rotation ships with the client" \
 # The design's core promise: a host is one role or the other, and dnf
 # says so instead of silently layering the server on top.
 echo "== the server must refuse to install over the client =="
-# Fail AND say why: an unrelated dnf error (bad rpm, missing dep) must
-# not pass as the conflict working.
-# Match the specific conflict, not any message containing "conflict":
-# libdnf prefixes generic resolution failures with "conflicting
-# requests", so a broken Requires would otherwise pass as the design
-# working.
+# Must fail AND say why: an unrelated dnf error (bad rpm, missing dep)
+# must not pass as the conflict working. Matching any message containing
+# "conflict" is not enough either -- libdnf prefixes generic resolution
+# failures with "conflicting requests", so a broken Requires would read
+# as the design working.
 check "dnf install xymon fails on the package conflict" \
 	"if dnf -y install $server_rpm >/tmp/conflict.out 2>&1; then false;
 	 else grep -q 'conflicts with' /tmp/conflict.out &&

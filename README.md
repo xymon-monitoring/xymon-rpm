@@ -55,10 +55,10 @@ systemctl restart xymonlaunch   # the swap stops the old role cleanly
                                 # new one up
 ```
 
-Demoting also needs `XYMSRV` set afterwards, and a host installed
-before the packages conflicted needs the same swap before `dnf upgrade`
-will resolve at all. Both, plus where every file lives and the everyday
-admin tasks, are in [docs/admin-guide.md](docs/admin-guide.md).
+Demoting also needs `XYMSRV` set afterwards, and a host installed before
+the packages conflicted needs the same swap before `dnf upgrade` will
+resolve at all. Both, plus where every file lives and the everyday admin
+tasks, are in [docs/admin-guide.md](docs/admin-guide.md).
 
 Packages and repository metadata are signed; verify the key against this
 fingerprint (see [docs/signing.md](docs/signing.md)):
@@ -87,28 +87,23 @@ host with `dnf config-manager --set-enabled xymon-snapshot`.
 EL builds run on AlmaLinux, a rebuild of *released* RHEL, so they cannot
 need a symbol version RHEL lacks; the dist tag carries no vendor marker,
 so an `.el8` package runs on RHEL, Rocky, Oracle and Alma alike. CentOS
-Stream previews the next RHEL minor, so it is a canary — allowed to fail,
-never published — alongside rawhide. Images are pinned, never floating: a
-moving tag would silently change the dist tag and the published
-repository path. Fedora is carried at N and N-1 and retired at EOL.
+Stream previews the next RHEL minor, so it is a canary alongside
+rawhide — allowed to fail, never published. Images are pinned: a moving
+tag would silently change the dist tag and the published path. Fedora is
+carried at N and N-1.
 
 ## Layout
 
 ```
 rpm/xymon.spec      the spec; no patches
 rpm/baseversion     the version main is working toward (see Versioning)
-rpm/sources/        runtime integration files (units, init, logrotate, ...)
+rpm/sources/        runtime integration (unit, drop-ins, logrotate, sysusers, ...)
 rpm/terabithia/     archived reference material, not built
-build/publish.sh    signs packages and folds them into the published tree
-build/mkrepofile.sh generates the .repo users install
-docs/signing.md     how to create and install the signing key
-docs/admin-guide.md where files are installed, and the everyday admin tasks
-docs/deployment-strategies.md  how Debian, Terabithia, FreeBSD and this repo split server and client
-tests/vercmp.sh     asserts the snapshot/release version ordering
-tests/packages.sh   reads the built rpms: conflict, shared unit, role parity
-tests/install.sh    installs the built packages and checks the scriptlets
-tests/systemd.sh    role changes against a live systemd (privileged container)
-tests/upgrade.sh    upgrades the published build to this one, keeping admin state
+build/               publish.sh signs and folds packages into the published
+                     tree; mkrepofile.sh and mkindex.sh generate the .repo
+                     file and the browsable index
+docs/               signing.md, admin-guide.md, deployment-strategies.md
+tests/              see Testing
 ```
 
 ## Versioning
@@ -122,17 +117,15 @@ silently.
 | `main` | contents of `rpm/baseversion` | `0.<date>git<sha>.<pkgdate>p<pkgsha>%{?dist}` |
 
 A snapshot is a *pre-release of the next version* (its `Release` starts
-with `0.`), naming first the upstream commit and then the last commit of
-this repository that could change a package — one touching `rpm/`,
-`build/` or `.github/`. Keying that on `HEAD` instead would mint a new
-NEVRA for every documentation commit and republish an rpm identical to
-the one before it but for its name; docs-only pushes skip the build
-entirely. The second pair exists because a published NEVRA is
-immutable: without it, a packaging-only fix rebuilds the same NEVRA and
-is never published until upstream happens to move. The packaging datetime
-(UTC) does the ordering, and a digit segment outranks the dist tag, so
-extended builds also upgrade over ones published before the format
-existed.
+with `0.`), naming the upstream commit and then the last commit here
+that could change a package — one touching `rpm/`, `build/` or
+`.github/`. The second pair exists because a published NEVRA is
+immutable: without it a packaging-only fix rebuilds the same NEVRA and
+never ships until upstream happens to move. Keying it on `HEAD` instead
+would mint a new NEVRA for every documentation commit, so docs-only
+pushes skip the build entirely. The packaging datetime (UTC) does the
+ordering, and a digit segment outranks the dist tag, so extended builds
+also upgrade over ones published before the format existed.
 
 ```
 4.3.30-1
@@ -144,26 +137,27 @@ existed.
 
 Snapshot users are therefore absorbed into the stable channel when the
 release lands. A packaging-only fix to a *released* version ships by
-re-dispatching the same tag with the `releasenum` input bumped, producing
-`X.Y.Z-2`. `tests/vercmp.sh` asserts all of this in CI.
+re-dispatching the same tag with `releasenum` bumped, giving `X.Y.Z-2`.
+`tests/vercmp.sh` asserts all of this in CI.
 
 `rpm/baseversion` exists because upstream's `include/version.h` records
 the *last released* version (`4.3.30`, set in 2019), not the one `main`
-is becoming; if upstream starts bumping `version.h` per cycle, the file
-goes away.
+is becoming; it goes away if upstream starts bumping `version.h`.
 
 ## Retention
 
 The stable channel keeps everything forever — people pin versions and
 roll back. The snapshot channel keeps the newest **5 builds** per
-directory so the tree stays within GitHub Pages limits. The **build**
-workflow can override that for one run: `snapshot_keep` sets a different
-count, `snapshot_reset` republishes the channel from that run alone. Pruning removes whole builds, never single packages
-— every package of a build goes together, or the repository would resolve
-to a missing dependency — and each removal is named in the publish log. A
-build is one *published run*, packaging rebuilds included: while upstream
-sits still, packaging changes would otherwise pile up inside one upstream
-commit forever, which no retention setting could ever trim.
+directory so the tree stays within GitHub Pages limits; the **build**
+workflow can override that for one run with `snapshot_keep`, or
+republish the channel from that run alone with `snapshot_reset`.
+
+Pruning removes whole builds, never single packages — every package of a
+build goes together, or the repository resolves to a missing dependency
+— and each removal is named in the publish log. A build is one
+*published run*, packaging rebuilds included: while upstream sits still,
+packaging changes would otherwise pile up inside one upstream commit
+forever, which no retention count could trim.
 
 ## Where the files in `rpm/sources/` come from
 
@@ -185,25 +179,23 @@ merge to work.
 | `xymon.te`, `xymon-client.te`, `bb.xml` | copied from `devel` | reference material, shipped as `%doc` only — the policy modules are not compiled by default (see Known gaps) |
 
 The upstream gaps these work around are proposed as small PRs rather
-than waited on:
-[#408](https://github.com/xymon-monitoring/xymon/pull/408) (client
-foreground mode),
-[#409](https://github.com/xymon-monitoring/xymon/pull/409) (install the
-`lib/` diagnostics),
-[#410](https://github.com/xymon-monitoring/xymon/pull/410) (install
-libraries and headers),
-[#411](https://github.com/xymon-monitoring/xymon/pull/411) (client-side
-`INSTALL*DIR`),
-[#412](https://github.com/xymon-monitoring/xymon/pull/412) (web server
-config location),
-[#413](https://github.com/xymon-monitoring/xymon/pull/413)
-(`sysusers.d`) and
-[#414](https://github.com/xymon-monitoring/xymon/pull/414) (install the
-shipped web content separately from the generated). Each one lands a
-feature that lets this spec delete a workaround, and each is a no-op
-until the corresponding variable is set, so none of them changes what a
-source install does today. They merge independently, in any order —
-checked across all 5040 orderings.
+than waited on — each lands a feature that lets this spec delete a
+workaround:
+
+| PR | What it adds |
+| --- | --- |
+| [#408](https://github.com/xymon-monitoring/xymon/pull/408) | `runclient.sh foreground`, for any supervisor |
+| [#409](https://github.com/xymon-monitoring/xymon/pull/409) | installs the `lib/` diagnostics |
+| [#410](https://github.com/xymon-monitoring/xymon/pull/410) | installs libraries and headers |
+| [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` |
+| [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` |
+| [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet |
+| [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` |
+
+Each is a no-op until its variable is set, so none changes what a source
+install does today, and they merge independently in any order — checked
+across all 5040 orderings. Only #413 is systemd-specific; the rest are
+plain make and POSIX shell, verified on Debian as well as EL.
 
 `rpm/terabithia/` archives the reference spec and README from
 <https://repo.terabithia.org/rpms/xymon/> — a single unmirrored host —
@@ -220,26 +212,24 @@ for provenance only; it is never built.
 - `xymon-tmpfiles.conf` creates `/run/xymon`, which nothing uses.
   [xymon#219](https://github.com/xymon-monitoring/xymon/pull/219) adds
   `XYMONRUNDIR` but defaults it to `$XYMONLOGDIR`, so merging it is not
-  enough on its own: the spec has to pass `XYMONRUNDIR=/run/xymon` too.
-  Whoever wires that up should also add the tmpfiles snippet to the
-  client package, which does not ship it today — otherwise a client-only
-  host has no `/run/xymon` for its pidfiles.
-- `ExecReload` sends `SIGHUP`, which `xymonlaunch` acts on itself — it
-  rereads `tasks.cfg` and reopens its own log — but does not relay to
-  its children until
+  enough: the spec must pass `XYMONRUNDIR=/run/xymon` too. Whoever wires
+  that up should also ship the tmpfiles snippet in the client package,
+  which does not have it — a client-only host has no `/run/xymon` for
+  its pidfiles.
+- `ExecReload` sends `SIGHUP`, which `xymonlaunch` acts on itself
+  (rereads `tasks.cfg`, reopens its log) but does not relay to its
+  children until
   [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172), so
   use `systemctl restart` to reach the daemons. The logrotate
-  `copytruncate` sits behind the same gate. #172 is stacked on #219, so
-  that one lands first.
+  `copytruncate` sits behind the same gate. #172 is stacked on #219.
 - The SELinux modules build with `--with selinux` (`targeted`, `mls`,
-  `minimum`) but are **off by default**: nothing in CI runs enforcing
-  SELinux, so a green build only proves they compile — and their rules
-  still reference `/var/cache/xymon`, which this layout does not use.
-  Turning them on wants verification on an enforcing machine first.
-  Independently of the modules, `%post` labels the CGI and www paths
-  (`httpd_sys_script_exec_t` etc.) when `semanage` is present, since the
-  default policy knows nothing about `/usr/lib/xymon` — that part, too,
-  is asserted only as far as a non-enforcing container can.
+  `minimum`) but are **off by default**: nothing in CI runs enforcing, so
+  a green build only proves they compile — and their rules still
+  reference `/var/cache/xymon`, which this layout does not use.
+  Independently of them, `%post` labels the CGI and www paths when
+  `semanage` is present, since the default policy knows nothing about
+  `/usr/lib/xymon`; that too is asserted only as far as a non-enforcing
+  container can.
 - `XYMONSERVERHOSTNAME` is baked as `localhost` and rewritten from
   `uname -n` in `%post`, because a package must not carry the build
   host's name.
@@ -253,25 +243,24 @@ byte-identical in both packages, each role owning only its drop-in, no
 configuration under `/usr`, the shared client tree identical in both),
 and `tests/install.sh`, which installs the client alone, proves
 `dnf install xymon` there fails on the conflict, promotes and demotes,
-and then starts httpd and fetches the URLs — the static content through
-its symlinks, a missing file that must be 404 rather than a denial, and
-the secure CGI path, which must answer 401.
+then starts httpd and fetches the URLs — static content through its
+symlinks, a missing file that must be 404 rather than a denial, and the
+secure CGI path, which must answer 401.
 
-One EL and one Fedora target then run two more suites. `tests/systemd.sh`
-works under a real init — the only place scriptlets can be tested at all,
+One EL and one Fedora target run two more. `tests/systemd.sh` works
+under a real init — the only place scriptlets can be tested at all,
 since without PID 1 every `systemctl` in them is swallowed by `|| :` —
-covering enablement, both swap directions, the per-role drop-ins and
-teardown. `tests/upgrade.sh` installs the build currently in the snapshot
-channel, edits `XYMSRV`, adds a task and drops files into the web tree,
-then upgrades to the build under test and proves nothing was lost. It is
-the only suite that starts from something other than an empty root, and
-so the only one that exercises `%pretrans`; because its fixture is
-whatever is published, any future layout change is exercised by the push
-after it. Publishing waits on both.
+covering enablement, both swap directions, the drop-ins and teardown.
+`tests/upgrade.sh` installs the build currently in the snapshot channel,
+edits `XYMSRV`, adds a task, drops files into the web tree, upgrades to
+the build under test and proves nothing was lost. It is the only suite
+that starts from a non-empty root, and so the only one that exercises
+`%pretrans`; since its fixture is whatever is published, a layout change
+is exercised by the push after it. Publishing waits on both.
 
-Not covered: that Xymon actually monitors anything. Every suite here
-tests packaging — files, units, scriptlets, upgrades — and none starts a
-server and waits for data to arrive.
+Not covered: that Xymon actually monitors anything. Every suite tests
+packaging — files, units, scriptlets, upgrades — and none starts a
+server and waits for data.
 
 ## Building a branch or a pull request
 

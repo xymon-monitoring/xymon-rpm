@@ -1,23 +1,19 @@
 #!/bin/sh
 #
-# Upgrade test: install the build that is currently PUBLISHED, seed it
-# with the kind of state an administrator creates, then upgrade to the
-# freshly built packages and prove the transaction succeeds and nothing
-# was lost.
+# Install the currently PUBLISHED build, seed it with the state an
+# administrator creates, upgrade to the freshly built packages, and
+# prove the transaction succeeds with nothing lost.
 #
-# This is the only test that exercises %pretrans, and it exists because
-# every layout move in this packaging has had to clear a directory out
-# of the way for a symlink -- something rpm refuses to do on its own,
-# which fails the whole transaction. Hand-testing that found two
-# defects that no other suite could see: a failed upgrade, and a
-# migration that deleted the admin's files while moving them.
+# The only test that exercises %pretrans. It exists because every layout
+# move here has had to clear a directory out of the way for a symlink,
+# which rpm refuses to do and which fails the whole transaction. Testing
+# that by hand found two defects no other suite could see: a failed
+# upgrade, and a migration that deleted the admin's files while moving
+# them.
 #
-# The fixture is the published snapshot channel itself, so this tests
-# exactly the step a following user takes: latest published -> this
-# build.
-#
-# Run from the repository root with the built packages in ./out. Needs
-# network access to the published repository.
+# The fixture is the published snapshot channel, so this is exactly the
+# step a following user takes. Run from the repository root with the
+# packages in ./out. Needs network access to the published repository.
 
 set -eu
 

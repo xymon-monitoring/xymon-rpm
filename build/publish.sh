@@ -33,13 +33,10 @@ dist_for() {
 	echo "$1" | sed -E 's/.*\.((el|fc)[0-9]+)\.[^.]+\.rpm$/\1/'
 }
 
-# el10 -> 10, fc44 -> 44.
-#
-# The published tree is keyed on the bare number so that a single .repo
-# file, using dnf's own $releasever, serves both distribution families.
-# Keying it on the dist tag instead would need one repo file per family,
-# since dnf cannot choose between el and fc at expansion time. EL is 8/9/10
-# and Fedora is 43/44, so the two never collide.
+# el10 -> 10, fc44 -> 44. The tree is keyed on the bare number so one
+# .repo file, using dnf's own $releasever, serves both families; dnf
+# cannot choose between el and fc at expansion time. EL is 8/9/10 and
+# Fedora 43/44, so they never collide.
 releasever_for() {
 	echo "$1" | tr -dc '0-9'
 }
@@ -52,18 +49,10 @@ arch_for() {
 	esac
 }
 
-echo "== signing =="
-# %_gpg_name is set by the caller via ~/.rpmmacros; rpm --addsign is
-# idempotent in the sense that re-signing an already-signed package simply
-# replaces the signature.
-# A reset empties the snapshot channel before this build's packages are
-# folded in, so the tree ends up holding exactly what was just built.
-# Pruning cannot achieve that: retention counts upstream build ids and
-# keeps every packaging rebuild of one commit as a unit, so a long run
-# of packaging-only changes accumulates within a single "build".
-#
-# Only ever the snapshot channel: the stable one is what people pin to,
-# and removing a published release breaks them.
+# Empty the snapshot channel before this build is folded in, so the tree
+# holds exactly what was just built. Pruning cannot do this: retention
+# keeps every packaging rebuild of one upstream commit as a single build.
+# Snapshot only -- the stable channel is what people pin to.
 if [ "${XYMON_SNAPSHOT_RESET:-}" = "1" ]; then
 	echo "== resetting the snapshot channel =="
 	n=$(find "$repodir/xymon-snapshot" -name '*.rpm' 2>/dev/null | wc -l | tr -d ' ')
@@ -71,6 +60,9 @@ if [ "${XYMON_SNAPSHOT_RESET:-}" = "1" ]; then
 	echo "  - dropped $n packages; the tree is rebuilt from this run alone"
 fi
 
+echo "== signing =="
+# %_gpg_name comes from the caller's ~/.rpmmacros. Re-signing an
+# already-signed package just replaces the signature.
 find "$artifacts" -name '*.rpm' -print0 | xargs -0 -r rpm --addsign
 
 echo "== filing packages =="
@@ -96,27 +88,20 @@ done
 
 # --- snapshot retention ------------------------------------------------
 #
-# The stable channel keeps everything forever: people pin versions and roll
-# back, so removing a published release breaks them. Snapshots are
-# disposable by definition -- they are pre-releases of a version that has
-# not been tested, shipped disabled by default -- so they are pruned to
-# stop the published tree growing without bound.
-#
-# Retention is per package directory and counts *builds*, not files: one
-# build produces several packages, and dropping half of one would leave a
-# repository that resolves to a missing dependency.
+# The stable channel keeps everything forever: people pin versions and
+# roll back. Snapshots are pre-releases shipped disabled by default, so
+# they are pruned to stop the tree growing without bound. Retention is
+# per package directory and counts *builds*, not files: dropping half a
+# build leaves a repository that resolves to a missing dependency.
 keep=${XYMON_SNAPSHOT_KEEP:-5}
 
-# The build id is the whole Release field minus the dist tag: the
-# upstream half 0.<date>git<sha>, plus the packaging half
-# .<datetime>p<sha> when the build has one. Counting the packaging half
-# too is what bounds the tree -- while upstream sits still, packaging
-# changes would otherwise pile up inside one upstream id forever, and no
-# retention setting would ever remove them.
-#
-# Fixed-width datetimes lead both halves, so a plain reverse sort is
-# newest-first; an id with no packaging half sorts below every rebuild
-# of the same commit, which is the right order.
+# The build id is the Release field minus the dist tag: the upstream half
+# 0.<date>git<sha>, plus the packaging half .<datetime>p<sha> when there
+# is one. Counting the packaging half is what bounds the tree -- while
+# upstream sits still, packaging changes would otherwise pile up inside
+# one upstream id forever. Fixed-width datetimes lead both halves, so a
+# reverse sort is newest-first, and an id with no packaging half sorts
+# below every rebuild of the same commit.
 buildid() {
 	printf '%s\n' "${1##*/}" \
 	| sed -nE 's/.*-(0\.[0-9]{8}git[0-9a-f]+(\.[0-9]{12}p[0-9a-f]+)?)\..*/\1/p'
@@ -143,20 +128,18 @@ if [ -d "$repodir/xymon-snapshot" ]; then
 				rm -f "$f"
 				n=$((n + 1))
 			done
-			# Say what was removed rather than pruning silently: a
-			# repository that quietly loses builds looks like one that
-			# never had them.
+			# Named, not silent: a repository that quietly loses
+			# builds looks like one that never had them.
 			echo "  - ${dir#"$repodir"/}: dropped build $b ($n packages)"
 		done
 	done
 fi
 
 echo "== regenerating metadata =="
-# Every directory that actually holds packages gets its own metadata; that
-# is what a dnf baseurl points at. The tree root is not one of them: the
-# bootstrap xymon-release rpm lives there, and running createrepo_c on the
-# root would generate a signed repodata recursively merging every channel,
-# distro and arch. Remove the one an earlier run created.
+# Every directory holding packages gets its own metadata; that is what a
+# dnf baseurl points at. Not the tree root: the bootstrap xymon-release
+# rpm lives there, and createrepo_c on the root would recursively merge
+# every channel, distro and arch. Remove one an earlier run created.
 rm -rf "$repodir/repodata"
 find "$repodir" -name '*.rpm' -printf '%h\n' | sort -u | while read -r dir; do
 	[ "$dir" = "$repodir" ] && continue

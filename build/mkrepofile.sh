@@ -10,15 +10,15 @@ set -eu
 
 base=${XYMON_REPO_BASEURL:-https://xymon-monitoring.github.io/xymon-rpm}
 
-# Where clients should look for the signing key.
+# Where clients look for the signing key.
 #
-#   remote  the copy served next to the packages -- correct for the file
-#           users curl straight into /etc/yum.repos.d
-#   local   /etc/pki/rpm-gpg -- correct for the copy inside xymon-release,
-#           which installs the key itself, so no network fetch is needed
-#           and the key arrives verified by that package's own signature
+#   remote  served next to the packages -- for the file users curl
+#           straight into /etc/yum.repos.d
+#   local   /etc/pki/rpm-gpg -- for the copy inside xymon-release, which
+#           installs the key itself, so it needs no network fetch and
+#           arrives verified by that package's own signature
 case "${1:-remote}" in
-local)  gpgkey="file://%s" ; gpgkey=$(printf "$gpgkey" /etc/pki/rpm-gpg/RPM-GPG-KEY-xymon) ;;
+local)  gpgkey="file:///etc/pki/rpm-gpg/RPM-GPG-KEY-xymon" ;;
 remote) gpgkey="$base/RPM-GPG-KEY-xymon" ;;
 *)      echo "usage: mkrepofile.sh [remote|local]" >&2; exit 2 ;;
 esac

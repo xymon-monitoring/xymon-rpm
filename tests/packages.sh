@@ -1,20 +1,16 @@
 #!/bin/sh
 #
-# Assertions about the built packages themselves -- read from the rpms,
-# nothing installed, no systemd needed. This is the cheap half of the
-# safety net: the two roles' packages share a unit and a whole file
-# tree, and a divergence between them is invisible to rpmbuild.
+# Assertions read straight from the rpms -- nothing installed, no
+# systemd. The cheap half of the safety net: the two roles' packages
+# share a unit and a whole file tree, and a divergence between them is
+# invisible to rpmbuild. The expensive half is tests/systemd.sh.
 #
-# The expensive half is tests/systemd.sh, which needs a live PID 1.
+# Run from the repository root with the packages in ./out. Needs rpm and
+# rpm2cpio, so it runs inside a distro container.
 #
-# Run from the repository root with the built packages in ./out. Needs
-# rpm and rpm2cpio, so it runs inside a distro container, not on the
-# workstation.
-#
-# Every comparison here asserts its inputs are non-empty first: two
-# empty file lists diff clean, and the sha256 of nothing equals the
-# sha256 of nothing, so a missing tool or a moved path would otherwise
-# read as a pass.
+# Every comparison asserts its inputs are non-empty first: two empty
+# file lists diff clean and the sha256 of nothing equals the sha256 of
+# nothing, so a missing tool would otherwise read as a pass.
 
 set -eu
 

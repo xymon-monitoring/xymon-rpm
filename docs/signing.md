@@ -36,42 +36,36 @@ Three places:
   imports
 - the generating maintainer's GnuPG keyring
 
-The first of those is the one that matters for continuity. A repository
-secret cannot be read back out, so GitHub's copy lets CI keep signing but
-would not let anyone renew, recover or revoke the key. Without the copy in
+The first is the one that matters for continuity. A repository secret
+cannot be read back out, so GitHub's copy lets CI keep signing but would
+not let anyone renew, recover or revoke the key. Without the copy in
 `private`, losing one laptop would mean a key nobody could ever retire —
-which is the failure mode xymon-monitoring/xymon-problems#5 describes, and
-what makes the Terabithia and bitweaver repositories fragile.
+the failure mode xymon-monitoring/xymon-problems#5 describes, and what
+makes the Terabithia and bitweaver repositories fragile.
 
 The trade is that **everyone with read access to `private` can sign as the
-Xymon project**. That access list is the real definition of who can sign,
-and should be reviewed on that basis.
+Xymon project**. That access list is the real definition of who can sign.
 
 ### There is no passphrase, on purpose
 
-The obvious instinct is to protect the key with a passphrase. In this
-design it buys nothing: CI cannot type one, so it would have to be stored
-in a second repository secret directly beside the key. Anyone able to read
-`GPG_PRIVATE_KEY` can read `GPG_PASSPHRASE` too, so the passphrase guards
-only against an attacker who can read one secret but not the other — which
-is not a threat that exists here.
+CI cannot type one, so it would have to live in a second repository secret
+beside the key. Anyone who can read `GPG_PRIVATE_KEY` can read
+`GPG_PASSPHRASE` too, so it would guard only against an attacker able to
+read one secret but not the other — not a threat that exists here.
 
-What the passphrase *would* protect is the copy in the maintainer's local
-keyring. If you want that, the right shape is a passphrase-protected
-primary key with a separate unprotected signing subkey exported to CI,
-rather than a passphrase that also has to be handed to the CI job.
+What a passphrase *would* protect is the maintainer's local keyring. The
+right shape for that is a protected primary key with an unprotected
+signing subkey exported to CI, not a passphrase handed to the CI job.
 
 ### Who can sign
 
-Anyone who can change a workflow in this repository can cause something to
-be signed. That is the same set of people who can already change the source
-that gets built, so it does not widen the trust boundary much — but it is
-worth stating rather than leaving implicit.
+Anyone who can change a workflow here can cause something to be signed —
+the same people who can already change what gets built, so it barely
+widens the trust boundary, but it is worth stating.
 
-If stronger separation is ever wanted, the upgrade path is a second key: a
-release key kept offline for tagged releases, leaving this one for nightly
-snapshots. `xymon-release` can ship both keys, so that change would not
-break existing installations.
+Stronger separation would be a second key: a release key kept offline for
+tags, leaving this one for snapshots. `xymon-release` can ship both, so
+the change would not break existing installations.
 
 ## Revocation certificate
 

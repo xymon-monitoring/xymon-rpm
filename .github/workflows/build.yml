@@ -60,19 +60,15 @@ jobs:
     continue-on-error: ${{ matrix.experimental || false }}
     strategy:
       fail-fast: false
-      # Targets are pinned, never floating. A moving tag such as
-      # fedora:latest silently changes the dist tag when a new release
-      # comes out, which moves the published repository path underneath
-      # users with no commit to point at. Adding or retiring a target is
-      # a deliberate one-line change here.
+      # Pinned, never floating: a moving tag such as fedora:latest
+      # silently changes the dist tag on a new release, moving the
+      # published path underneath users with no commit to point at.
+      # Adding or retiring a target is a deliberate change here.
       #
-      # Fedora ships N and N-1; retire a release when it goes EOL rather
-      # than accumulating dead trees.
-      # Published EL builds run on AlmaLinux, a rebuild of *released* RHEL,
-      # so they cannot pick up a symbol version RHEL does not ship. CentOS
-      # Stream is the development branch for the next RHEL minor -- building
-      # there risks a package that installs on Stream and fails on RHEL --
-      # so Stream is carried as a canary instead.
+      # Fedora is carried at N and N-1. Published EL builds run on
+      # AlmaLinux, a rebuild of *released* RHEL, so they cannot pick up a
+      # symbol version RHEL lacks; CentOS Stream is the next RHEL minor's
+      # development branch, so it is carried as a canary instead.
       matrix:
         include:
           - name: el8
@@ -163,16 +159,14 @@ jobs:
             ;;
           esac
 
-      # A tagged release builds as X.Y.Z-1; anything else builds as a
-      # pre-release of the upcoming version,
-      # X.Y.Z-0.<date>git<sha>.<pkgdate>p<pkgsha>, which sorts below the
-      # eventual -1. The first pair names the upstream commit, the second
-      # the packaging commit: a published NEVRA is immutable, so without
-      # the second pair a packaging-only change rebuilds the same NEVRA as
-      # the previous run and is never published until upstream happens to
-      # move. The datetime does the ordering (rpm compares sha segments
-      # alphabetically, which means nothing); UTC so it only moves
-      # forward. See README.md.
+      # A tag builds as X.Y.Z-1; anything else as a pre-release of the
+      # upcoming version, X.Y.Z-0.<date>git<sha>.<pkgdate>p<pkgsha>, which
+      # sorts below the eventual -1. First pair: the upstream commit.
+      # Second: the packaging commit -- a published NEVRA is immutable, so
+      # without it a packaging-only change rebuilds the previous run's
+      # NEVRA and never ships until upstream moves. The datetimes do the
+      # ordering (rpm compares sha segments alphabetically, which means
+      # nothing), in UTC so they only move forward. See README.md.
       - name: Compute version
         id: ver
         run: |

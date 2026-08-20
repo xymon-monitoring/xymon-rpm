@@ -1,24 +1,22 @@
 #!/bin/sh
 #
 # The lifecycle test: what the packages do to systemd's state as a host
-# changes role. This is the half tests/install.sh structurally cannot
-# reach -- it runs without PID 1, where every systemctl call in a
-# scriptlet is swallowed by `|| :` and the scriptlets "pass" by doing
-# nothing.
+# changes role. tests/install.sh structurally cannot reach this -- it
+# runs without PID 1, where every systemctl call in a scriptlet is
+# swallowed by `|| :` and the scriptlets "pass" by doing nothing.
 #
 # Everything asserted here is a bug this packaging has actually had:
-# enablement lost across a swap, a deliberately disabled unit silently
-# re-enabled by the departing package's preset, a fresh client
-# auto-started against an unconfigured server address, the wrong role's
-# kill semantics applied to a running process.
+# enablement lost across a swap, a disabled unit re-enabled by the
+# departing package's preset, a fresh client auto-started against an
+# unconfigured server address, the wrong role's kill semantics applied.
 #
-# MUST run inside a container with systemd as PID 1 (see the
-# systemd-lifecycle job in .github/workflows/build.yml):
+# MUST run with systemd as PID 1 (see the systemd-lifecycle job in
+# .github/workflows/build.yml):
 #
 #     docker run -d --privileged --cgroupns=host \
 #         -v /sys/fs/cgroup:/sys/fs/cgroup:rw <image> /sbin/init
 #
-# Run from the repository root with the built packages in ./out.
+# Run from the repository root with the packages in ./out.
 
 set -eu
 

@@ -1,27 +1,17 @@
 #
-# Xymon RPM package
+# Xymon RPM package. Built from the xymon-monitoring/xymon tree with no
+# patches at all; fixes belong upstream.
 #
-# Built from the xymon-monitoring/xymon source tree, not from a patched
-# fork: this spec carries no source patches at all. Fixes belong upstream.
+#   release   --define 'baseversion 4.3.31'
+#   snapshot  ... --define 'gitsnapshot 0.20260730git3a07523.202607301210pab12cd3'
 #
-# Versioning (see README.md)
-#   release   rpmbuild --define 'baseversion 4.3.31'
-#             -> xymon-4.3.31-1.el10.x86_64.rpm
-#   snapshot  rpmbuild --define 'baseversion 4.3.31' \
-#                      --define 'gitsnapshot 0.20260730git3a07523.202607301210pab12cd3'
-#             -> xymon-4.3.31-0.20260730git3a07523.202607301210pab12cd3.el10.x86_64.rpm
-#
-# The snapshot string names the upstream commit and then the packaging
-# commit; CI computes it (see build.yml). Only its leading 0. matters to
-# this spec.
-#
-# The leading 0. in a snapshot release sorts below the eventual -1, so a
-# snapshot user is absorbed into the stable channel when the release lands.
+# CI computes the snapshot string (see build.yml); only its leading 0.
+# matters here, and that is what sorts it below the eventual -1 so
+# snapshot users are absorbed when the release lands. See README.md.
 #
 %{!?baseversion: %global baseversion 4.3.31}
-# releasenum exists for packaging-only re-releases of a tagged version:
-# a published NEVRA is immutable, so a fix to an already-released X.Y.Z
-# must ship as -2 rather than rebuild -1.
+# For packaging-only re-releases of a tag: a published NEVRA is
+# immutable, so a fix to a released X.Y.Z must ship as -2.
 %{!?releasenum: %global releasenum 1}
 %{?gitsnapshot: %global xymonrelease %{gitsnapshot}}
 %{!?gitsnapshot: %global xymonrelease %{releasenum}}
@@ -30,14 +20,10 @@
 # it is on by default; --without xymonping falls back to fping at runtime.
 %bcond_without xymonping
 
-# The SELinux policy modules. Off by default: the policy compiles and is
-# shipped compiled by the Terabithia packages, but nothing in CI runs
-# enforcing SELinux, so a green build proves only that it compiles, not
-# that it is correct. Enable with --with selinux once someone has verified
-# it on an enforcing machine.
-#
-# The modules declare no new types -- they `require` existing ones and add
-# allow rules -- so there is no .fc and nothing to label.
+# SELinux policy modules, off by default: nothing in CI runs enforcing,
+# so a green build proves only that they compile. Enable with
+# --with selinux once verified on an enforcing machine. They declare no
+# new types -- only allow rules -- so there is no .fc and nothing to label.
 %bcond_with selinux
 %global selinux_variants targeted mls minimum
 
@@ -58,42 +44,27 @@ License:        GPL-2.0-only
 URL:            https://github.com/xymon-monitoring/xymon
 Source0:        xymon-%{version}.tar.gz
 
-# Runtime integration files. Provenance is deliberate -- see README.md.
-#   written here (started from Terabithia's xymon-4.3.30 unit): ONE unit
-#   for both roles, shipped identically by the server and the client
-#   package. xymonlaunch-run picks the role: the server tree when it is
-#   installed, otherwise the client tree in the foreground (upstream's
-#   runclient.sh starts xymonlaunch without --no-daemon, so it forks
-#   and the script exits, leaving a Type=simple unit nothing to
-#   supervise):
+# Runtime integration files; README.md tables their provenance and why.
+#   ONE unit for both roles, shipped identically by both packages;
+#   xymonlaunch-run picks the role by which tree is installed:
 Source1:        xymonlaunch.service
 Source3:        xymonlaunch-run
-#   per-role drop-ins for the shared unit: the buildroot can hold only
-#   one file per path, so what differs between the roles ships as a
-#   drop-in owned by the role's package:
+#   what differs between roles, as a drop-in owned by that role's package
+#   (the buildroot can hold only one file per path):
 Source14:       xymonlaunch-server.conf
 Source15:       xymonlaunch-client.conf
-#   byte-identical in Terabithia and upstream devel:
 Source4:        xymonlaunch.service.preset
 Source5:        xymon-tmpfiles.conf
-#   adapted here: devel's postrotate signals xymonlaunch, which main
-#   cannot act on until xymon#172; devel's xymon-client.default documents
-#   XYMONSERVERS, which only patched clients read; and both default files
-#   name this packaging's own config paths -- see README.md:
 Source6:        xymon.logrotate
 Source8:        xymon-client.default
 Source7:        xymonlaunch.default
-#   adapted from devel: the backfeed-queue tunables, which main has no
-#   equivalent for:
 Source11:       xymon-sysctl.conf
-#   copied from devel as reference material, shipped as %%doc only -- the
-#   policy modules are not compiled unless --with selinux:
+#   reference material, shipped as %%doc only:
 Source9:        xymon.te
 Source10:       xymon-client.te
 Source12:       bb.xml
-#   written here: Fedora's rpm generates Requires: user(xymon)/group(xymon)
-#   for any package owning files with a non-root owner, and only a
-#   sysusers.d snippet generates the matching Provides.
+#   Fedora's rpm generates Requires: user(xymon) for any package owning
+#   files with a non-root owner; only sysusers.d generates the Provides.
 Source13:       xymon.sysusers
 
 # The client tree, shipped by BOTH packages (they conflict, so no host
@@ -112,18 +83,12 @@ Source13:       xymon.sysusers
 %{?_sysusersdir:%{_sysusersdir}/xymon.conf}
 }
 
-# Layout moves have to be prepared before anything is unpacked, because
 # rpm will not replace a directory with a symlink -- the transaction
-# fails on the existing directory instead. That is what %%pretrans is
-# for. Two moves need it: the client configuration, which went from
-# %%{xymonhome}/client/etc to /etc/xymon-client, and the static web
-# content, which went from the www tree to %%{_datadir}/xymon. Both
-# leave a symlink where the directory used to be.
-#
-# Contents are carried over rather than discarded, so an admin's edited
-# xymonclient.cfg or a custom gif dropped into www/gifs survives the
-# move; anything the package itself ships is simply overwritten when the
-# new files are unpacked a moment later.
+# fails on the existing directory -- so layout moves must happen before
+# anything is unpacked. Two need it: client/etc -> /etc/xymon-client, and
+# the static www trees -> %%{_datadir}/xymon. Contents are carried over,
+# so an admin's edited xymonclient.cfg or a custom gif survives; whatever
+# the package ships is overwritten a moment later anyway.
 %global migrate_tree %{expand:
 -- mkdir -p: posix.mkdir makes one level only, and the new parents
 -- (/usr/share/xymon) do not exist yet on a host still running the old
@@ -207,11 +172,10 @@ Requires(postun): policycoreutils
 Requires(pre):  shadow-utils
 %{?sysusers_requires_compat}
 # A host is either a server or a client, never both. The --server build
-# always produces the client tree too (the server monitors itself
-# through it), so this package ships that tree itself rather than
-# depending on xymon-client -- and the standalone client package becomes
-# mutually exclusive with it. Role changes are one dnf swap; the
-# runnable recipe lives in README.md only.
+# produces the client tree too (the server monitors itself through it),
+# so this package ships it rather than depending on xymon-client, which
+# makes the two mutually exclusive. Role changes are one dnf swap; the
+# recipe is in README.md.
 Conflicts:      xymon-client
 # The embedded client's collectors shell out to these, same as the
 # standalone client's (see the client package's net-tools comment).
@@ -318,36 +282,23 @@ no install rule. Most administrators will not need them.
 %setup -q
 
 %build
-# The distribution's hardening flags are deliberately NOT injected here.
-# On main there is no working way to do it:
+# No distribution hardening flags: on main there is no working way to
+# pass them. On the make command line, CFLAGS= overrides makefile `+=`
+# and drops lib/Makefile's -I../include; via the environment,
+# build/Makefile.Linux assigns CFLAGS with a plain `=` and discards it.
+# LDFLAGS *does* survive, which is the trap -- exporting both compiles
+# without -fPIC but links with -pie. xymon#163 makes the environment
+# route work; until then the package carries Xymon's own -g -O2 and no
+# FORTIFY/stack-protector/PIE, and restoring them is two exports here.
 #
-#   - on the make command line, a CFLAGS= assignment overrides makefile `+=`
-#     and drops lib/Makefile's own -I../include, so the build cannot find
-#     its headers;
-#   - via the environment, build/Makefile.Linux assigns CFLAGS with a plain
-#     `=` and discards it -- while LDFLAGS *does* survive, so exporting both
-#     compiles without -fPIC but links with -pie and fails on the resulting
-#     R_X86_64_32 relocation.
-#
-# xymon-monitoring/xymon#163 changes Makefile.Linux to `?=` plus `+=`, which
-# makes the environment route work. Until it merges, the package is built
-# with Xymon's own -g -O2 and carries no FORTIFY/stack-protector/PIE.
-# Restoring the flags afterwards is two `export` lines here.
-#
-# One consequence has to be handled: Fedora and EL10 ship gcc with
-# --enable-default-pie, so the link defaults to -pie while Xymon's flags
-# compile without -fPIC, and the link dies on an R_X86_64_32 relocation.
-# EL8/EL9 gcc does not default that way, which is why only the newer
-# targets hit it. LDFLAGS is the one variable the build does take from the
-# environment, so turn the default back off there. This line goes away with
-# #163, which lets the matching -fPIE reach the compiler instead.
+# The same asymmetry has to be undone for Fedora and EL10, whose gcc is
+# built --enable-default-pie: the link would default to -pie against
+# non-PIC objects and die on an R_X86_64_32 relocation. EL8/EL9 gcc does
+# not, which is why only the newer targets hit it. Goes away with #163.
 export LDFLAGS="-no-pie"
 
-# XYMONHOSTNAME is deliberately baked as "localhost": the value would
-# otherwise be the build host's name, which is meaningless to every
-# consumer of the package. %%post rewrites it to the real hostname on
-# first install. This mirrors what Terabithia's spec does, and is the
-# packaging-side answer to the build-time-hostname problem (TBT 40).
+# XYMONHOSTNAME is baked as "localhost" because the alternative is the
+# build host's name; %%post rewrites it on first install.
 USEXYMONPING=%{?with_xymonping:y}%{!?with_xymonping:n} \
 ENABLESSL=y \
 ENABLELDAP=y \
@@ -427,25 +378,25 @@ ln -sf %{xymonhome}/server/bin/xymon    %{buildroot}%{_bindir}/xymon
 ln -sf %{xymonhome}/server/bin/xymoncmd %{buildroot}%{_bindir}/xymoncmd
 ln -sf %{xymonhome}/server/bin/xymonlaunch %{buildroot}%{_sbindir}/xymonlaunch
 
-# The web server config is generated by the build (xymond/Makefile:142)
-# into the Xymon etc dir; move it where httpd actually reads it.
+# The build generates this into Xymon's own etc, which no web server
+# reads; move it where httpd does. xymon#412 (INSTALLHTTPDCONFDIR) would
+# let the build put it there directly.
 install -d %{buildroot}%{_sysconfdir}/httpd/conf.d
 mv %{buildroot}%{_sysconfdir}/xymon/xymon-apache.conf \
    %{buildroot}%{_sysconfdir}/httpd/conf.d/xymon-apache.conf
 
-# The www tree mixes two different kinds of thing. gifs, help and menu
-# are static package content -- shipped files that never change on a
-# running host -- and the FHS puts those in /usr/share. The rest is
-# state: html, notes, rep, snap and wml ship empty and are written by
-# the daemons, and xymongen writes the generated pages into www itself,
-# so XYMONWWWDIR has to stay writable and stays where it is.
+# The www tree mixes two kinds of thing. gifs, help and menu are shipped
+# content that never changes on a running host, so the FHS puts them in
+# /usr/share; html, notes, rep, snap and wml are state, and xymongen
+# writes generated pages into www itself, so XYMONWWWDIR stays writable
+# where it is.
 #
-# The three static trees move and are symlinked back, which keeps every
-# URL under /xymon/ and every on-disk path working unchanged -- nothing
-# in xymonserver.cfg or the CGIs has to learn a second location, and no
-# extra httpd configuration is needed: the generated config already sets
-# FollowSymLinks on the www directory, which is what lets httpd cross
-# into /usr/share (verified -- without it the same request is a 403).
+# The static three are symlinked back, so every /xymon/ URL and on-disk
+# path still works and nothing in xymonserver.cfg or the CGIs learns a
+# second location. httpd needs no extra config: the generated one sets
+# FollowSymLinks on the www directory, which is what lets it cross into
+# /usr/share (verified -- without it the same request is a 403).
+# xymon#414 (INSTALLSTATICWWWDIR) would remove the move.
 install -d %{buildroot}%{_datadir}/xymon
 for d in gifs help menu; do
     mv %{buildroot}%{_sharedstatedir}/xymon/www/$d %{buildroot}%{_datadir}/xymon/$d
@@ -487,13 +438,12 @@ ln -sf %{_tmppath}            %{buildroot}%{xymonhome}/client/tmp
 ln -sf %{_localstatedir}/log/xymon %{buildroot}%{xymonhome}/client/logs
 
 # Client configuration belongs in /etc: the FHS wants /usr shareable and
-# read-only, and an admin edits xymonclient.cfg (XYMSRV) more than any
-# other file on a client host. Upstream already does this for the server
-# -- its build symlinks server/etc to INSTALLETCDIR -- but provides no
-# equivalent hook for the client, so the same move is made here. Every
-# reference to these files, in clientlaunch.cfg and in the server's
-# tasks.cfg alike, is spelled $XYMONCLIENTHOME/etc/... and resolves
-# through the symlink, so nothing else has to know.
+# read-only, and xymonclient.cfg (XYMSRV) is the most-edited file on a
+# client host. Upstream's build does this for the server -- server/etc ->
+# INSTALLETCDIR -- but offers no client equivalent until xymon#411, so
+# the same move is made here. Every reference to these files, in
+# clientlaunch.cfg and the server's tasks.cfg alike, is spelled
+# $XYMONCLIENTHOME/etc/... and resolves through the symlink.
 install -d %{buildroot}%{_sysconfdir}/xymon-client
 mv %{buildroot}%{xymonhome}/client/etc/* %{buildroot}%{_sysconfdir}/xymon-client/
 rmdir %{buildroot}%{xymonhome}/client/etc
@@ -556,20 +506,18 @@ done
 %endif
 
 %preun
-# Swap-aware: in a demotion (dnf swap xymon xymon-client) the standalone
-# client is already installed when this runs -- installs precede erases
-# in a transaction -- so the unit's enablement must survive. The other
-# role's packaged drop-in is the marker: it lives under /usr/lib (admin
-# drop-ins go to /etc/systemd), so unlike a config-file probe it cannot
+# Swap-aware: in a demotion (dnf swap xymon xymon-client) the client
+# package is already installed when this runs -- installs precede erases
+# -- so enablement must survive. Its packaged drop-in is the marker: it
+# lives under /usr/lib (admin drop-ins go to /etc/systemd), so it cannot
 # be faked by configuration, and unlike `rpm -q` it cannot deadlock the
 # rpmdb from inside a scriptlet.
 #
-# The running server IS stopped here, while server.conf is still on disk
-# and in effect: it is what keeps xymond's children alive through the
-# stop so they can finish checkpoints and cache flushes. Stopping later
-# -- after the erase takes that drop-in away -- would kill the whole
-# cgroup mid-write. Enablement is untouched, so the swap's `systemctl
-# restart` brings the new role up in its place.
+# The server IS stopped here, while server.conf still applies: that is
+# what keeps xymond's children alive through the stop so they can finish
+# checkpoints. Stopping after the erase removed the drop-in would kill
+# the cgroup mid-write. Enablement is untouched, so the swap's
+# `systemctl restart` brings the new role up.
 if [ -e %{clientconf} ]; then
     systemctl stop xymonlaunch.service >/dev/null 2>&1 || :
 else
@@ -653,23 +601,20 @@ fi
 %doc bb.xml
 
 %post client
-# In a demotion the server package is still installed at this point, and
-# with it its preset ("enable xymonlaunch.service"). Running the preset
-# here would re-enable a unit the admin may have deliberately disabled,
-# and would contradict this package's no-preset design (see %%files
-# client). The %%preun guards already carry enablement across a swap, so
-# there is nothing to preset.
+# In a demotion the server package -- and its "enable xymonlaunch"
+# preset -- is still installed here. Running the preset would re-enable
+# a unit the admin may have disabled, and contradict this package's
+# no-preset design (see %%files client). The %%preun guards already carry
+# enablement across a swap.
 if [ ! -e %{serverconf} ]; then
 %systemd_post xymonlaunch.service
 fi
-# Upgrades from the old layout shipped xymon-client.service; that unit
-# is gone, so carry its enablement and any running instance over to the
-# shared name before clearing it. is-enabled and is-active are checked
-# separately: an enabled-but-stopped client must stay enabled. Gated on
-# the old unit file still being on disk, which is true only during the
-# migrating upgrade itself -- without that this block would run on every
-# future upgrade and stop an admin's own /etc/systemd unit of the same
-# name.
+# The old layout shipped xymon-client.service; carry its enablement and
+# any running instance over to the shared name, then clear it.
+# is-enabled and is-active are separate checks: an enabled-but-stopped
+# client must stay enabled. Gated on the old unit file still existing,
+# true only during the migrating upgrade -- otherwise this would run on
+# every future upgrade and stop an admin's own unit of that name.
 if [ $1 -ge 2 ] && [ -e %{_unitdir}/xymon-client.service ]; then
     if systemctl is-enabled --quiet xymon-client.service 2>/dev/null; then
         systemctl --no-reload enable xymonlaunch.service >/dev/null 2>&1 || :
