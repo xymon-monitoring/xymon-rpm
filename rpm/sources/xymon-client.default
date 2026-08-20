@@ -1,4 +1,5 @@
-# Settings for the Xymon client (read by the xymon-client systemd unit).
+# Settings for the Xymon client (read by xymonlaunch.service; the
+# server package does not ship this file).
 #
 # The address of the Xymon server is NOT set here: upstream's client
 # reads it from its own environment file, so set XYMSRV (one server) or

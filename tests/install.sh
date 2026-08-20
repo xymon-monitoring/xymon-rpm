@@ -33,10 +33,19 @@ check() {
 # A client host installs xymon-client and nothing else, so prove that
 # stands on its own before anything else.
 echo "== installing the client alone =="
-client_rpm=$(find "$rpmdir" -name 'xymon-client-[0-9]*.rpm' ! -name '*debuginfo*')
-[ -n "$client_rpm" ] || { echo "no xymon-client package in $rpmdir"; exit 1; }
-server_rpm=$(find "$rpmdir" -name 'xymon-[0-9]*.rpm' ! -name '*debuginfo*' ! -name '*debugsource*' ! -name '*.src.rpm')
-[ -n "$server_rpm" ] || { echo "no xymon package in $rpmdir"; exit 1; }
+# The [0-9] after the name anchors each glob to the version, so the
+# debuginfo/debugsource packages can never match; only src.rpm needs
+# excluding. Exactly one match each: with several builds in $rpmdir the
+# quoted "$server_rpm" would reach dnf as one newline-embedded argument
+# and fail the suite for the wrong reason.
+client_rpm=$(find "$rpmdir" -name 'xymon-client-[0-9]*.rpm')
+server_rpm=$(find "$rpmdir" -name 'xymon-[0-9]*.rpm' ! -name '*.src.rpm')
+for v in client_rpm server_rpm; do
+	eval "rpms=\$$v"
+	[ -n "$rpms" ] || { echo "no rpm matched for $v in $rpmdir"; exit 1; }
+	[ "$(printf '%s\n' "$rpms" | wc -l)" -eq 1 ] \
+		|| { echo "expected exactly one rpm for $v, got:"; printf '%s\n' "$rpms"; exit 1; }
+done
 dnf -y install "$client_rpm"
 
 echo "== checking the client-only install =="
@@ -53,6 +62,10 @@ check "the shared unit and the role dispatcher resolve" \
 
 check "the dispatcher will pick the client role (no server tree)" \
 	"test ! -x /usr/lib/xymon/server/bin/xymond"
+
+check "the client role drop-in is installed, the server one is not" \
+	"test -f /usr/lib/systemd/system/xymonlaunch.service.d/client.conf &&
+	 ! test -e /usr/lib/systemd/system/xymonlaunch.service.d/server.conf"
 
 # Without net-tools the ifstat/ports/route client sections arrive empty,
 # and nothing errors -- the data is just missing on the server.
@@ -72,8 +85,11 @@ check "log rotation ships with the client" \
 # The design's core promise: a host is one role or the other, and dnf
 # says so instead of silently layering the server on top.
 echo "== the server must refuse to install over the client =="
-check "dnf install xymon fails on the conflict" \
-	"! dnf -y install $server_rpm"
+# Fail AND say why: an unrelated dnf error (bad rpm, missing dep) must
+# not pass as the conflict working.
+check "dnf install xymon fails on the package conflict" \
+	"if dnf -y install $server_rpm >/tmp/conflict.out 2>&1; then false;
+	 else grep -qi conflict /tmp/conflict.out; fi"
 
 # Promotion is one transaction: the server (which embeds the client
 # tree) replaces the standalone client. --allowerasing is the
@@ -92,12 +108,18 @@ check "the client tree survived the swap (now embedded)" \
 check "the dispatcher now picks the server role" \
 	"test -x /usr/lib/xymon/server/bin/xymond"
 
+check "the drop-ins swapped roles with the packages" \
+	"test -f /usr/lib/systemd/system/xymonlaunch.service.d/server.conf &&
+	 ! test -e /usr/lib/systemd/system/xymonlaunch.service.d/client.conf"
+
 check "the embedded client configs are still marked config" \
 	"rpm -qc xymon | grep -q client/etc/xymonclient.cfg"
 
 echo "== installing the remaining subpackages =="
+# Actually the remaining ones: the server and client rpms are excluded
+# (installed above / conflicting), leaving client-local, devel, tools.
 set -- $(find "$rpmdir" -name '*.rpm' \
-	! -name 'xymon-client-[0-9]*' \
+	! -name 'xymon-[0-9]*' ! -name 'xymon-client-[0-9]*' \
 	! -name '*debuginfo*' ! -name '*debugsource*' ! -name '*.src.rpm')
 [ "$#" -gt 0 ] || { echo "no packages found in $rpmdir"; exit 1; }
 dnf -y install "$@"
@@ -181,5 +203,26 @@ for sec in 1 5 7 8; do
 		"$(rpm -ql xymon | grep -c "/share/man/man$sec/")"
 done
 echo "   man7 contents: $(rpm -ql xymon | grep '/share/man/man7/' | tr '\n' ' ')"
+
+# The reverse swap: the server host becomes a client again. Exercises
+# the server package's %preun guard (the shared unit must survive the
+# erase) and rpm's install-before-erase ordering over the shared paths.
+echo "== demoting the host back to a client =="
+dnf -y install --allowerasing "$client_rpm"
+
+check "the demotion left the client and removed the server" \
+	"rpm -q xymon-client && ! rpm -q xymon"
+
+check "the dispatcher picks the client role again" \
+	"test ! -x /usr/lib/xymon/server/bin/xymond &&
+	 test -x /usr/lib/xymon/client/bin/xymonlaunch-run"
+
+check "the shared unit survived and the drop-ins swapped back" \
+	"test -f /usr/lib/systemd/system/xymonlaunch.service &&
+	 test -f /usr/lib/systemd/system/xymonlaunch.service.d/client.conf &&
+	 ! test -e /usr/lib/systemd/system/xymonlaunch.service.d/server.conf"
+
+check "client-local survived the demotion (its rich dependency held)" \
+	"rpm -q xymon-client-local"
 
 exit "$fail"

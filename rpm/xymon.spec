@@ -60,6 +60,11 @@ Source0:        xymon-%{version}.tar.gz
 #   supervise):
 Source1:        xymonlaunch.service
 Source3:        xymonlaunch-run
+#   per-role drop-ins for the shared unit: the buildroot can hold only
+#   one file per path, so what differs between the roles ships as a
+#   drop-in owned by the role's package:
+Source14:       xymonlaunch-server.conf
+Source15:       xymonlaunch-client.conf
 #   byte-identical in Terabithia and upstream devel:
 Source4:        xymonlaunch.service.preset
 Source5:        xymon-tmpfiles.conf
@@ -79,6 +84,30 @@ Source12:       bb.xml
 #   for any package owning files with a non-root owner, and only a
 #   sysusers.d snippet generates the matching Provides.
 Source13:       xymon.sysusers
+
+# The client tree, shipped by BOTH packages (they conflict, so no host
+# ever installs it twice). Defined once and expanded into both %%files
+# sections so they cannot drift: an entry added here gets identical
+# config/attr handling in either role.
+%global client_tree_filelist %{expand:
+%{xymonhome}/client
+%config(noreplace) %{xymonhome}/client/etc/xymonclient.cfg
+%config(noreplace) %{xymonhome}/client/etc/clientlaunch.cfg
+%config(noreplace) %{xymonhome}/client/etc/localclient.cfg
+%attr(0750,root,xymon) %{xymonhome}/client/bin/logfetch
+%attr(0750,root,xymon) %{xymonhome}/client/bin/clientupdate
+%config(noreplace) %{_sysconfdir}/logrotate.d/xymon
+%{?_sysusersdir:%{_sysusersdir}/xymon.conf}
+}
+
+# Account creation, expanded into both packages' %%pre: with no
+# dependency between the packages, whichever installs first must create
+# the xymon user itself. One definition so the two scriptlets cannot
+# drift. (EL8 predates the sysusers rpm macros, hence the fallback.)
+%global create_xymon_account %{expand:%{?sysusers_create_compat:%sysusers_create_compat %{SOURCE13}}%{!?sysusers_create_compat:
+getent group xymon >/dev/null || groupadd -r xymon
+getent passwd xymon >/dev/null || useradd -r -g xymon -d %{xymonhome} -s /sbin/nologin -c "Xymon monitor" xymon}
+exit 0}
 
 BuildRequires:  gcc
 BuildRequires:  make
@@ -104,9 +133,8 @@ Requires(pre):  shadow-utils
 # always produces the client tree too (the server monitors itself
 # through it), so this package ships that tree itself rather than
 # depending on xymon-client -- and the standalone client package becomes
-# mutually exclusive with it. Role changes are one transaction:
-#   dnf swap xymon-client xymon      (promotion)
-#   dnf swap xymon xymon-client      (demotion)
+# mutually exclusive with it. Role changes are one dnf swap; the
+# runnable recipe lives in README.md only.
 Conflicts:      xymon-client
 # The embedded client's collectors shell out to these, same as the
 # standalone client's (see the client package's net-tools comment).
@@ -294,6 +322,8 @@ done
 # role by which tree is installed.
 install -Dpm 0644 %{SOURCE1}  %{buildroot}%{_unitdir}/xymonlaunch.service
 install -Dpm 0755 %{SOURCE3}  %{buildroot}%{xymonhome}/client/bin/xymonlaunch-run
+install -Dpm 0644 %{SOURCE14} %{buildroot}%{_unitdir}/xymonlaunch.service.d/server.conf
+install -Dpm 0644 %{SOURCE15} %{buildroot}%{_unitdir}/xymonlaunch.service.d/client.conf
 install -Dpm 0644 %{SOURCE4}  %{buildroot}%{_presetdir}/50-xymonlaunch.preset
 install -Dpm 0644 %{SOURCE5}  %{buildroot}%{_tmpfilesdir}/xymon.conf
 install -Dpm 0644 %{SOURCE6}  %{buildroot}%{_sysconfdir}/logrotate.d/xymon
@@ -350,30 +380,11 @@ rm -rf %{buildroot}%{xymonhome}/client/tmp %{buildroot}%{xymonhome}/client/logs
 ln -sf %{_tmppath}            %{buildroot}%{xymonhome}/client/tmp
 ln -sf %{_localstatedir}/log/xymon %{buildroot}%{xymonhome}/client/logs
 
-# Both packages carry the same account creation: with no dependency
-# between them, whichever is installed must provide the user itself.
 %pre
-%if %{defined sysusers_create_compat}
-%sysusers_create_compat %{SOURCE13}
-%else
-# EL8 predates the sysusers rpm macros; create the account by hand there.
-getent group xymon >/dev/null || groupadd -r xymon
-getent passwd xymon >/dev/null || \
-    useradd -r -g xymon -d %{xymonhome} -s /sbin/nologin \
-            -c "Xymon monitor" xymon
-%endif
-exit 0
+%create_xymon_account
 
 %pre client
-%if %{defined sysusers_create_compat}
-%sysusers_create_compat %{SOURCE13}
-%else
-getent group xymon >/dev/null || groupadd -r xymon
-getent passwd xymon >/dev/null || \
-    useradd -r -g xymon -d %{xymonhome} -s /sbin/nologin \
-            -c "Xymon monitor" xymon
-%endif
-exit 0
+%create_xymon_account
 
 %post
 %systemd_post xymonlaunch.service
@@ -409,13 +420,15 @@ done
 %endif
 
 %preun
-# What %%systemd_preun would do, but swap-aware: in a demotion
-# (dnf swap xymon xymon-client) the standalone client is already
-# installed when this runs -- installs precede erases in a transaction
-# -- and the shared unit must survive. The client's sysconfig file is
-# the marker only that package ships.
-if [ $1 -eq 0 ] && [ ! -e %{_sysconfdir}/sysconfig/xymon-client ]; then
-    systemctl --no-reload disable --now xymonlaunch.service >/dev/null 2>&1 || :
+# Swap-aware: in a demotion (dnf swap xymon xymon-client) the standalone
+# client is already installed when this runs -- installs precede erases
+# in a transaction -- and the shared unit must survive. The other role's
+# packaged drop-in is the marker: it lives under /usr/lib (admin
+# drop-ins go to /etc/systemd), so unlike a config-file probe it cannot
+# be faked by configuration, and unlike `rpm -q` it cannot deadlock the
+# rpmdb from inside a scriptlet.
+if [ ! -e %{_unitdir}/xymonlaunch.service.d/client.conf ]; then
+%systemd_preun xymonlaunch.service
 fi
 
 %postun
@@ -443,6 +456,8 @@ fi
 %{_bindir}/xymoncmd
 %{_sbindir}/xymonlaunch
 %{_unitdir}/xymonlaunch.service
+%dir %{_unitdir}/xymonlaunch.service.d
+%{_unitdir}/xymonlaunch.service.d/server.conf
 %{_presetdir}/50-xymonlaunch.preset
 %{_tmpfilesdir}/xymon.conf
 %{_sysctldir}/70-xymon.conf
@@ -470,18 +485,9 @@ fi
 %{xymonhome}/cgi-secure
 # The embedded client: the same tree the build produces for the
 # standalone package, shipped here because the server runs it on itself
-# through tasks.cfg. The entries mirror %%files client -- the packages
-# conflict, so no host ever installs both copies.
-%{xymonhome}/client
-%config(noreplace) %{xymonhome}/client/etc/xymonclient.cfg
-%config(noreplace) %{xymonhome}/client/etc/clientlaunch.cfg
-%config(noreplace) %{xymonhome}/client/etc/localclient.cfg
-%attr(0750,root,xymon) %{xymonhome}/client/bin/logfetch
-%attr(0750,root,xymon) %{xymonhome}/client/bin/clientupdate
-%config(noreplace) %{_sysconfdir}/logrotate.d/xymon
-%if %{defined _sysusersdir}
-%{_sysusersdir}/xymon.conf
-%endif
+# through tasks.cfg. One shared definition with %%files client (see the
+# %%global at the top), so the two roles cannot drift.
+%client_tree_filelist
 %attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
 %attr(-,xymon,xymon) %{_sharedstatedir}/xymon
 %attr(0775,xymon,apache) %dir %{_sharedstatedir}/xymon/www/rep
@@ -500,12 +506,15 @@ fi
 %post client
 %systemd_post xymonlaunch.service
 # Upgrades from the old layout shipped xymon-client.service; that unit
-# is gone, so clear leftover enablement and move a running instance
-# over to the shared unit name.
+# is gone, so carry its enablement and any running instance over to the
+# shared name before clearing it. is-enabled and is-active are checked
+# separately: an enabled-but-stopped client must stay enabled.
 if [ $1 -ge 2 ]; then
+    if systemctl is-enabled --quiet xymon-client.service 2>/dev/null; then
+        systemctl --no-reload enable xymonlaunch.service >/dev/null 2>&1 || :
+    fi
     if systemctl is-active --quiet xymon-client.service 2>/dev/null; then
         systemctl stop xymon-client.service >/dev/null 2>&1 || :
-        systemctl --no-reload enable xymonlaunch.service >/dev/null 2>&1 || :
         systemctl start xymonlaunch.service >/dev/null 2>&1 || :
     fi
     systemctl --no-reload disable xymon-client.service >/dev/null 2>&1 || :
@@ -519,10 +528,10 @@ exit 0
 
 %preun client
 # Mirror of the server's guard: in a promotion (dnf swap xymon-client
-# xymon) the server tree is already on disk when this runs, and the
-# shared unit must survive the client package's erase.
-if [ $1 -eq 0 ] && [ ! -x %{xymonhome}/server/bin/xymond ]; then
-    systemctl --no-reload disable --now xymonlaunch.service >/dev/null 2>&1 || :
+# xymon) the server package is already installed when this runs, and
+# the shared unit must survive the client package's erase.
+if [ ! -e %{_unitdir}/xymonlaunch.service.d/server.conf ]; then
+%systemd_preun xymonlaunch.service
 fi
 
 %postun client
@@ -539,27 +548,18 @@ exit 0
 %files client
 %license COPYING
 %doc README.CLIENT
-%if %{defined _sysusersdir}
-%{_sysusersdir}/xymon.conf
-%endif
-# The same unit and preset the server package ships: one service name,
-# xymonlaunch.service, on every host; xymonlaunch-run picks the role.
+# The same unit the server package ships -- one service name,
+# xymonlaunch.service, on every host; xymonlaunch-run picks the role --
+# plus the client role's drop-in. Deliberately NO preset: a fresh
+# client must not start unconfigured against the baked-in 127.0.0.1,
+# so enablement stays an explicit admin step.
 %{_unitdir}/xymonlaunch.service
-%{_presetdir}/50-xymonlaunch.preset
-# Both roles' logs land in /var/log/xymon (the client tree's logs/ is a
-# symlink there), so each package carries the logrotate config.
-%config(noreplace) %{_sysconfdir}/logrotate.d/xymon
+%dir %{_unitdir}/xymonlaunch.service.d
+%{_unitdir}/xymonlaunch.service.d/client.conf
 %config(noreplace) %{_sysconfdir}/sysconfig/xymon-client
 %dir %{xymonhome}
-%{xymonhome}/client
-# The editable client configs; without noreplace an upgrade silently
-# resets XYMSRV to the baked-in 127.0.0.1.
-%config(noreplace) %{xymonhome}/client/etc/xymonclient.cfg
-%config(noreplace) %{xymonhome}/client/etc/clientlaunch.cfg
-%config(noreplace) %{xymonhome}/client/etc/localclient.cfg
+%client_tree_filelist
 %attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
-%attr(0750,root,xymon) %{xymonhome}/client/bin/logfetch
-%attr(0750,root,xymon) %{xymonhome}/client/bin/clientupdate
 %if %{with selinux}
 %{_datadir}/selinux/*/xymon-client.pp
 %endif

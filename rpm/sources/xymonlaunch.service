@@ -4,12 +4,18 @@
 # picks the server tree when it is installed and the client tree
 # otherwise, so "systemctl status xymonlaunch" means the same thing on
 # every host and no second unit ever needs guarding against this one.
+#
+# The base unit carries the CLIENT role's semantics; each package ships
+# a drop-in under xymonlaunch.service.d for what its role changes
+# (server.conf: protect xymond's children on stop; client.conf: wait
+# for the network). Drop-ins, not two unit files, because both packages
+# are built from one rpm buildroot, which can hold only one file per
+# path.
 
 [Unit]
 Description=Xymon systems and network monitor
 Documentation=man:xymon(7) man:xymonlaunch(8) man:xymon(1)
-After=network-online.target
-Wants=network-online.target
+After=network.target
 
 [Service]
 Type=simple
@@ -23,14 +29,11 @@ ExecStart=/usr/lib/xymon/client/bin/xymonlaunch-run $XYMONLAUNCHOPTS
 # xymonlaunch propagates -HUP to its tasks as needed
 ExecReload=/bin/kill -HUP $MAINPID
 
-# Kill xymonlaunch only: on a server its children may be writing
-# checkpoints and flushing caches, and must not be killed. On a client
-# this leaves at most a report script and its sampling vmstat behind,
-# which exit on their own; the cost is an occasional "unit process
-# remains running" log line at restart.
-KillMode=process
-SendSIGKILL=no
-# Give an extra 6s beyond xymonlaunch to let things disconnect
+# The default cgroup kill is right for the client: its children are only
+# a report script and its sampling vmstat, and a wedged xymonlaunch that
+# survived stop would run alongside its replacement and report duplicate
+# data. The server package's drop-in overrides this to protect xymond's
+# children instead.
 RestartSec=6
 Restart=on-failure
 

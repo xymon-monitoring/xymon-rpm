@@ -48,9 +48,11 @@ host fails on the package conflict — by design. Changing a host's role
 is one transaction:
 
 ```sh
-dnf swap xymon-client xymon   # promote a client to the server
-dnf swap xymon xymon-client   # demote a server to a client
-systemctl start xymonlaunch   # rpm never starts services on its own
+dnf swap xymon-client xymon     # promote a client to the server
+dnf swap xymon xymon-client     # demote a server to a client
+systemctl restart xymonlaunch   # the swap deliberately leaves the old
+                                # role running; restart switches over
+                                # (and plain start would no-op on it)
 ```
 
 Packages and repository metadata are signed; verify the key against this

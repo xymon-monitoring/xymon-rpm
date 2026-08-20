@@ -88,19 +88,20 @@ cost, with the sharp edges filed off:
 - **One unit name everywhere.** Both packages ship the same
   `xymonlaunch.service`; its `ExecStart`, `xymonlaunch-run`, picks the
   server tree when installed and otherwise runs the client in the
-  foreground. `systemctl status xymonlaunch` means the same thing on
-  every host, and the double-reporting hazard is unrepresentable — no
+  foreground. What genuinely differs between the roles rides in a
+  per-role drop-in under `xymonlaunch.service.d/` (server: protect
+  xymond's children on stop; client: wait for the network at boot),
+  each shipped only by its role's package. `systemctl status
+  xymonlaunch` means the same thing on every host, and the
+  double-reporting hazard is unrepresentable — no
   `Conflicts=`/`ExecCondition` guard exists because nothing needs
   guarding.
 - **Role changes are one transaction**, and the scriptlets are
-  swap-aware (each package skips disabling the shared unit when the
-  other role's files are already on disk):
-
-  ```sh
-  dnf swap xymon-client xymon   # promotion
-  dnf swap xymon xymon-client   # demotion
-  systemctl start xymonlaunch   # rpm never starts services
-  ```
+  swap-aware: each package skips disabling the shared unit when the
+  other role's packaged drop-in is already on disk (installs precede
+  erases), so enablement survives the swap. The old role's process is
+  deliberately left running until the `systemctl restart` — see the
+  README's install section for the runnable recipe.
 
 The irreducible costs, accepted deliberately: the client tree exists in
 two packages *in the repository* (never twice on a host — they
