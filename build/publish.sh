@@ -106,32 +106,43 @@ done
 # build produces several packages, and dropping half of one would leave a
 # repository that resolves to a missing dependency.
 keep=${XYMON_SNAPSHOT_KEEP:-5}
+
+# The build id is the whole Release field minus the dist tag: the
+# upstream half 0.<date>git<sha>, plus the packaging half
+# .<datetime>p<sha> when the build has one. Counting the packaging half
+# too is what bounds the tree -- while upstream sits still, packaging
+# changes would otherwise pile up inside one upstream id forever, and no
+# retention setting would ever remove them.
+#
+# Fixed-width datetimes lead both halves, so a plain reverse sort is
+# newest-first; an id with no packaging half sorts below every rebuild
+# of the same commit, which is the right order.
+buildid() {
+	printf '%s\n' "${1##*/}" \
+	| sed -nE 's/.*-(0\.[0-9]{8}git[0-9a-f]+(\.[0-9]{12}p[0-9a-f]+)?)\..*/\1/p'
+}
+
 if [ -d "$repodir/xymon-snapshot" ]; then
 	echo "== pruning snapshots (keeping the newest $keep builds per directory) =="
 	find "$repodir/xymon-snapshot" -name '*.rpm' -printf '%h\n' | sort -u | while read -r dir; do
-		# Build id is the upstream half of the Release field,
-		# 0.<YYYYMMDD>git<sha>. Fixed-width date first means a plain
-		# reverse sort is newest-first. The packaging suffix (see
-		# build.yml) is deliberately not part of the id: rebuilds of one
-		# upstream commit are one build for retention purposes, kept and
-		# pruned as a unit.
-		# -n/p: a filename that does not match the pattern vanishes
-		# instead of passing through whole, where it would later feed a
-		# glob that cannot match and abort the script under pipefail.
-		all=$(ls "$dir"/*.rpm 2>/dev/null \
-			| sed -nE 's/.*-(0\.[0-9]{8}git[0-9a-f]+)\..*/\1/p' \
-			| sort -ru)
+		all=$(for f in "$dir"/*.rpm; do
+			[ -e "$f" ] || continue
+			buildid "$f"
+		done | sort -ru)
 		total=$(echo "$all" | grep -c . || :)
 		[ "$total" -le "$keep" ] && continue
-		# Read line by line rather than iterating an unquoted variable:
-		# word-splitting behaviour differs between shells, and getting it
-		# wrong here deletes the wrong files.
+		# Compare ids rather than globbing them: an id with no packaging
+		# half is a prefix of every rebuild of the same commit, so
+		# rm *"$b"* would take newer builds down with the old one.
 		echo "$all" | tail -n +$((keep + 1)) | while read -r b; do
 			[ -n "$b" ] || continue
-			# find, not ls: ls exits non-zero on no match, and pipefail
-			# would abort the publish mid-prune with stale metadata.
-			n=$(find "$dir" -maxdepth 1 -name "*$b*" | wc -l | tr -d ' ')
-			rm -f "$dir"/*"$b"*
+			n=0
+			for f in "$dir"/*.rpm; do
+				[ -e "$f" ] || continue
+				[ "$(buildid "$f")" = "$b" ] || continue
+				rm -f "$f"
+				n=$((n + 1))
+			done
 			# Say what was removed rather than pruning silently: a
 			# repository that quietly loses builds looks like one that
 			# never had them.

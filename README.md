@@ -151,10 +151,14 @@ goes away.
 
 The stable channel keeps everything forever — people pin versions and
 roll back. The snapshot channel keeps the newest **5 builds** per
-directory (`XYMON_SNAPSHOT_KEEP` overrides, and the **build** workflow takes a `snapshot_keep` input for trimming the published tree by hand) so the tree stays within
-GitHub Pages limits. Pruning removes whole builds, never single packages
-— rebuilds of one upstream commit count as one build — and every removal
-is named in the publish log.
+directory so the tree stays within GitHub Pages limits. The **build**
+workflow can override that for one run: `snapshot_keep` sets a different
+count, `snapshot_reset` republishes the channel from that run alone. Pruning removes whole builds, never single packages
+— every package of a build goes together, or the repository would resolve
+to a missing dependency — and each removal is named in the publish log. A
+build is one *published run*, packaging rebuilds included: while upstream
+sits still, packaging changes would otherwise pile up inside one upstream
+commit forever, which no retention setting could ever trim.
 
 ## Where the files in `rpm/sources/` come from
 
