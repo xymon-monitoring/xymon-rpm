@@ -56,6 +56,21 @@ echo "== signing =="
 # %_gpg_name is set by the caller via ~/.rpmmacros; rpm --addsign is
 # idempotent in the sense that re-signing an already-signed package simply
 # replaces the signature.
+# A reset empties the snapshot channel before this build's packages are
+# folded in, so the tree ends up holding exactly what was just built.
+# Pruning cannot achieve that: retention counts upstream build ids and
+# keeps every packaging rebuild of one commit as a unit, so a long run
+# of packaging-only changes accumulates within a single "build".
+#
+# Only ever the snapshot channel: the stable one is what people pin to,
+# and removing a published release breaks them.
+if [ "${XYMON_SNAPSHOT_RESET:-}" = "1" ]; then
+	echo "== resetting the snapshot channel =="
+	n=$(find "$repodir/xymon-snapshot" -name '*.rpm' 2>/dev/null | wc -l | tr -d ' ')
+	rm -rf "${repodir:?}/xymon-snapshot"
+	echo "  - dropped $n packages; the tree is rebuilt from this run alone"
+fi
+
 find "$artifacts" -name '*.rpm' -print0 | xargs -0 -r rpm --addsign
 
 echo "== filing packages =="
