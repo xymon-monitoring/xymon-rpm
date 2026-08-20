@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# Role dispatcher for xymonlaunch.service, written for this packaging.
+# The xymon (server) and xymon-client packages conflict, so exactly one
+# is installed; the server tree's presence decides which role runs.
+#
+# Server role: what the unit's ExecStart did when it was server-only --
+# xymoncmd loads xymonserver.cfg and execs xymonlaunch on the server's
+# tasks.cfg, which includes the client's duties.
+#
+# Client role: foreground equivalent of upstream client/runclient.sh
+# "start". runclient.sh computes this environment, forks xymonlaunch
+# and exits; a Type=simple unit needs the same environment with
+# xymonlaunch kept in the foreground. CLIENTHOSTNAME and CLIENTOS
+# arrive from /etc/sysconfig/xymon-client via the unit, when set
+# there. Everything else the client tasks need comes from
+# clientlaunch.cfg's ENVFILE (xymonclient.cfg), exactly as with
+# runclient.sh.
+
+XYMONSERVERHOME=/usr/lib/xymon/server
+XYMONCLIENTHOME=/usr/lib/xymon/client
+
+if [ -x "$XYMONSERVERHOME/bin/xymond" ]; then
+	exec "$XYMONSERVERHOME/bin/xymoncmd" \
+	     "$XYMONSERVERHOME/bin/xymonlaunch" --no-daemon "$@"
+fi
+
+MACHINEDOTS="${CLIENTHOSTNAME:-$(uname -n)}"
+SERVEROSTYPE="${CLIENTOS:-$(uname -s | tr '[ABCDEFGHIJKLMNOPQRSTUVWXYZ/]' '[abcdefghijklmnopqrstuvwxyz_]')}"
+MACHINE="$(echo "$MACHINEDOTS" | sed -e 's/\./,/g')"
+XYMONOSSCRIPT="xymonclient-$SERVEROSTYPE.sh"
+export XYMONCLIENTHOME MACHINEDOTS MACHINE SERVEROSTYPE XYMONOSSCRIPT
+
+exec "$XYMONCLIENTHOME/bin/xymonlaunch" --no-daemon \
+     --config="$XYMONCLIENTHOME/etc/clientlaunch.cfg" "$@"

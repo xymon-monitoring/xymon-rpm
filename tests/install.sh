@@ -2,12 +2,16 @@
 #
 # Install the freshly built packages and check the things a successful
 # rpmbuild cannot tell you: that the dependencies resolve, that the
-# scriptlets run, and that the unit file points at binaries that exist.
+# scriptlets run, that the conflict actually excludes, and that the
+# promotion path works.
 #
 # Run from the repository root with the built packages in ./out.
 # Containers have no running init, so this deliberately does not try to
 # start the service -- systemd-analyze verify is the closest check that
 # works without PID 1.
+#
+# The walk mirrors a host's life: client-only first, then the refusal
+# to layer the server on top, then promotion to a server.
 
 set -eu
 
@@ -27,11 +31,12 @@ check() {
 }
 
 # A client host installs xymon-client and nothing else, so prove that
-# stands on its own before the rest is layered on top -- installed
-# together, the server package masks everything the client is missing.
+# stands on its own before anything else.
 echo "== installing the client alone =="
 client_rpm=$(find "$rpmdir" -name 'xymon-client-[0-9]*.rpm' ! -name '*debuginfo*')
 [ -n "$client_rpm" ] || { echo "no xymon-client package in $rpmdir"; exit 1; }
+server_rpm=$(find "$rpmdir" -name 'xymon-[0-9]*.rpm' ! -name '*debuginfo*' ! -name '*debugsource*' ! -name '*.src.rpm')
+[ -n "$server_rpm" ] || { echo "no xymon package in $rpmdir"; exit 1; }
 dnf -y install "$client_rpm"
 
 echo "== checking the client-only install =="
@@ -41,10 +46,13 @@ check "the client installed without the server" \
 check "the xymon user exists on a client-only host" \
 	"id xymon"
 
-check "the client unit and its launcher resolve" \
-	"test -f /usr/lib/systemd/system/xymon-client.service &&
-	 test -x /usr/lib/xymon/client/bin/xymonclient-run &&
+check "the shared unit and the role dispatcher resolve" \
+	"test -f /usr/lib/systemd/system/xymonlaunch.service &&
+	 test -x /usr/lib/xymon/client/bin/xymonlaunch-run &&
 	 test -x /usr/lib/xymon/client/bin/xymonlaunch"
+
+check "the dispatcher will pick the client role (no server tree)" \
+	"test ! -x /usr/lib/xymon/server/bin/xymond"
 
 # Without net-tools the ifstat/ports/route client sections arrive empty,
 # and nothing errors -- the data is just missing on the server.
@@ -55,28 +63,54 @@ check "net-tools arrived with the client" \
 check "the client configs are marked config" \
 	"rpm -qc xymon-client | grep -q client/etc/xymonclient.cfg"
 
-check "systemd accepts the client unit" \
-	"systemd-analyze verify --man=no /usr/lib/systemd/system/xymon-client.service"
+check "systemd accepts the shared unit" \
+	"systemd-analyze verify --man=no /usr/lib/systemd/system/xymonlaunch.service"
 
 check "log rotation ships with the client" \
 	"test -f /etc/logrotate.d/xymon"
 
-echo "== installing everything =="
-# Skip debuginfo/debugsource: they add nothing here and drag in sources.
+# The design's core promise: a host is one role or the other, and dnf
+# says so instead of silently layering the server on top.
+echo "== the server must refuse to install over the client =="
+check "dnf install xymon fails on the conflict" \
+	"! dnf -y install $server_rpm"
+
+# Promotion is one transaction: the server (which embeds the client
+# tree) replaces the standalone client. --allowerasing is the
+# local-file equivalent of 'dnf swap xymon-client xymon'.
+echo "== promoting the host to a server =="
+dnf -y install --allowerasing "$server_rpm"
+
+check "the swap left the server and removed the client package" \
+	"rpm -q xymon && ! rpm -q xymon-client"
+
+check "the client tree survived the swap (now embedded)" \
+	"test -x /usr/lib/xymon/client/bin/xymonlaunch &&
+	 test -x /usr/lib/xymon/client/bin/xymonlaunch-run &&
+	 test -f /usr/lib/xymon/client/etc/clientlaunch.cfg"
+
+check "the dispatcher now picks the server role" \
+	"test -x /usr/lib/xymon/server/bin/xymond"
+
+check "the embedded client configs are still marked config" \
+	"rpm -qc xymon | grep -q client/etc/xymonclient.cfg"
+
+echo "== installing the remaining subpackages =="
 set -- $(find "$rpmdir" -name '*.rpm' \
+	! -name 'xymon-client-[0-9]*' \
 	! -name '*debuginfo*' ! -name '*debugsource*' ! -name '*.src.rpm')
 [ "$#" -gt 0 ] || { echo "no packages found in $rpmdir"; exit 1; }
 dnf -y install "$@"
 
-echo "== checking =="
-check "all packages are installed" \
-	"rpm -q xymon xymon-client xymon-client-local xymon-devel xymon-tools"
+echo "== checking the server host =="
+check "all server-side packages are installed" \
+	"rpm -q xymon xymon-client-local xymon-devel xymon-tools"
 
 # The devel package is only useful if the relative includes still resolve,
 # so compile against it rather than merely checking the files exist.
 check "a module can be compiled against xymon-devel" \
 	"printf '#include \"libxymon.h\"\\nint main(void){return 0;}\\n' > /tmp/t.c &&
-	 cc -I/usr/include/xymon/include -c /tmp/t.c -o /tmp/t.o" 
+	 cc -I/usr/include/xymon/include -c /tmp/t.c -o /tmp/t.o"
 
 # %pre creates the account; if shadow-utils were missing from Requires(pre)
 # the scriptlet would have failed silently on a minimal image.
@@ -95,8 +129,8 @@ check "unit file is installed" \
 check "tmpfiles config is installed" \
 	"test -f /usr/lib/tmpfiles.d/xymon.conf"
 
-# The unit invokes these by absolute path, so a wrong symlink target in
-# %install shows up here rather than at first boot on a user's machine.
+# The dispatcher invokes these by absolute path, so a wrong symlink
+# target in %install shows up here rather than at first boot.
 check "/usr/bin/xymoncmd resolves" \
 	"test -x /usr/bin/xymoncmd"
 check "/usr/sbin/xymonlaunch resolves" \
@@ -119,8 +153,6 @@ check "the web auth files exist and are apache-owned" \
 check "critical.cfg is writable by the web CGIs" \
 	"stat -c '%U' /etc/xymon/critical.cfg | grep -qx apache"
 
-# Ask the package rather than probing a path: the section, the name and the
-# compression suffix all vary (EL uses gzip, Fedora zstd).
 check "xymond_client ships for local analysis" \
 	"test -x /usr/lib/xymon/server/bin/xymond_client"
 
@@ -137,7 +169,7 @@ check "manual pages are packaged" \
 # something not in the package. --man=no because verify otherwise shells
 # out to man(1) for every Documentation= entry, which a minimal container
 # does not have installed -- that is an image property, not a unit defect.
-check "systemd accepts the unit" \
+check "systemd accepts the unit on the server host" \
 	"systemd-analyze verify --man=no /usr/lib/systemd/system/xymonlaunch.service"
 
 echo "== hostname now configured as =="

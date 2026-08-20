@@ -52,13 +52,14 @@ URL:            https://github.com/xymon-monitoring/xymon
 Source0:        xymon-%{version}.tar.gz
 
 # Runtime integration files. Provenance is deliberate -- see README.md.
-#   from Terabithia's xymon-4.3.30 SRPM (correct for a 4.3.x base):
+#   written here (started from Terabithia's xymon-4.3.30 unit): ONE unit
+#   for both roles, shipped identically by the server and the client
+#   package. xymonlaunch-run picks the role: the server tree when it is
+#   installed, otherwise the client tree in the foreground (upstream's
+#   runclient.sh backgrounds xymonlaunch, which systemd cannot
+#   supervise):
 Source1:        xymonlaunch.service
-#   written here: upstream has no client unit -- runclient.sh backgrounds
-#   xymonlaunch, which systemd cannot supervise, so xymonclient-run is
-#   its foreground equivalent:
-Source2:        xymon-client.service
-Source3:        xymonclient-run
+Source3:        xymonlaunch-run
 #   byte-identical in Terabithia and upstream devel:
 Source4:        xymonlaunch.service.preset
 Source5:        xymon-tmpfiles.conf
@@ -98,7 +99,20 @@ Requires(postun): policycoreutils
 %endif
 
 Requires(pre):  shadow-utils
-Requires:       xymon-client = %{version}-%{release}
+%{?sysusers_requires_compat}
+# A host is either a server or a client, never both. The --server build
+# always produces the client tree too (the server monitors itself
+# through it), so this package ships that tree itself rather than
+# depending on xymon-client -- and the standalone client package becomes
+# mutually exclusive with it. Role changes are one transaction:
+#   dnf swap xymon-client xymon      (promotion)
+#   dnf swap xymon xymon-client      (demotion)
+Conflicts:      xymon-client
+# The embedded client's collectors shell out to these, same as the
+# standalone client's (see the client package's net-tools comment).
+Requires:       net-tools
+# This package ships /etc/logrotate.d/xymon; nothing rotates it otherwise.
+Recommends:     logrotate
 # Owns the apache group that www/rep and www/snap are chgrp'd to, and the
 # /etc/httpd/conf.d directory the web config drops into. rpm >= 4.19
 # generates a group(apache) requirement from the %%attr on its own, but
@@ -118,13 +132,15 @@ Xymon is a system for monitoring servers, networks and applications. It
 polls network services, collects data reported by clients, raises alerts,
 and renders the results as a web front-end backed by RRD graphs.
 
-This package contains the server.
+This package contains the server, including the client component the
+server runs on itself; it conflicts with xymon-client, which is the
+same client packaged alone for every other host.
 
 %package client
 Summary:        Client for the Xymon network monitor
 Requires(pre):  shadow-utils
-# The client owns the account definition; the server package pulls it in
-# through its Requires above, so the user exists before either unpacks.
+# Both packages own the account definition: with the dependency between
+# them gone, each must be able to create the xymon user on its own.
 %{?sysusers_requires_compat}
 %{?systemd_requires}
 # xymonclient-linux.sh hardcodes ifconfig, netstat and route with no
@@ -139,9 +155,15 @@ Client-side data collection for Xymon. It gathers CPU, memory, filesystem,
 process and log data from the local system and reports it to a Xymon
 server, which evaluates the data against its configured thresholds.
 
+Install it on hosts that are not the Xymon server. The server package
+embeds this same client and conflicts with this package: a host is one
+role or the other, and both run it as xymonlaunch.service.
+
 %package client-local
 Summary:        Local threshold analysis for the Xymon client
-Requires:       xymon-client = %{version}-%{release}
+# Either role satisfies this: the server ships xymond_client itself and
+# the standalone client needs this package to get it.
+Requires:       (xymon = %{version}-%{release} or xymon-client = %{version}-%{release})
 
 %description client-local
 Installs xymond_client on a client machine, so thresholds can be evaluated
@@ -267,12 +289,11 @@ for v in %{selinux_variants}; do
 done
 %endif
 
-# systemd: on a server, one unit drives xymonlaunch, which supervises
-# everything else -- the client's tasks included. A client-only host uses
-# xymon-client.service instead; the units conflict by design.
+# systemd: ONE unit for both roles, shipped by both packages (they
+# conflict, so it is never on a host twice). xymonlaunch-run picks the
+# role by which tree is installed.
 install -Dpm 0644 %{SOURCE1}  %{buildroot}%{_unitdir}/xymonlaunch.service
-install -Dpm 0644 %{SOURCE2}  %{buildroot}%{_unitdir}/xymon-client.service
-install -Dpm 0755 %{SOURCE3}  %{buildroot}%{xymonhome}/client/bin/xymonclient-run
+install -Dpm 0755 %{SOURCE3}  %{buildroot}%{xymonhome}/client/bin/xymonlaunch-run
 install -Dpm 0644 %{SOURCE4}  %{buildroot}%{_presetdir}/50-xymonlaunch.preset
 install -Dpm 0644 %{SOURCE5}  %{buildroot}%{_tmpfilesdir}/xymon.conf
 install -Dpm 0644 %{SOURCE6}  %{buildroot}%{_sysconfdir}/logrotate.d/xymon
@@ -329,11 +350,24 @@ rm -rf %{buildroot}%{xymonhome}/client/tmp %{buildroot}%{xymonhome}/client/logs
 ln -sf %{_tmppath}            %{buildroot}%{xymonhome}/client/tmp
 ln -sf %{_localstatedir}/log/xymon %{buildroot}%{xymonhome}/client/logs
 
-%pre client
+# Both packages carry the same account creation: with no dependency
+# between them, whichever is installed must provide the user itself.
+%pre
 %if %{defined sysusers_create_compat}
 %sysusers_create_compat %{SOURCE13}
 %else
 # EL8 predates the sysusers rpm macros; create the account by hand there.
+getent group xymon >/dev/null || groupadd -r xymon
+getent passwd xymon >/dev/null || \
+    useradd -r -g xymon -d %{xymonhome} -s /sbin/nologin \
+            -c "Xymon monitor" xymon
+%endif
+exit 0
+
+%pre client
+%if %{defined sysusers_create_compat}
+%sysusers_create_compat %{SOURCE13}
+%else
 getent group xymon >/dev/null || groupadd -r xymon
 getent passwd xymon >/dev/null || \
     useradd -r -g xymon -d %{xymonhome} -s /sbin/nologin \
@@ -375,7 +409,14 @@ done
 %endif
 
 %preun
-%systemd_preun xymonlaunch.service
+# What %%systemd_preun would do, but swap-aware: in a demotion
+# (dnf swap xymon xymon-client) the standalone client is already
+# installed when this runs -- installs precede erases in a transaction
+# -- and the shared unit must survive. The client's sysconfig file is
+# the marker only that package ships.
+if [ $1 -eq 0 ] && [ ! -e %{_sysconfdir}/sysconfig/xymon-client ]; then
+    systemctl --no-reload disable --now xymonlaunch.service >/dev/null 2>&1 || :
+fi
 
 %postun
 %systemd_postun_with_restart xymonlaunch.service
@@ -427,6 +468,20 @@ fi
 %exclude %{xymonhome}/server/bin/loadhosts
 %{xymonhome}/cgi-bin
 %{xymonhome}/cgi-secure
+# The embedded client: the same tree the build produces for the
+# standalone package, shipped here because the server runs it on itself
+# through tasks.cfg. The entries mirror %%files client -- the packages
+# conflict, so no host ever installs both copies.
+%{xymonhome}/client
+%config(noreplace) %{xymonhome}/client/etc/xymonclient.cfg
+%config(noreplace) %{xymonhome}/client/etc/clientlaunch.cfg
+%config(noreplace) %{xymonhome}/client/etc/localclient.cfg
+%attr(0750,root,xymon) %{xymonhome}/client/bin/logfetch
+%attr(0750,root,xymon) %{xymonhome}/client/bin/clientupdate
+%config(noreplace) %{_sysconfdir}/logrotate.d/xymon
+%if %{defined _sysusersdir}
+%{_sysusersdir}/xymon.conf
+%endif
 %attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
 %attr(-,xymon,xymon) %{_sharedstatedir}/xymon
 %attr(0775,xymon,apache) %dir %{_sharedstatedir}/xymon/www/rep
@@ -443,7 +498,18 @@ fi
 %doc bb.xml
 
 %post client
-%systemd_post xymon-client.service
+%systemd_post xymonlaunch.service
+# Upgrades from the old layout shipped xymon-client.service; that unit
+# is gone, so clear leftover enablement and move a running instance
+# over to the shared unit name.
+if [ $1 -ge 2 ]; then
+    if systemctl is-active --quiet xymon-client.service 2>/dev/null; then
+        systemctl stop xymon-client.service >/dev/null 2>&1 || :
+        systemctl --no-reload enable xymonlaunch.service >/dev/null 2>&1 || :
+        systemctl start xymonlaunch.service >/dev/null 2>&1 || :
+    fi
+    systemctl --no-reload disable xymon-client.service >/dev/null 2>&1 || :
+fi
 %if %{with selinux}
 for v in %{selinux_variants}; do
     semodule -s "$v" -i %{_datadir}/selinux/"$v"/xymon-client.pp >/dev/null 2>&1 || :
@@ -452,10 +518,15 @@ done
 exit 0
 
 %preun client
-%systemd_preun xymon-client.service
+# Mirror of the server's guard: in a promotion (dnf swap xymon-client
+# xymon) the server tree is already on disk when this runs, and the
+# shared unit must survive the client package's erase.
+if [ $1 -eq 0 ] && [ ! -x %{xymonhome}/server/bin/xymond ]; then
+    systemctl --no-reload disable --now xymonlaunch.service >/dev/null 2>&1 || :
+fi
 
 %postun client
-%systemd_postun_with_restart xymon-client.service
+%systemd_postun_with_restart xymonlaunch.service
 %if %{with selinux}
 if [ $1 -eq 0 ]; then
     for v in %{selinux_variants}; do
@@ -471,10 +542,12 @@ exit 0
 %if %{defined _sysusersdir}
 %{_sysusersdir}/xymon.conf
 %endif
-%{_unitdir}/xymon-client.service
-# Both the server's and the client's logs land in /var/log/xymon (the
-# client tree's logs/ is a symlink there), so the logrotate config lives
-# in the package every host has.
+# The same unit and preset the server package ships: one service name,
+# xymonlaunch.service, on every host; xymonlaunch-run picks the role.
+%{_unitdir}/xymonlaunch.service
+%{_presetdir}/50-xymonlaunch.preset
+# Both roles' logs land in /var/log/xymon (the client tree's logs/ is a
+# symlink there), so each package carries the logrotate config.
 %config(noreplace) %{_sysconfdir}/logrotate.d/xymon
 %config(noreplace) %{_sysconfdir}/sysconfig/xymon-client
 %dir %{xymonhome}

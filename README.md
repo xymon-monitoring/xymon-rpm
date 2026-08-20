@@ -15,11 +15,16 @@ fixed upstream, not here.
 
 | Package | Contents |
 | --- | --- |
-| `xymon` | the server |
-| `xymon-client` | client-side data collection; standalone, with its own `xymon-client.service` |
+| `xymon` | the server, including the client component it runs on itself |
+| `xymon-client` | the same client packaged alone, for every host that is not the server |
 | `xymon-client-local` | xymond_client on a client, for local threshold analysis |
 | `xymon-devel` | headers and static libraries for building modules |
 | `xymon-tools` | diagnostics: stackio, locator, tree, availability, loadhosts |
+
+`xymon` and `xymon-client` **conflict**: a host is a server or a client,
+never both. See
+[docs/deployment-strategies.md](docs/deployment-strategies.md) for why —
+and for how Debian, Terabithia and FreeBSD packaged the same split.
 
 `xymon-devel` and `xymon-tools` exist because Xymon's own build discards
 both: `make install` places no headers or libraries, and `lib/` has no
@@ -34,11 +39,19 @@ dnf install xymon          # server
 dnf install xymon-client   # client only
 ```
 
-A server runs `xymonlaunch.service`, which supervises everything — the
-client's tasks included. A client-only host sets the server address
-(`XYMSRV`) in `/usr/lib/xymon/client/etc/xymonclient.cfg` and runs
-`systemctl enable --now xymon-client`. The two units conflict on purpose:
-both at once would report duplicate client data.
+Every host runs the same single unit, `xymonlaunch.service`; it picks
+the server or the client role by which package is installed. A
+client-only host sets the server address (`XYMSRV`) in
+`/usr/lib/xymon/client/etc/xymonclient.cfg` and runs
+`systemctl enable --now xymonlaunch`. Installing the server on a client
+host fails on the package conflict — by design. Changing a host's role
+is one transaction:
+
+```sh
+dnf swap xymon-client xymon   # promote a client to the server
+dnf swap xymon xymon-client   # demote a server to a client
+systemctl start xymonlaunch   # rpm never starts services on its own
+```
 
 Packages and repository metadata are signed; verify the key against this
 fingerprint (see [docs/signing.md](docs/signing.md)):
@@ -82,6 +95,7 @@ rpm/terabithia/     archived reference material, not built
 build/publish.sh    signs packages and folds them into the published tree
 build/mkrepofile.sh generates the .repo users install
 docs/signing.md     how to create and install the signing key
+docs/deployment-strategies.md  how Debian, Terabithia, FreeBSD and this repo split server and client
 tests/vercmp.sh     asserts the snapshot/release version ordering
 tests/install.sh    installs the built packages and checks the scriptlets
 ```
@@ -142,10 +156,10 @@ bring them over. Until it merges they are vendored here:
 
 | File | Taken from | Why |
 | --- | --- | --- |
-| `xymonlaunch.service`, `xymon.server-init`, `xymon.client-init` | Terabithia 4.3.30 SRPM | the `devel` copies pass `xymoncmd --no-env`, which does not exist in `main` until the `lib/stdopt.c` rework ([xymon#106](https://github.com/xymon-monitoring/xymon/issues/106)); they switch back to the `devel` copies when it lands |
+| `xymon.server-init`, `xymon.client-init` | Terabithia 4.3.30 SRPM | the `devel` copies pass `xymoncmd --no-env`, which does not exist in `main` until the `lib/stdopt.c` rework ([xymon#106](https://github.com/xymon-monitoring/xymon/issues/106)); they switch back to the `devel` copies when it lands |
 | `xymon.logrotate` | adapted here | the `devel` copy's postrotate HUPs `xymonlaunch`, which `main` does not relay ([xymon#172](https://github.com/xymon-monitoring/xymon/pull/172)); `copytruncate` until it does |
 | `xymon-client.default` | adapted here | the `devel` copy documents `XYMONSERVERS`, which only patched clients read; on `main` the server address lives in `xymonclient.cfg`, and the file now says so |
-| `xymon-client.service`, `xymonclient-run` | written here | upstream has no client unit — its `runclient.sh` backgrounds `xymonlaunch`, which systemd cannot supervise — so `xymonclient-run` is its foreground equivalent; `xymonlaunch.service`'s upstream `Alias=xymon-client.service` is dropped so it cannot shadow the real unit |
+| `xymonlaunch.service`, `xymonlaunch-run` | written here (unit started from Terabithia's) | ONE unit for both roles, shipped by both packages; `xymonlaunch-run` picks the server tree when installed, else runs the client in the foreground (upstream's `runclient.sh` backgrounds `xymonlaunch`, which systemd cannot supervise) |
 | everything else | upstream `devel` via PR #46 | identical in both, or 4.4-neutral |
 
 `rpm/terabithia/` archives the reference spec and README from
