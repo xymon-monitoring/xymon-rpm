@@ -235,6 +235,47 @@ jobs:
           path: out/*.rpm
           if-no-files-found: error
 
+  # The only test that exercises %pretrans, and the only one that sees
+  # what a following user actually does: take the build they already
+  # have and upgrade it to this one. Layout moves in this packaging have
+  # repeatedly needed a directory cleared out of the way for a symlink,
+  # which rpm refuses to do on its own and which fails the whole
+  # transaction -- invisible to every other suite here, all of which
+  # start from an empty root.
+  #
+  # The fixture is the published snapshot channel, so this is a rolling
+  # N-1 -> N check: whatever the next layout change is, the push after
+  # it exercises the migration automatically.
+  upgrade:
+    name: upgrade-${{ matrix.name }}
+    runs-on: ubuntu-latest
+    needs: rpm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: el10
+            image: almalinux:10
+            artifact: pub-el10
+          - name: fc44
+            image: fedora:44
+            artifact: pub-fc44
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: out
+
+      - name: Upgrade from the published build
+        run: |
+          set -eux
+          docker run --rm -v "$PWD:/work:ro" ${{ matrix.image }} sh -c '
+            dnf -y install curl >/dev/null &&
+            cp -r /work/tests /work/out /tmp/ &&
+            cd /tmp && ./tests/upgrade.sh /tmp/out'
+
   # What a host's role change does to systemd's state -- enablement,
   # stop ordering, which drop-in is in effect. The rpm job cannot test
   # any of it: its container has no PID 1, so every systemctl call in a
@@ -301,7 +342,7 @@ jobs:
     # The lifecycle test gates publishing as much as the build does:
     # broken swap semantics are exactly the kind of defect that is
     # invisible in a package and painful on a running host.
-    needs: [rpm, systemd-lifecycle]
+    needs: [rpm, systemd-lifecycle, upgrade]
     # Publish only genuine builds of xymon's main branch or of a release
     # tag.
     #
