@@ -18,7 +18,7 @@ fixed upstream, not here.
 | `xymon` | the server, including the client component it runs on itself |
 | `xymon-client` | the same client packaged alone, for every host that is not the server |
 | `xymon-client-local` | xymond_client on a client, for local threshold analysis |
-| `xymon-devel` | headers and static libraries for building modules |
+| `xymon-devel` | headers and static libraries for building modules (pulls in `pcre2-devel`, which its headers include) |
 | `xymon-tools` | diagnostics: stackio, locator, tree, availability, loadhosts |
 
 `xymon` and `xymon-client` **conflict**: a host is a server or a client,
@@ -108,6 +108,7 @@ tests/vercmp.sh     asserts the snapshot/release version ordering
 tests/packages.sh   reads the built rpms: conflict, shared unit, role parity
 tests/install.sh    installs the built packages and checks the scriptlets
 tests/systemd.sh    role changes against a live systemd (privileged container)
+tests/upgrade.sh    upgrades the published build to this one, keeping admin state
 ```
 
 ## Versioning
@@ -206,18 +207,69 @@ for provenance only; it is never built.
 - `XYMONSERVERHOSTNAME` is baked as `localhost` and rewritten from
   `uname -n` in `%post`, because a package must not carry the build
   host's name.
-- **`xymon-devel` does not stand on its own, and will not.** Its
-  headers include `<pcre2.h>` and `<rrd.h>`, but the package requires
-  neither `pcre2-devel` nor `rrdtool-devel`, so compiling against it
-  fails wherever those are not already installed:
 
-  ```
-  /usr/include/xymon/lib/loadalerts.h:20:10: fatal error: pcre2.h: No such file or directory
-  ```
+## Testing
 
-  This is accepted rather than fixed: the subpackage exists only to
-  collect the headers and static libraries that upstream's `make
-  install` discards, and anyone building a Xymon module already has
-  Xymon's build dependencies installed. `tests/install.sh` compiles
-  against it and so passes only in a build container, which is why CI
-  never shows this.
+Every build runs `rpmspec -P` (a lua scriptlet with a `#` comment fails
+the whole spec parse), `tests/vercmp.sh` for the version ordering above,
+`tests/packages.sh` over the built rpms (the `Conflicts`, one unit name
+byte-identical in both packages, each role owning only its drop-in, no
+configuration under `/usr`, the shared client tree identical in both),
+and `tests/install.sh`, which installs the client alone, proves
+`dnf install xymon` there fails on the conflict, promotes and demotes,
+and then starts httpd and fetches the URLs — the static content through
+its symlinks, a missing file that must be 404 rather than a denial, and
+the secure CGI path, which must answer 401.
+
+One EL and one Fedora target then run two more suites. `tests/systemd.sh`
+works under a real init — the only place scriptlets can be tested at all,
+since without PID 1 every `systemctl` in them is swallowed by `|| :` —
+covering enablement, both swap directions, the per-role drop-ins and
+teardown. `tests/upgrade.sh` installs the build currently in the snapshot
+channel, edits `XYMSRV`, adds a task and drops files into the web tree,
+then upgrades to the build under test and proves nothing was lost. It is
+the only suite that starts from something other than an empty root, and
+so the only one that exercises `%pretrans`; because its fixture is
+whatever is published, any future layout change is exercised by the push
+after it. Publishing waits on both.
+
+Not covered: that Xymon actually monitors anything. Every suite here
+tests packaging — files, units, scriptlets, upgrades — and none starts a
+server and waits for data to arrive.
+
+## Building a branch or a pull request
+
+Actions → **build** → *Run workflow* with a ref: `main` (the default),
+`devel`, `pr/163`, or any sha or tag. Only `main` and dispatched `rel-*`
+tags publish — a tag build is the release flow — everything else produces
+downloadable artifacts and nothing more. The run logs the exact commit it
+built, since a pull request's head moves. The `releasenum` input
+re-releases a tag with packaging fixes (see Versioning).
+
+## Building locally
+
+```sh
+dnf -y install rpm-build rpmdevtools dnf-plugins-core
+# On EL, rrdtool-devel and c-ares-devel need EPEL and CRB:
+dnf -y install epel-release && dnf config-manager --set-enabled crb
+rpmdev-setuptree
+git clone https://github.com/xymon-monitoring/xymon.git src
+git -C src archive --format=tar --prefix=xymon-4.3.31/ HEAD \
+  | gzip -9 > ~/rpmbuild/SOURCES/xymon-4.3.31.tar.gz
+cp rpm/sources/* ~/rpmbuild/SOURCES/
+dnf -y builddep rpm/xymon.spec
+rpmbuild -ba rpm/xymon.spec --define 'baseversion 4.3.31'
+```
+
+## Relationship to upstream
+
+Packaging lives here so it can iterate without a review round per change.
+Once the spec is stable, the intent is to move it and the build workflow
+into `xymon-monitoring/xymon` — the convention Debian packaging follows —
+leaving this repository as the publishing target. The nightly build
+doubles as a drift detector: an upstream change that moves an install
+path or a configure flag goes red here the next day.
+
+## License
+
+GPL-2.0-only, matching Xymon.

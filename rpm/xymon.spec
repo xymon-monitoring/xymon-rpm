@@ -280,6 +280,14 @@ would break every server that did not also install this package.
 
 %package devel
 Summary:        Headers and static libraries for building Xymon modules
+# A -devel package has to bring what its own headers include, or it
+# builds only where Xymon's build dependencies already happen to be --
+# which is a build host, not the machine of someone writing a module.
+# libxymon.h reaches pcre2.h through lib/loadalerts.h; rrd.h is reached
+# only by lib/rrd_api_compat.h, so that one is weak: a module that does
+# not touch the RRD API does not need it.
+Requires:       pcre2-devel
+Recommends:     rrdtool-devel
 
 %description devel
 Headers and static libraries for building worker modules and other
