@@ -198,11 +198,17 @@ check "the dispatcher keys off the same marker as the scriptlets" \
 echo "== both roles can stand up the account alone =="
 
 # With no dependency between the packages, whichever is installed must
-# create the xymon user itself.
+# bring the xymon account with it. Two mechanisms are legitimate and
+# which one applies is the distro's choice, not ours: EL expands the
+# sysusers macro into a %pre scriptlet (and EL8, which predates the
+# macro, uses the spec's own useradd fallback), while Fedora expands it
+# to nothing and creates the account from the shipped sysusers.d
+# snippet through systemd's file trigger. Accept either; require one.
 for role in server client; do
 	eval "rpmfile=\$$role"
-	check "the $role package creates the xymon account in %pre" \
-		"rpm -qp --scripts $rpmfile | grep -qE 'sysusers|useradd'"
+	check "the $role package can create the xymon account on its own" \
+		"rpm -qp --scripts $rpmfile | grep -qE 'sysusers|useradd' ||
+		 test -s $work/$role/usr/lib/sysusers.d/xymon.conf"
 done
 
 exit "$fail"
