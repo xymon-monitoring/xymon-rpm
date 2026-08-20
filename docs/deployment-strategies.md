@@ -165,8 +165,9 @@ the daemons, and `xymongen` writes the generated status pages into
 `www` itself, so `XYMONWWWDIR` has to stay writable in `/var/lib`.
 Symlinking the static three back into `www` keeps every `/xymon/` URL
 and every on-disk path working, so nothing in `xymonserver.cfg` or the
-CGIs needs to learn a second location — the only addition is a
-`<Directory>` block, because httpd 2.4 denies any path no block grants.
+CGIs needs to learn a second location, and httpd needs no extra
+configuration: the generated config already sets `FollowSymLinks` on the
+www directory, which is what lets it cross into `/usr/share`.
 
 **Configuration is in `/etc` for both roles.** The server gets there
 through upstream's own `server/etc → /etc/xymon` symlink; upstream

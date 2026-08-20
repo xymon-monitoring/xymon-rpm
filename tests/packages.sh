@@ -176,11 +176,13 @@ for d in html notes rep snap; do
 		 ! test -L $work/server/var/lib/xymon/www/$d"
 done
 
-# httpd 2.4 denies any path no Directory block grants, so the symlinks
-# would serve 403 without this.
-check "the apache config grants access to the static tree" \
-	"grep -q '<Directory \"/usr/share/xymon\">' $work/server/etc/httpd/conf.d/xymon-apache.conf &&
-	 grep -q 'FollowSymLinks' $work/server/etc/httpd/conf.d/xymon-apache.conf"
+# FollowSymLinks on the www directory is what lets httpd cross into
+# /usr/share; without it the same request is a 403. tests/install.sh
+# proves the serving end to end, this keeps the directive from being
+# dropped by an edit to the generated config.
+check "the apache config keeps FollowSymLinks on the www directory" \
+	"grep -A2 '<Directory \"/var/lib/xymon/www\">' $work/server/etc/httpd/conf.d/xymon-apache.conf |
+	 grep -q '^ *Options .*FollowSymLinks'"
 
 echo "== the shared client tree is identical in both packages =="
 

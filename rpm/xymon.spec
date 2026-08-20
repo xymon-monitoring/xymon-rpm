@@ -431,26 +431,15 @@ mv %{buildroot}%{_sysconfdir}/xymon/xymon-apache.conf \
 #
 # The three static trees move and are symlinked back, which keeps every
 # URL under /xymon/ and every on-disk path working unchanged -- nothing
-# in xymonserver.cfg or the CGIs has to learn a second location.
+# in xymonserver.cfg or the CGIs has to learn a second location, and no
+# extra httpd configuration is needed: the generated config already sets
+# FollowSymLinks on the www directory, which is what lets httpd cross
+# into /usr/share (verified -- without it the same request is a 403).
 install -d %{buildroot}%{_datadir}/xymon
 for d in gifs help menu; do
     mv %{buildroot}%{_sharedstatedir}/xymon/www/$d %{buildroot}%{_datadir}/xymon/$d
     ln -sf %{_datadir}/xymon/$d %{buildroot}%{_sharedstatedir}/xymon/www/$d
 done
-
-# httpd 2.4 denies every filesystem path that no Directory block grants,
-# so the symlinks above would serve 403 without this. FollowSymLinks is
-# what lets httpd cross from www into /usr/share in the first place; the
-# generated config already sets it on the www directory.
-cat >> %{buildroot}%{_sysconfdir}/httpd/conf.d/xymon-apache.conf <<EOF
-
-# Static content (gifs, help, menu) lives here and is reached through
-# symlinks in the www directory above.
-<Directory "%{_datadir}/xymon">
-    Options Indexes FollowSymLinks Includes MultiViews
-    Require all granted
-</Directory>
-EOF
 
 # That config points AuthUserFile/AuthGroupFile at these; the build never
 # creates them, and without the password file every /xymon-seccgi request

@@ -171,6 +171,53 @@ check "the generated page directories are still writable state" \
 	"test -d /var/lib/xymon/www/rep -a ! -L /var/lib/xymon/www/rep &&
 	 test -d /var/lib/xymon/www/snap -a ! -L /var/lib/xymon/www/snap"
 
+# Whether httpd actually serves any of this cannot be read off the
+# filesystem. The symlinks cross from the www tree into /usr/share, and
+# httpd 2.4 denies every path no Directory block grants -- so the
+# failure mode is a 403 that every file-level assertion above passes
+# straight over. httpd needs no init, so it can be exercised here.
+echo "== serving =="
+dnf -y install httpd curl >/dev/null 2>&1
+
+check "the generated apache config is valid" \
+	"httpd -t"
+
+# Say why the requests below cannot be made, rather than reporting six
+# identical blank failures: port 80 already in use is the usual reason,
+# and it is the harness's problem, not the package's.
+httpd_start=$(httpd -k start 2>&1) || :
+i=0; while [ $i -lt 20 ] && ! curl -sf -o /dev/null http://localhost/xymon/; do
+	i=$((i + 1)); sleep 0.5
+done
+check "httpd is listening" \
+	"curl -sf -o /dev/null http://localhost/xymon/ ||
+	 { printf '%s\n' \"\$httpd_start\"; tail -3 /var/log/httpd/error_log 2>/dev/null; false; }"
+
+check "the web root is served" \
+	"test \"\$(curl -s -o /dev/null -w '%{http_code}' http://localhost/xymon/)\" = 200"
+
+for f in gifs/green.gif help/about.html; do
+	check "/xymon/$f is served through the symlink" \
+		"test \"\$(curl -s -o /dev/null -w '%{http_code}' http://localhost/xymon/$f)\" = 200"
+done
+
+check "/xymon/menu is served through the symlink" \
+	"m=\$(ls /usr/share/xymon/menu | head -1) &&
+	 test \"\$(curl -s -o /dev/null -w '%{http_code}' http://localhost/xymon/menu/\$m)\" = 200"
+
+# 404 and not 403: a missing file proves the Directory block grants
+# access, where a denial would look the same to every check above.
+check "a missing static file is 404, not a denial" \
+	"test \"\$(curl -s -o /dev/null -w '%{http_code}' http://localhost/xymon/gifs/nope.gif)\" = 404"
+
+# The shipped config deliberately omits "Require all granted" here, so
+# that the authentication below is not bypassed. A 200 would mean the
+# secure CGIs are open to anyone.
+check "the secure CGI directory demands authentication" \
+	"test \"\$(curl -s -o /dev/null -w '%{http_code}' http://localhost/xymon-seccgi/useradm.sh)\" = 401"
+
+httpd -k stop >/dev/null 2>&1 || :
+
 check "unit file is installed" \
 	"test -f /usr/lib/systemd/system/xymonlaunch.service"
 
