@@ -110,6 +110,63 @@ client-only host into a server at its next routine update.
 | Double-reporting possible | guarded against | unrepresentable | yes | unrepresentable |
 | Role change | maintainer scripts | scriptlet hacks | manual | `dnf swap`, defined |
 
+## Where the files land
+
+The same four packagings disagree just as much about *paths*. Upstream
+installs everything under one root — `XYMONTOPDIR`, with `server/` and
+`client/` beside each other — and then leaves each packager to decide
+how much of that to bend towards the FHS. All of the below was read out
+of the shipped packages and ports, not from documentation.
+
+| | here | Debian | Terabithia | FreeBSD |
+| --- | --- | --- | --- | --- |
+| Server config | `/etc/xymon/` | `/etc/xymon/` | `/etc/xymon/` | `…/www/xymon/server/etc/` |
+| Client config | `/usr/lib/xymon/client/etc/` | `/etc/xymon/` | `/etc/xymon-client/` | `…/www/xymon/client/etc/` |
+| Server binaries | `/usr/lib/xymon/server/bin/` | `/usr/lib/xymon/server/bin/` | `/usr/libexec/xymon/`, `/usr/sbin/xymond` | `…/www/xymon/server/bin/` |
+| Client binaries | `/usr/lib/xymon/client/bin/` | `/usr/lib/xymon/client/bin/` | `/usr/libexec/xymon-client/` | `…/www/xymon/client/bin/` |
+| Web assets | `/var/lib/xymon/www/` | `/usr/share/xymon/` | `/var/www/xymon/` | `…/www/xymon/server/www/` |
+| Server data | `/var/lib/xymon/` | `/var/lib/xymon/` | `/var/lib/xymon/` | `…/www/xymon/data/` |
+| Logs | `/var/log/xymon/` | `/var/log/xymon/` | `/var/log/xymon/` | `/var/log/xymon/` |
+
+(FreeBSD's `…` is `${PREFIX}/www`, normally `/usr/local/www` — it keeps
+upstream's single tree almost untouched and simply puts it under the
+web root.)
+
+Three degrees of intervention:
+
+- **Terabithia rewrites the layout.** Binaries move to
+  `/usr/libexec/<pkg>/`, the two roles get separate config directories,
+  web content goes to `/var/www/`, and the daemons an admin invokes are
+  linked into `/usr/sbin/`. That is why its spec carries hundreds of
+  `sed` rules rewriting `@XYMONTOPDIR@/server/bin` and friends, and a
+  large patch set to match.
+- **Debian moves configuration and web content only.** It keeps
+  upstream's `/usr/lib/xymon/{server,client}` binary tree but pulls all
+  configuration — both roles' — into `/etc/xymon`, and the static web
+  assets into `/usr/share/xymon`.
+- **Here, upstream's own symlinks do the work.** The tree stays exactly
+  as the `--server` build lays it out, and the build's own links
+  redirect everything that must not live in `/usr/lib`: `server/etc →
+  /etc/xymon`, `server/www → /var/lib/xymon/www`, `server/tmp →
+  /var/lib/xymon/tmp`, `client/logs → /var/log/xymon`, `client/tmp →
+  /var/tmp`. So the layout matches upstream's documentation while
+  nothing writes inside `/usr/lib`, and the spec needs no path
+  rewriting and no patches.
+
+**One place this packaging is the outlier.** The client's editable
+configuration — `xymonclient.cfg` (which holds `XYMSRV`),
+`clientlaunch.cfg`, `localclient.cfg` — is a real directory at
+`/usr/lib/xymon/client/etc/`, because upstream provides no symlink for
+the client the way it does for the server. Debian and Terabithia both
+place client configuration under `/etc`, and the FHS wants `/usr`
+shareable and read-only. It works — the files are `%config(noreplace)`,
+so upgrades keep local edits, and `tests/packages.sh` asserts that for
+both roles — but the file an admin edits most often on a client host is
+in the least expected place. Closing the gap would mean shipping those
+configs in `/etc/xymon-client/` and making `client/etc` a symlink to
+it, which is a layout change with a migration cost for anyone already
+on the snapshot channel.
+
 ## Migrating from the old layout of this packaging
 
 Before this design, `xymon` required `xymon-client` and a separate

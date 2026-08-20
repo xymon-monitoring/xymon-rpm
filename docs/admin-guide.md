@@ -93,7 +93,17 @@ Paths are identical in both roles; the "role" column says who ships it.
 | `/usr/bin/xymon`, `/usr/bin/xymoncmd`, `/usr/sbin/xymonlaunch` | conveniences on `$PATH` for typing by hand | server |
 
 The client tree's `tmp` is a symlink to `/var/tmp` and `logs` to
-`/var/log/xymon`, so nothing writes inside `/usr/lib`.
+`/var/log/xymon`, so nothing writes inside `/usr/lib`. The server tree
+is redirected the same way by upstream's own links: `server/etc →
+/etc/xymon`, `server/www → /var/lib/xymon/www`, `server/tmp →
+/var/lib/xymon/tmp`.
+
+One path is worth committing to memory, because it is where you would
+least expect it: the client's editable configuration stays in
+`/usr/lib/xymon/client/etc/`, not under `/etc`, since upstream ships no
+symlink for the client side. That is where `XYMSRV` lives. Other
+packagings differ here — see
+[deployment-strategies.md](deployment-strategies.md#where-the-files-land).
 
 ## Running the service
 
