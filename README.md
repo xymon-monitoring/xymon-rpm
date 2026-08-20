@@ -195,10 +195,15 @@ libraries and headers),
 [#411](https://github.com/xymon-monitoring/xymon/pull/411) (client-side
 `INSTALL*DIR`),
 [#412](https://github.com/xymon-monitoring/xymon/pull/412) (web server
-config location) and
+config location),
 [#413](https://github.com/xymon-monitoring/xymon/pull/413)
-(`sysusers.d`). Each one lands a feature that lets this spec delete a
-workaround. They merge independently, in any order.
+(`sysusers.d`) and
+[#414](https://github.com/xymon-monitoring/xymon/pull/414) (install the
+shipped web content separately from the generated). Each one lands a
+feature that lets this spec delete a workaround, and each is a no-op
+until the corresponding variable is set, so none of them changes what a
+source install does today. They merge independently, in any order —
+checked across all 5040 orderings.
 
 `rpm/terabithia/` archives the reference spec and README from
 <https://repo.terabithia.org/rpms/xymon/> — a single unmirrored host —

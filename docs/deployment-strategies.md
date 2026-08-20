@@ -169,6 +169,14 @@ CGIs needs to learn a second location, and httpd needs no extra
 configuration: the generated config already sets `FollowSymLinks` on the
 www directory, which is what lets it cross into `/usr/share`.
 
+The `help` symlink is load-bearing rather than cosmetic: `lib/links.c`
+derives that directory on disk by taking `XYMONNOTESDIR`, stripping the
+last component and appending `/help`, so it has to resolve wherever the
+files actually live. Upstream
+[xymon#414](https://github.com/xymon-monitoring/xymon/pull/414) proposes
+this same split as `INSTALLSTATICWWWDIR`, which would let the spec stop
+moving the directories by hand.
+
 **Configuration is in `/etc` for both roles.** The server gets there
 through upstream's own `server/etc → /etc/xymon` symlink; upstream
 provides no equivalent for the client, so this packaging adds the
