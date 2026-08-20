@@ -109,6 +109,7 @@ rpm/terabithia/     archived reference material, not built
 build/publish.sh    signs packages and folds them into the published tree
 build/mkrepofile.sh generates the .repo users install
 docs/signing.md     how to create and install the signing key
+docs/admin-guide.md where files are installed, and the everyday admin tasks
 docs/deployment-strategies.md  how Debian, Terabithia, FreeBSD and this repo split server and client
 tests/vercmp.sh     asserts the snapshot/release version ordering
 tests/packages.sh   reads the built rpms: conflict, shared unit, role parity
