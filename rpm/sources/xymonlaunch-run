@@ -13,9 +13,10 @@
 # and exits; a Type=simple unit needs the same environment with
 # xymonlaunch kept in the foreground. CLIENTHOSTNAME and CLIENTOS
 # arrive from /etc/sysconfig/xymon-client via the unit, when set
-# there. Everything else the client tasks need comes from
-# clientlaunch.cfg's ENVFILE (xymonclient.cfg), exactly as with
-# runclient.sh.
+# there.
+#
+# Upstream xymon#408 proposes this as "runclient.sh foreground"; when
+# that lands, the client half here becomes a call to it.
 
 XYMONSERVERHOME=/usr/lib/xymon/server
 XYMONCLIENTHOME=/usr/lib/xymon/client
@@ -44,5 +45,11 @@ MACHINE="$(echo "$MACHINEDOTS" | sed -e 's/\./,/g')"
 XYMONOSSCRIPT="xymonclient-$SERVEROSTYPE.sh"
 export XYMONCLIENTHOME MACHINEDOTS MACHINE SERVEROSTYPE XYMONOSSCRIPT
 
+# --env as well as the exports above: systemd starts this with an empty
+# environment, and the launcher expands the paths in clientlaunch.cfg --
+# LOGFILE, CMD, and PIDFILE once xymon#172 lands -- before it reads any
+# task's own ENVFILE. The exports alone leave it resolving those from
+# compiled-in defaults.
 exec "$XYMONCLIENTHOME/bin/xymonlaunch" --no-daemon \
+     --env="$XYMONCLIENTHOME/etc/xymonclient.cfg" \
      --config="$XYMONCLIENTHOME/etc/clientlaunch.cfg" "$@"
