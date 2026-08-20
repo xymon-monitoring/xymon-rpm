@@ -43,6 +43,13 @@
 
 %global xymonhome  %{_prefix}/lib/xymon
 
+# The per-role drop-ins. Named once: %%install, %%files and the %%preun
+# swap guards all derive their paths from these, so a rename cannot turn
+# a guard silently always-true.
+%global dropindir  %{_unitdir}/xymonlaunch.service.d
+%global serverconf %{dropindir}/server.conf
+%global clientconf %{dropindir}/client.conf
+
 Name:           xymon
 Version:        %{baseversion}
 Release:        %{xymonrelease}%{?dist}
@@ -322,8 +329,8 @@ done
 # role by which tree is installed.
 install -Dpm 0644 %{SOURCE1}  %{buildroot}%{_unitdir}/xymonlaunch.service
 install -Dpm 0755 %{SOURCE3}  %{buildroot}%{xymonhome}/client/bin/xymonlaunch-run
-install -Dpm 0644 %{SOURCE14} %{buildroot}%{_unitdir}/xymonlaunch.service.d/server.conf
-install -Dpm 0644 %{SOURCE15} %{buildroot}%{_unitdir}/xymonlaunch.service.d/client.conf
+install -Dpm 0644 %{SOURCE14} %{buildroot}%{serverconf}
+install -Dpm 0644 %{SOURCE15} %{buildroot}%{clientconf}
 install -Dpm 0644 %{SOURCE4}  %{buildroot}%{_presetdir}/50-xymonlaunch.preset
 install -Dpm 0644 %{SOURCE5}  %{buildroot}%{_tmpfilesdir}/xymon.conf
 install -Dpm 0644 %{SOURCE6}  %{buildroot}%{_sysconfdir}/logrotate.d/xymon
@@ -334,7 +341,9 @@ install -Dpm 0644 %{SOURCE11} %{buildroot}%{_sysctldir}/70-xymon.conf
 install -Dpm 0644 %{SOURCE13} %{buildroot}%{_sysusersdir}/xymon.conf
 %endif
 
-# The unit invokes these by absolute path.
+# Admin conveniences on $PATH, not used by the unit: xymonlaunch-run
+# execs the server tree's binaries directly, so these are for people
+# typing xymoncmd or xymon by hand.
 install -d %{buildroot}%{_bindir} %{buildroot}%{_sbindir}
 ln -sf %{xymonhome}/server/bin/xymon    %{buildroot}%{_bindir}/xymon
 ln -sf %{xymonhome}/server/bin/xymoncmd %{buildroot}%{_bindir}/xymoncmd
@@ -387,7 +396,11 @@ ln -sf %{_localstatedir}/log/xymon %{buildroot}%{xymonhome}/client/logs
 %create_xymon_account
 
 %post
+# Skipped during a promotion, for the reason given in %%post client: the
+# departing package's state must not be overridden by a preset run.
+if [ ! -e %{clientconf} ]; then
 %systemd_post xymonlaunch.service
+fi
 %tmpfiles_create %{_tmpfilesdir}/xymon.conf
 # Replace the placeholder baked in at build time (see %%build).
 if [ $1 -eq 1 ]; then
@@ -422,12 +435,21 @@ done
 %preun
 # Swap-aware: in a demotion (dnf swap xymon xymon-client) the standalone
 # client is already installed when this runs -- installs precede erases
-# in a transaction -- and the shared unit must survive. The other role's
-# packaged drop-in is the marker: it lives under /usr/lib (admin
+# in a transaction -- so the unit's enablement must survive. The other
+# role's packaged drop-in is the marker: it lives under /usr/lib (admin
 # drop-ins go to /etc/systemd), so unlike a config-file probe it cannot
 # be faked by configuration, and unlike `rpm -q` it cannot deadlock the
 # rpmdb from inside a scriptlet.
-if [ ! -e %{_unitdir}/xymonlaunch.service.d/client.conf ]; then
+#
+# The running server IS stopped here, while server.conf is still on disk
+# and in effect: it is what keeps xymond's children alive through the
+# stop so they can finish checkpoints and cache flushes. Stopping later
+# -- after the erase takes that drop-in away -- would kill the whole
+# cgroup mid-write. Enablement is untouched, so the swap's `systemctl
+# restart` brings the new role up in its place.
+if [ -e %{clientconf} ]; then
+    systemctl stop xymonlaunch.service >/dev/null 2>&1 || :
+else
 %systemd_preun xymonlaunch.service
 fi
 
@@ -456,8 +478,8 @@ fi
 %{_bindir}/xymoncmd
 %{_sbindir}/xymonlaunch
 %{_unitdir}/xymonlaunch.service
-%dir %{_unitdir}/xymonlaunch.service.d
-%{_unitdir}/xymonlaunch.service.d/server.conf
+%dir %{dropindir}
+%{serverconf}
 %{_presetdir}/50-xymonlaunch.preset
 %{_tmpfilesdir}/xymon.conf
 %{_sysctldir}/70-xymon.conf
@@ -504,12 +526,24 @@ fi
 %doc bb.xml
 
 %post client
+# In a demotion the server package is still installed at this point, and
+# with it its preset ("enable xymonlaunch.service"). Running the preset
+# here would re-enable a unit the admin may have deliberately disabled,
+# and would contradict this package's no-preset design (see %%files
+# client). The %%preun guards already carry enablement across a swap, so
+# there is nothing to preset.
+if [ ! -e %{serverconf} ]; then
 %systemd_post xymonlaunch.service
+fi
 # Upgrades from the old layout shipped xymon-client.service; that unit
 # is gone, so carry its enablement and any running instance over to the
 # shared name before clearing it. is-enabled and is-active are checked
-# separately: an enabled-but-stopped client must stay enabled.
-if [ $1 -ge 2 ]; then
+# separately: an enabled-but-stopped client must stay enabled. Gated on
+# the old unit file still being on disk, which is true only during the
+# migrating upgrade itself -- without that this block would run on every
+# future upgrade and stop an admin's own /etc/systemd unit of the same
+# name.
+if [ $1 -ge 2 ] && [ -e %{_unitdir}/xymon-client.service ]; then
     if systemctl is-enabled --quiet xymon-client.service 2>/dev/null; then
         systemctl --no-reload enable xymonlaunch.service >/dev/null 2>&1 || :
     fi
@@ -528,9 +562,13 @@ exit 0
 
 %preun client
 # Mirror of the server's guard: in a promotion (dnf swap xymon-client
-# xymon) the server package is already installed when this runs, and
-# the shared unit must survive the client package's erase.
-if [ ! -e %{_unitdir}/xymonlaunch.service.d/server.conf ]; then
+# xymon) the server package is already installed when this runs, the
+# unit's enablement must survive the client package's erase, and the
+# running client is stopped here while client.conf still applies -- its
+# cgroup kill is what stops the report script with it.
+if [ -e %{serverconf} ]; then
+    systemctl stop xymonlaunch.service >/dev/null 2>&1 || :
+else
 %systemd_preun xymonlaunch.service
 fi
 
@@ -554,8 +592,8 @@ exit 0
 # client must not start unconfigured against the baked-in 127.0.0.1,
 # so enablement stays an explicit admin step.
 %{_unitdir}/xymonlaunch.service
-%dir %{_unitdir}/xymonlaunch.service.d
-%{_unitdir}/xymonlaunch.service.d/client.conf
+%dir %{dropindir}
+%{clientconf}
 %config(noreplace) %{_sysconfdir}/sysconfig/xymon-client
 %dir %{xymonhome}
 %client_tree_filelist

@@ -50,10 +50,22 @@ is one transaction:
 ```sh
 dnf swap xymon-client xymon     # promote a client to the server
 dnf swap xymon xymon-client     # demote a server to a client
-systemctl restart xymonlaunch   # the swap deliberately leaves the old
-                                # role running; restart switches over
-                                # (and plain start would no-op on it)
+systemctl restart xymonlaunch   # the swap stops the old role cleanly
+                                # but starts nothing; this brings the
+                                # new one up
 ```
+
+Demoting needs one more edit: the former server's `xymonclient.cfg`
+still points `XYMSRV` at `127.0.0.1` (correct while it *was* the
+server, and preserved as `%config(noreplace)` through the swap). Set it
+to the real server before the restart, or the host reports into the
+void — client sends are fire-and-forget, so nothing will complain.
+
+Upgrading a host installed **before** this layout (server hosts have
+both packages, which now conflict) needs the same swap:
+`dnf swap xymon-client xymon`. Until it is done, `dnf upgrade` on that
+host fails as a whole — including unrelated packages — because the
+conflict makes the transaction unsolvable.
 
 Packages and repository metadata are signed; verify the key against this
 fingerprint (see [docs/signing.md](docs/signing.md)):

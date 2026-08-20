@@ -3,8 +3,10 @@
 # Xymon servers), clientlaunch.cfg (on Xymon clients), or associated
 # environment files.
 # 
-# To edit the default destination for the Xymon client to report to, 
-# see the /etc/{default,sysconfig}/xymon-client file.
+# To edit where this host's client tasks report to, set XYMSRV in
+# /usr/lib/xymon/client/etc/xymonclient.cfg. (On a server that is
+# normally 127.0.0.1: the server monitors itself through its own
+# embedded client.)
 # 
 # On systemd systems, --no-daemon is passed in the xymonlaunch unit 
 # file, but the log file (if any) for xymonlaunch should be set here.

@@ -133,5 +133,10 @@ Upgrading:
   `xymonlaunch.service`.
 - **Server hosts** have both packages installed, which the new `xymon`
   conflicts with; the upgrade is one explicit
-  `dnf swap xymon-client xymon`. Acceptable while this packaging is
-  experimental; there are no production users to break.
+  `dnf swap xymon-client xymon`. Until that is run, the conflict makes
+  the host's whole `dnf upgrade` transaction unsolvable — unrelated
+  packages included — so an unattended updater on such a host stops
+  applying updates entirely, silently. Acceptable only because this
+  packaging is experimental and has no production users; a stable
+  release would need a `%triggerun`-based migration or a transitional
+  package instead.

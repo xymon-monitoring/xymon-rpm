@@ -48,6 +48,7 @@ for v in client_rpm server_rpm; do
 done
 dnf -y install "$client_rpm"
 
+
 echo "== checking the client-only install =="
 check "the client installed without the server" \
 	"rpm -q xymon-client && ! rpm -q xymon"
@@ -87,9 +88,14 @@ check "log rotation ships with the client" \
 echo "== the server must refuse to install over the client =="
 # Fail AND say why: an unrelated dnf error (bad rpm, missing dep) must
 # not pass as the conflict working.
+# Match the specific conflict, not any message containing "conflict":
+# libdnf prefixes generic resolution failures with "conflicting
+# requests", so a broken Requires would otherwise pass as the design
+# working.
 check "dnf install xymon fails on the package conflict" \
 	"if dnf -y install $server_rpm >/tmp/conflict.out 2>&1; then false;
-	 else grep -qi conflict /tmp/conflict.out; fi"
+	 else grep -q 'conflicts with' /tmp/conflict.out &&
+	      grep -q 'xymon-client' /tmp/conflict.out; fi"
 
 # Promotion is one transaction: the server (which embeds the client
 # tree) replaces the standalone client. --allowerasing is the
@@ -111,6 +117,15 @@ check "the dispatcher now picks the server role" \
 check "the drop-ins swapped roles with the packages" \
 	"test -f /usr/lib/systemd/system/xymonlaunch.service.d/server.conf &&
 	 ! test -e /usr/lib/systemd/system/xymonlaunch.service.d/client.conf"
+
+# The dispatcher must refuse rather than silently run the client role
+# when the server marker is present but the server tree is not usable
+# -- a broken install that would otherwise look healthy while the whole
+# fleet goes unmonitored.
+check "the dispatcher fails loudly on a broken server install" \
+	"chmod a-x /usr/lib/xymon/server/bin/xymond &&
+	 ! /usr/lib/xymon/client/bin/xymonlaunch-run --help >/dev/null 2>&1;
+	 rc=\$?; chmod 0755 /usr/lib/xymon/server/bin/xymond; test \$rc -eq 0"
 
 check "the embedded client configs are still marked config" \
 	"rpm -qc xymon | grep -q client/etc/xymonclient.cfg"
@@ -151,8 +166,9 @@ check "unit file is installed" \
 check "tmpfiles config is installed" \
 	"test -f /usr/lib/tmpfiles.d/xymon.conf"
 
-# The dispatcher invokes these by absolute path, so a wrong symlink
-# target in %install shows up here rather than at first boot.
+# The $PATH conveniences (nothing at runtime uses them -- the
+# dispatcher execs the server tree directly), so a wrong symlink target
+# in %install shows up here rather than under an admin's fingers.
 check "/usr/bin/xymoncmd resolves" \
 	"test -x /usr/bin/xymoncmd"
 check "/usr/sbin/xymonlaunch resolves" \

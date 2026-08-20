@@ -20,7 +20,20 @@
 XYMONSERVERHOME=/usr/lib/xymon/server
 XYMONCLIENTHOME=/usr/lib/xymon/client
 
-if [ -x "$XYMONSERVERHOME/bin/xymond" ]; then
+# The role marker is the server package's unit drop-in, the same file
+# the packages' scriptlets key their swap handling off -- one encoding
+# of "which role is installed", so the two cannot disagree. Its presence
+# means the server package is installed, so a missing or unusable server
+# binary is a broken installation: fail loudly rather than silently
+# falling back to the client role, which would look healthy while the
+# whole fleet's monitoring is down.
+if [ -e /usr/lib/systemd/system/xymonlaunch.service.d/server.conf ]; then
+	if [ ! -x "$XYMONSERVERHOME/bin/xymond" ] ||
+	   [ ! -x "$XYMONSERVERHOME/bin/xymoncmd" ] ||
+	   [ ! -x "$XYMONSERVERHOME/bin/xymonlaunch" ]; then
+		echo "xymonlaunch-run: server role selected but $XYMONSERVERHOME/bin is incomplete" >&2
+		exit 1
+	fi
 	exec "$XYMONSERVERHOME/bin/xymoncmd" \
 	     "$XYMONSERVERHOME/bin/xymonlaunch" --no-daemon "$@"
 fi
