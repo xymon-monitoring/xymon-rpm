@@ -32,6 +32,7 @@ A **server host** (`xymon`):
 ├── server/bin/                 xymond, xymongen, xymonnet, xymond_*
 ├── cgi-bin/  cgi-secure/       the web CGIs
 └── client/                     ← the embedded client, see below
+/etc/xymon-client/              its config (same as a client host)
 /var/lib/xymon/                 rrd/ hist/ histlogs/ hostdata/ data/
 │                               acks/ disabled/ www/
 /var/log/xymon/                 xymonlaunch.log xymond.log xymonclient.log …
@@ -41,13 +42,14 @@ A **client host** (`xymon-client`) has only the client tree — the same
 one, at the same path, that a server also carries:
 
 ```
+/etc/xymon-client/              xymonclient.cfg  ← XYMSRV lives here
+│                               clientlaunch.cfg  localclient.cfg
 /etc/sysconfig/xymon-client     CLIENTHOSTNAME, CLIENTOS
 /etc/logrotate.d/xymon
 /usr/lib/xymon/client/
 ├── bin/                        xymonclient.sh, xymonclient-linux.sh,
 │                               logfetch, clientupdate, msgcache, xymonlaunch
-├── etc/                        xymonclient.cfg  ← XYMSRV lives here
-│                               clientlaunch.cfg localclient.cfg
+├── etc  -> /etc/xymon-client   so upstream's $XYMONCLIENTHOME/etc paths work
 ├── ext/  local/                your own extension scripts
 ├── logs -> /var/log/xymon      nothing writes inside /usr/lib
 └── tmp  -> /var/tmp
@@ -83,7 +85,7 @@ Paths are identical in both roles; the "role" column says who ships it.
 | `/usr/lib/xymon/server/bin/` | the server programs: `xymond`, `xymongen`, `xymonnet`, `xymond_*`, the CGIs' backends | server |
 | `/usr/lib/xymon/cgi-bin/`, `cgi-secure/` | web CGIs (the second needs authentication) | server |
 | `/usr/lib/xymon/client/bin/` | the collectors: `xymonclient.sh`, `xymonclient-linux.sh`, `logfetch`, `clientupdate`, `msgcache` | both |
-| `/usr/lib/xymon/client/etc/` | `xymonclient.cfg`, `clientlaunch.cfg`, `localclient.cfg` | both |
+| `/etc/xymon-client/` | `xymonclient.cfg` (holds `XYMSRV`), `clientlaunch.cfg`, `localclient.cfg`; reachable as `/usr/lib/xymon/client/etc` too | both |
 | `/usr/lib/xymon/client/ext/`, `local/` | your own client extension scripts | both |
 | `/usr/lib/systemd/system/xymonlaunch.service` | the one service, identical in both packages | both |
 | `…/xymonlaunch.service.d/server.conf` \| `client.conf` | the per-role differences | one each |
@@ -98,12 +100,11 @@ is redirected the same way by upstream's own links: `server/etc →
 /etc/xymon`, `server/www → /var/lib/xymon/www`, `server/tmp →
 /var/lib/xymon/tmp`.
 
-One path is worth committing to memory, because it is where you would
-least expect it: the client's editable configuration stays in
-`/usr/lib/xymon/client/etc/`, not under `/etc`, since upstream ships no
-symlink for the client side. That is where `XYMSRV` lives. Other
-packagings differ here — see
-[deployment-strategies.md](deployment-strategies.md#where-the-files-land).
+Configuration is in `/etc` for both roles: `/etc/xymon/` for the server
+and `/etc/xymon-client/` for the client. Upstream's own symlink does
+that for the server (`server/etc → /etc/xymon`) and this packaging adds
+the matching one for the client (`client/etc → /etc/xymon-client`), so
+paths written the upstream way still resolve.
 
 ## Running the service
 
@@ -134,7 +135,7 @@ server's own client run); on a client, `clientlaunch.log`.
 ## Client tasks
 
 **Point a client at its server.** Edit `XYMSRV` in
-`/usr/lib/xymon/client/etc/xymonclient.cfg` (it ships as `127.0.0.1`,
+`/etc/xymon-client/xymonclient.cfg` (it ships as `127.0.0.1`,
 which is correct only on the server itself), then
 `systemctl restart xymonlaunch`. For several servers, set
 `XYMSERVERS="ip1 ip2"` and `XYMSRV="0.0.0.0"`.
@@ -186,7 +187,7 @@ daemon. Its `[xymonclient]` stanza is how the server monitors itself:
 
 ```
 [xymonclient]
-	ENVFILE /usr/lib/xymon/client/etc/xymonclient.cfg
+	ENVFILE /usr/lib/xymon/client/etc/xymonclient.cfg   # → /etc/xymon-client/
 	CMD /usr/lib/xymon/client/bin/xymonclient.sh
 	LOGFILE $XYMONSERVERLOGS/xymonclient.log
 	INTERVAL 5m

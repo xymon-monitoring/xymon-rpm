@@ -5,7 +5,7 @@
 # reads it from its own environment file, so set XYMSRV (one server) or
 # XYMSERVERS plus XYMSRV="0.0.0.0" (several) in
 #
-#     /usr/lib/xymon/client/etc/xymonclient.cfg
+#     /etc/xymon-client/xymonclient.cfg
 #
 # which is preserved across upgrades. The XYMONSERVERS variable that
 # other distributions document here is read only by their patched

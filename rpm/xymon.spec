@@ -98,13 +98,53 @@ Source13:       xymon.sysusers
 # config/attr handling in either role.
 %global client_tree_filelist %{expand:
 %{xymonhome}/client
-%config(noreplace) %{xymonhome}/client/etc/xymonclient.cfg
-%config(noreplace) %{xymonhome}/client/etc/clientlaunch.cfg
-%config(noreplace) %{xymonhome}/client/etc/localclient.cfg
+%dir %{_sysconfdir}/xymon-client
+%config(noreplace) %{_sysconfdir}/xymon-client/xymonclient.cfg
+%config(noreplace) %{_sysconfdir}/xymon-client/clientlaunch.cfg
+%config(noreplace) %{_sysconfdir}/xymon-client/localclient.cfg
 %attr(0750,root,xymon) %{xymonhome}/client/bin/logfetch
 %attr(0750,root,xymon) %{xymonhome}/client/bin/clientupdate
 %config(noreplace) %{_sysconfdir}/logrotate.d/xymon
 %{?_sysusersdir:%{_sysusersdir}/xymon.conf}
+}
+
+# Older builds shipped the client configuration as real files under
+# %%{xymonhome}/client/etc; it now lives in /etc/xymon-client, with that
+# path left behind as a symlink. rpm will not replace a directory with a
+# symlink on its own -- the transaction fails on the existing directory
+# -- so the way has to be cleared before anything is unpacked, which is
+# what %%pretrans is for. Admin edits are carried over rather than
+# discarded: whatever is in the old directory moves to the new one
+# unless a file is already there.
+#
+# Expanded into both packages: either role may be the one upgrading.
+%global migrate_client_etc %{expand:
+local old = "%{xymonhome}/client/etc"
+local new = "%{_sysconfdir}/xymon-client"
+local st = posix.stat(old)
+if st and st.type == "directory" then
+  posix.mkdir(new)
+  for i, f in ipairs(posix.dir(old) or {}) do
+    if f ~= "." and f ~= ".." then
+      local src = old .. "/" .. f
+      local dst = new .. "/" .. f
+      if not posix.stat(dst) then
+        local fin = io.open(src, "rb")
+        if fin then
+          local data = fin:read("*a")
+          fin:close()
+          local fout = io.open(dst, "wb")
+          if fout then
+            fout:write(data)
+            fout:close()
+          end
+        end
+      end
+      os.remove(src)
+    end
+  end
+  posix.rmdir(old)
+end
 }
 
 # Account creation, expanded into both packages' %%pre: with no
@@ -388,6 +428,25 @@ done
 rm -rf %{buildroot}%{xymonhome}/client/tmp %{buildroot}%{xymonhome}/client/logs
 ln -sf %{_tmppath}            %{buildroot}%{xymonhome}/client/tmp
 ln -sf %{_localstatedir}/log/xymon %{buildroot}%{xymonhome}/client/logs
+
+# Client configuration belongs in /etc: the FHS wants /usr shareable and
+# read-only, and an admin edits xymonclient.cfg (XYMSRV) more than any
+# other file on a client host. Upstream already does this for the server
+# -- its build symlinks server/etc to INSTALLETCDIR -- but provides no
+# equivalent hook for the client, so the same move is made here. Every
+# reference to these files, in clientlaunch.cfg and in the server's
+# tasks.cfg alike, is spelled $XYMONCLIENTHOME/etc/... and resolves
+# through the symlink, so nothing else has to know.
+install -d %{buildroot}%{_sysconfdir}/xymon-client
+mv %{buildroot}%{xymonhome}/client/etc/* %{buildroot}%{_sysconfdir}/xymon-client/
+rmdir %{buildroot}%{xymonhome}/client/etc
+ln -sf %{_sysconfdir}/xymon-client %{buildroot}%{xymonhome}/client/etc
+
+%pretrans -p <lua>
+%migrate_client_etc
+
+%pretrans client -p <lua>
+%migrate_client_etc
 
 %pre
 %create_xymon_account

@@ -121,7 +121,7 @@ of the shipped packages and ports, not from documentation.
 | | here | Debian | Terabithia | FreeBSD |
 | --- | --- | --- | --- | --- |
 | Server config | `/etc/xymon/` | `/etc/xymon/` | `/etc/xymon/` | `…/www/xymon/server/etc/` |
-| Client config | `/usr/lib/xymon/client/etc/` | `/etc/xymon/` | `/etc/xymon-client/` | `…/www/xymon/client/etc/` |
+| Client config | `/etc/xymon-client/` | `/etc/xymon/` | `/etc/xymon-client/` | `…/www/xymon/client/etc/` |
 | Server binaries | `/usr/lib/xymon/server/bin/` | `/usr/lib/xymon/server/bin/` | `/usr/libexec/xymon/`, `/usr/sbin/xymond` | `…/www/xymon/server/bin/` |
 | Client binaries | `/usr/lib/xymon/client/bin/` | `/usr/lib/xymon/client/bin/` | `/usr/libexec/xymon-client/` | `…/www/xymon/client/bin/` |
 | Web assets | `/var/lib/xymon/www/` | `/usr/share/xymon/` | `/var/www/xymon/` | `…/www/xymon/server/www/` |
@@ -153,19 +153,16 @@ Three degrees of intervention:
   nothing writes inside `/usr/lib`, and the spec needs no path
   rewriting and no patches.
 
-**One place this packaging is the outlier.** The client's editable
-configuration — `xymonclient.cfg` (which holds `XYMSRV`),
-`clientlaunch.cfg`, `localclient.cfg` — is a real directory at
-`/usr/lib/xymon/client/etc/`, because upstream provides no symlink for
-the client the way it does for the server. Debian and Terabithia both
-place client configuration under `/etc`, and the FHS wants `/usr`
-shareable and read-only. It works — the files are `%config(noreplace)`,
-so upgrades keep local edits, and `tests/packages.sh` asserts that for
-both roles — but the file an admin edits most often on a client host is
-in the least expected place. Closing the gap would mean shipping those
-configs in `/etc/xymon-client/` and making `client/etc` a symlink to
-it, which is a layout change with a migration cost for anyone already
-on the snapshot channel.
+**Configuration is in `/etc` for both roles.** The server gets there
+through upstream's own `server/etc → /etc/xymon` symlink; upstream
+provides no equivalent for the client, so this packaging adds the
+matching one — the files live in `/etc/xymon-client/` and
+`client/etc` is a symlink to it. That keeps `/usr` read-only and
+shareable as the FHS wants, puts the file an admin edits most
+(`xymonclient.cfg`, which holds `XYMSRV`) where they would look for it,
+and costs nothing at runtime: every reference to those files, in
+`clientlaunch.cfg` and in the server's `tasks.cfg` alike, is spelled
+`$XYMONCLIENTHOME/etc/...` and resolves through the symlink.
 
 ## Migrating from the old layout of this packaging
 

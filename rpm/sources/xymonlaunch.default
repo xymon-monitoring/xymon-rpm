@@ -4,7 +4,7 @@
 # environment files.
 # 
 # To edit where this host's client tasks report to, set XYMSRV in
-# /usr/lib/xymon/client/etc/xymonclient.cfg. (On a server that is
+# /etc/xymon-client/xymonclient.cfg. (On a server that is
 # normally 127.0.0.1: the server monitors itself through its own
 # embedded client.)
 # 

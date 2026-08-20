@@ -75,7 +75,7 @@ check "net-tools arrived with the client" \
 
 # An upgrade must not reset the server address a user configured.
 check "the client configs are marked config" \
-	"rpm -qc xymon-client | grep -q client/etc/xymonclient.cfg"
+	"rpm -qc xymon-client | grep -qx /etc/xymon-client/xymonclient.cfg"
 
 check "systemd accepts the shared unit" \
 	"systemd-analyze verify --man=no /usr/lib/systemd/system/xymonlaunch.service"
@@ -109,7 +109,7 @@ check "the swap left the server and removed the client package" \
 check "the client tree survived the swap (now embedded)" \
 	"test -x /usr/lib/xymon/client/bin/xymonlaunch &&
 	 test -x /usr/lib/xymon/client/bin/xymonlaunch-run &&
-	 test -f /usr/lib/xymon/client/etc/clientlaunch.cfg"
+	 test -f /etc/xymon-client/clientlaunch.cfg"
 
 check "the dispatcher now picks the server role" \
 	"test -x /usr/lib/xymon/server/bin/xymond"
@@ -128,7 +128,7 @@ check "the dispatcher fails loudly on a broken server install" \
 	 rc=\$?; chmod 0755 /usr/lib/xymon/server/bin/xymond; test \$rc -eq 0"
 
 check "the embedded client configs are still marked config" \
-	"rpm -qc xymon | grep -q client/etc/xymonclient.cfg"
+	"rpm -qc xymon | grep -qx /etc/xymon-client/xymonclient.cfg"
 
 echo "== installing the remaining subpackages =="
 # Actually the remaining ones: the server and client rpms are excluded

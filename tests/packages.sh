@@ -165,9 +165,21 @@ check "both packages list the same client tree files" \
 	 test -s $work/s.files && diff $work/s.files $work/c.files"
 
 check "both packages mark the same client configs %config(noreplace)" \
-	"rpm -qcp $server | grep '^/usr/lib/xymon/client/' | sort > $work/s.conf &&
-	 rpm -qcp $client | grep '^/usr/lib/xymon/client/' | sort > $work/c.conf &&
+	"rpm -qcp $server | grep '^/etc/xymon-client/' | sort > $work/s.conf &&
+	 rpm -qcp $client | grep '^/etc/xymon-client/' | sort > $work/c.conf &&
 	 test -s $work/s.conf && diff $work/s.conf $work/c.conf"
+
+# The FHS wants /usr shareable and read-only, so the client's editable
+# files must not live there. Upstream symlinks the server's etc to
+# /etc/xymon; this packaging adds the matching client link, and every
+# upstream-shaped $XYMONCLIENTHOME/etc/... path resolves through it.
+for role in server client; do
+	check "the $role package keeps client config out of /usr" \
+		"! rpm -qcp \$$role | grep -q '^/usr/'"
+	check "the $role package links client/etc to /etc/xymon-client" \
+		"test -L $work/$role/usr/lib/xymon/client/etc &&
+		 readlink $work/$role/usr/lib/xymon/client/etc | grep -qx /etc/xymon-client"
+done
 
 check "the client tree has identical modes and ownership in both" \
 	"rpm -qp --qf '[%{FILENAMES} %{FILEMODES:octal} %{FILEUSERNAME} %{FILEGROUPNAME}\n]' $server |

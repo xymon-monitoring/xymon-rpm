@@ -42,7 +42,7 @@ dnf install xymon-client   # client only
 Every host runs the same single unit, `xymonlaunch.service`; it picks
 the server or the client role by which package is installed. A
 client-only host sets the server address (`XYMSRV`) in
-`/usr/lib/xymon/client/etc/xymonclient.cfg` and runs
+`/etc/xymon-client/xymonclient.cfg` and runs
 `systemctl enable --now xymonlaunch`. Installing the server on a client
 host fails on the package conflict — by design. Changing a host's role
 is one transaction:
