@@ -111,7 +111,9 @@ build/mkrepofile.sh generates the .repo users install
 docs/signing.md     how to create and install the signing key
 docs/deployment-strategies.md  how Debian, Terabithia, FreeBSD and this repo split server and client
 tests/vercmp.sh     asserts the snapshot/release version ordering
+tests/packages.sh   reads the built rpms: conflict, shared unit, role parity
 tests/install.sh    installs the built packages and checks the scriptlets
+tests/systemd.sh    role changes against a live systemd (privileged container)
 ```
 
 ## Versioning
