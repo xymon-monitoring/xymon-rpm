@@ -63,7 +63,8 @@ Source0:        xymon-%{version}.tar.gz
 #   for both roles, shipped identically by the server and the client
 #   package. xymonlaunch-run picks the role: the server tree when it is
 #   installed, otherwise the client tree in the foreground (upstream's
-#   runclient.sh backgrounds xymonlaunch, which systemd cannot
+#   runclient.sh starts xymonlaunch without --no-daemon, so it forks
+#   and the script exits, leaving a Type=simple unit nothing to
 #   supervise):
 Source1:        xymonlaunch.service
 Source3:        xymonlaunch-run

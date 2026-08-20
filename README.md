@@ -55,17 +55,10 @@ systemctl restart xymonlaunch   # the swap stops the old role cleanly
                                 # new one up
 ```
 
-Demoting needs one more edit: the former server's `xymonclient.cfg`
-still points `XYMSRV` at `127.0.0.1` (correct while it *was* the
-server, and preserved as `%config(noreplace)` through the swap). Set it
-to the real server before the restart, or the host reports into the
-void — client sends are fire-and-forget, so nothing will complain.
-
-Upgrading a host installed **before** this layout (server hosts have
-both packages, which now conflict) needs the same swap:
-`dnf swap xymon-client xymon`. Until it is done, `dnf upgrade` on that
-host fails as a whole — including unrelated packages — because the
-conflict makes the transaction unsolvable.
+Demoting also needs `XYMSRV` set afterwards, and a host installed
+before the packages conflicted needs the same swap before `dnf upgrade`
+will resolve at all. Both, plus where every file lives and the everyday
+admin tasks, are in [docs/admin-guide.md](docs/admin-guide.md).
 
 Packages and repository metadata are signed; verify the key against this
 fingerprint (see [docs/signing.md](docs/signing.md)):
@@ -176,7 +169,7 @@ bring them over. Until it merges they are vendored here:
 | `xymon.server-init`, `xymon.client-init` | Terabithia 4.3.30 SRPM | the `devel` copies pass `xymoncmd --no-env`, which does not exist in `main` until the `lib/stdopt.c` rework ([xymon#106](https://github.com/xymon-monitoring/xymon/issues/106)); they switch back to the `devel` copies when it lands |
 | `xymon.logrotate` | adapted here | the `devel` copy's postrotate HUPs `xymonlaunch`, which `main` does not relay ([xymon#172](https://github.com/xymon-monitoring/xymon/pull/172)); `copytruncate` until it does |
 | `xymon-client.default` | adapted here | the `devel` copy documents `XYMONSERVERS`, which only patched clients read; on `main` the server address lives in `xymonclient.cfg`, and the file now says so |
-| `xymonlaunch.service`, `xymonlaunch-run` | written here (unit started from Terabithia's) | ONE unit for both roles, shipped by both packages; `xymonlaunch-run` picks the server tree when installed, else runs the client in the foreground (upstream's `runclient.sh` backgrounds `xymonlaunch`, which systemd cannot supervise) |
+| `xymonlaunch.service`, `xymonlaunch-run` | written here (unit started from Terabithia's) | ONE unit for both roles, shipped by both packages; `xymonlaunch-run` picks the server tree when installed, else runs the client in the foreground (upstream's `runclient.sh` starts `xymonlaunch` without `--no-daemon`, so it forks and the script exits, leaving a `Type=simple` unit nothing to supervise) |
 | everything else | upstream `devel` via PR #46 | identical in both, or 4.4-neutral |
 
 `rpm/terabithia/` archives the reference spec and README from
@@ -212,17 +205,24 @@ for provenance only; it is never built.
 
 ## Testing
 
-Every build runs two checks:
+Every build runs `rpmspec -P` (a lua scriptlet with a `#` comment fails
+the whole spec parse), `tests/vercmp.sh` for the version ordering above,
+`tests/packages.sh` over the built rpms (the `Conflicts`, one unit name
+byte-identical in both packages, each role owning only its drop-in, no
+configuration under `/usr`, the shared client tree identical in both),
+and `tests/install.sh`, which installs the client alone, proves
+`dnf install xymon` there fails on the conflict, then promotes and
+demotes.
 
-- `tests/vercmp.sh` — asserts the version ordering above, which fails
-  silently rather than failing a build when it breaks.
-- `tests/install.sh` — installs the client *alone* first (together, the
-  server would mask everything a client-only host is missing), then all
-  packages, and checks what a green `rpmbuild` cannot: dependencies
-  resolve, `%pre` creates the account, unit paths resolve,
-  `systemd-analyze verify` accepts the units, and `%post` rewrote the
-  baked-in `localhost` hostname. Services are not started — containers
-  have no PID 1.
+One EL and one Fedora target then run `tests/systemd.sh` under a real
+init — the only place scriptlets can be tested at all, since without
+PID 1 every `systemctl` in them is swallowed by `|| :`. It covers
+enablement, both swap directions, the per-role drop-ins and teardown.
+Publishing waits on it.
+
+Not covered: upgrades from a previously published layout, since a
+fixture of the old layout would have to be published first. The
+`%pretrans` migrations are verified by hand.
 
 ## Building a branch or a pull request
 
