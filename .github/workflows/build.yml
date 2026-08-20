@@ -21,6 +21,14 @@ on:
         description: 'Release number for a tag build (bump to re-release)'
         required: false
         default: '1'
+      # One-off override of the retention in build/publish.sh, for
+      # trimming the published tree by hand. The standing policy stays
+      # whatever that script defaults to; this only changes the run it
+      # is given to.
+      snapshot_keep:
+        description: 'Snapshot builds to keep per directory when publishing'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -437,6 +445,10 @@ jobs:
 
       - name: Sign and publish
         if: steps.key.outputs.ok == 'true'
+        env:
+          # Empty means "leave it to publish.sh", so a normal push keeps
+          # the standing retention.
+          XYMON_SNAPSHOT_KEEP: ${{ github.event.inputs.snapshot_keep }}
         run: |
           set -eu
           ./build/publish.sh artifacts published

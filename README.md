@@ -151,7 +151,7 @@ goes away.
 
 The stable channel keeps everything forever — people pin versions and
 roll back. The snapshot channel keeps the newest **5 builds** per
-directory (`XYMON_SNAPSHOT_KEEP` overrides) so the tree stays within
+directory (`XYMON_SNAPSHOT_KEEP` overrides, and the **build** workflow takes a `snapshot_keep` input for trimming the published tree by hand) so the tree stays within
 GitHub Pages limits. Pruning removes whole builds, never single packages
 — rebuilds of one upstream commit count as one build — and every removal
 is named in the publish log.
