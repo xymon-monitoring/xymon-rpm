@@ -29,9 +29,11 @@ The cost is at runtime. Two packages mean two units (`xymon.service`,
 `xymon-client.service`), so a guard must stop the client unit
 double-reporting on a server:
 `ExecCondition=test ! -x /usr/lib/xymon/server/bin/xymond`, which makes
-it a clean no-op there. Gentle, but the same inversion has the analysis
-daemon `xymond_client` shipping *twice*, once per package at different
-paths — in the packaging whose split exists to avoid duplicate files.
+it a clean no-op there. The split also inverts which package owns what:
+`xymon.service` runs the *client* package's `xymonlaunch`, and the
+analysis daemon `xymond_client` was moved into `xymon-client` (Debian
+#903614) with a symlink left behind in the server tree. Nothing is
+duplicated, but nothing in the server package stands alone either.
 
 ## Terabithia: self-contained server, standalone client
 
@@ -53,9 +55,12 @@ should have made unrepresentable.
 ## FreeBSD: two ports, no relationship at all
 
 Two independent ports, two builds. `net-mgmt/xymon-client` is a true
-`CLIENTONLY=yes` build. `net-mgmt/xymon-server` runs the full server
-build, but its `pkg-plist` ships no `client/` files, so the packaged
-server contains none. Neither port depends on or conflicts with the
+`CLIENTONLY=yes` build. `net-mgmt/xymon-server` runs a server build with
+the client cut out of it: the port edits `build/Makefile.rules` to drop
+`client` from the build targets and `install-client` from the install
+targets, so the packaged server never contains one — the only packaging
+that removes it at the source rather than after the fact. Neither port
+depends on or conflicts with the
 other: they install to different paths, are co-installable, and each
 has its own rc script. Nothing prevents both from running, or a server
 from running with no client at all — coordination is the
@@ -126,7 +131,7 @@ of the shipped packages and ports, not from documentation.
 | Web assets (static) | `/usr/share/xymon/` | `/usr/share/xymon/` | `/var/www/xymon/` | `…/www/xymon/server/www/` |
 | Web pages (generated) | `/var/lib/xymon/www/` | `/var/lib/xymon/www/` | `/var/www/xymon/` | `…/www/xymon/server/www/` |
 | Server data | `/var/lib/xymon/` | `/var/lib/xymon/` | `/var/lib/xymon/` | `…/www/xymon/data/` |
-| Logs | `/var/log/xymon/` | `/var/log/xymon/` | `/var/log/xymon/` | `/var/log/xymon/` |
+| Logs | `/var/log/xymon/` | `/var/log/xymon/` | `/var/log/xymon/` | `…/www/xymon/data/logs/` |
 
 (FreeBSD's `…` is `${PREFIX}/www`, normally `/usr/local/www` — it keeps
 upstream's single tree almost untouched and simply puts it under the
@@ -137,23 +142,29 @@ Three degrees of intervention:
 - **Terabithia rewrites the layout.** Binaries move to
   `/usr/libexec/<pkg>/`, the two roles get separate config directories,
   web content goes to `/var/www/`, and the daemons an admin invokes are
-  linked into `/usr/sbin/`. That is why its spec carries hundreds of
-  `sed` rules rewriting `@XYMONTOPDIR@/server/bin` and friends, and a
-  large patch set to match.
+  linked into `/usr/sbin/`. That is why its spec rewrites
+  `@XYMONTOPDIR@/server/bin` and friends with `perl` before the build,
+  and carries 344 `Patch:` lines to match.
 - **Debian moves configuration and web content only.** It keeps
   upstream's `/usr/lib/xymon/{server,client}` binary tree but pulls all
   configuration — both roles' — into `/etc/xymon`, and the static web
   assets into `/usr/share/xymon`.
-- **Here, upstream's own symlinks do the work.** The tree stays as the
-  `--server` build lays it out, and the build's own links redirect what
-  must not live in `/usr/lib`: `server/etc → /etc/xymon`, `server/www →
-  /var/lib/xymon/www`, `server/tmp → /var/lib/xymon/tmp`, `client/logs →
-  /var/log/xymon`, `client/tmp → /var/tmp`. The layout therefore matches
+- **Here, upstream's own symlinks do most of the work.** The tree stays
+  as the `--server` build lays it out, and the build's own links
+  redirect what must not live in `/usr/lib`: `server/etc → /etc/xymon`,
+  `server/web → /etc/xymon/web`, `server/www → /var/lib/xymon/www`,
+  `server/tmp → /var/lib/xymon/tmp`. The layout therefore matches
   upstream's documentation while nothing writes inside `/usr/lib`, and
-  the spec needs no path rewriting and no patches. Two links are added
-  on top, for the same reason — editable and generated data out of
-  read-only trees, shipped content out of `/var`: `client/etc →
-  /etc/xymon-client` and `www/{gifs,help,menu} → /usr/share/xymon/…`.
+  the spec needs no path rewriting and no patches.
+
+  Those links exist only under the *server* tree
+  (`build/Makefile.rules:186-241`); the client tree gets none, and
+  `client/Makefile` ships its `tmp` and `logs` as real directories. So
+  the spec makes the same moves by hand — `client/etc →
+  /etc/xymon-client`, `client/logs → /var/log/xymon`, `client/tmp →
+  /var/tmp` — as does Debian, at `debian/rules:96-98`. Three more take
+  shipped content out of `/var`: `www/{gifs,help,menu} →
+  /usr/share/xymon/…`.
 
 **The `www` tree holds two different kinds of thing**, which is why only
 part of it moves. `gifs`, `help` and `menu` never change on a running
