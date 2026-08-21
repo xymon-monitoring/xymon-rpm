@@ -15,28 +15,11 @@
 # dispatcher the unit uses, which is also a check that the dispatcher
 # picks the server role from the drop-in alone.
 #
-# STATUS: this suite FAILS on the current packaging, and that failure is
-# the finding rather than a bug in the test. Measured on the real path
-# -- the server's own tasks.cfg client -- in a single run:
-#
-#   t=300s  clientdata=15677B  columns: clientlog conn info trends
-#                                       xymond xymongen xymonnet
-#
-# The client half works. It builds a 15,677-byte report with all 17
-# sections, xymond receives and stores it, and `clientlog <host>` returns
-# it in full. What never happens is the analysis: no cpu, disk, memory or
-# procs column ever appears. xymond_client is running, its binary is in
-# the xymon package, analysis.cfg is installed. clientdata.log holds one
-# line, "Peer not up, flushing message queue", from startup.
-#
-# Ruled out by measurement: exporting XYMONCLIENTHOME from the dispatcher
-# changes nothing. (It does fix a different failure -- running the client
-# by hand via `xymoncmd --env=...` leaves XYMONCLIENTHOME empty so it
-# searches /bin -- but that is not the real path and not this bug.)
-#
-# Deliberately NOT wired into .github/workflows/build.yml: it would stop
-# publishing, and the packaging's other properties are worth continuing
-# to ship while this is understood. Wire it in once it passes.
+# It found one on its first run, which is why publishing waits on it: a
+# fresh install shipped hosts.cfg naming "localhost" while the server's
+# own client reported under uname -n, and xymond_client drops a report
+# whose host it cannot find without logging an error. The data arrived
+# and was stored; nothing was ever analysed. Every other suite passed.
 #
 # Needs procps-ng for pgrep. Run from the repository root with the built
 # packages in ./out.
