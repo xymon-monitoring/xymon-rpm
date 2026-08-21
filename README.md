@@ -277,6 +277,12 @@ then starts httpd and fetches the URLs — static content through its
 symlinks, a missing file that must be 404 rather than a denial, and the
 secure CGI path, which must answer 401.
 
+`tests/publish.sh` publishes into a temporary tree with a throwaway key
+— never the real repository — and asserts the stable channel is a usable
+signed repository before its first release, that a published NEVRA is
+never overwritten, that retention drops whole builds and names them, and
+that a reset spares the stable channel.
+
 One EL and one Fedora target run two more. `tests/systemd.sh` works
 under a real init — the only place scriptlets can be tested at all,
 since without PID 1 every `systemctl` in them is swallowed by `|| :` —
