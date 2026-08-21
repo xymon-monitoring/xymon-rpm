@@ -488,10 +488,21 @@ if [ ! -e %{clientconf} ]; then
 fi
 %tmpfiles_create %{_tmpfilesdir}/xymon.conf
 # Replace the placeholder baked in at build time (see %%build).
+#
+# hosts.cfg gets the same treatment, and it is not cosmetic. The build
+# bakes "localhost" there too, but the server's own client reports under
+# uname -n, and xymond_client silently drops a report whose host it
+# cannot find: it logs "Client report from host X" and returns before
+# running a single check, so cpu, disk, memory and procs never appear
+# while the host still shows green from the network tests. Adding a
+# second entry does not fix it either -- Xymon keys hosts by address, so
+# another 127.0.0.1 line is ignored. The entry has to be renamed.
 if [ $1 -eq 1 ]; then
     sed -i -e "s/^XYMONSERVERHOSTNAME=.*/XYMONSERVERHOSTNAME=\"$(uname -n)\"/" \
            -e "s/^XYMONSERVERWWWNAME=.*/XYMONSERVERWWWNAME=\"$(uname -n)\"/" \
         %{_sysconfdir}/xymon/xymonserver.cfg || :
+    sed -i -e "s/^\\(127\\.0\\.0\\.1[[:space:]]\\+\\)localhost\\b/\\1$(uname -n)/" \
+        %{_sysconfdir}/xymon/hosts.cfg || :
 fi
 # Label the web-facing paths so httpd can reach them on an enforcing
 # host: the default policy has no contexts for /usr/lib/xymon, so the
