@@ -125,7 +125,13 @@ the client's entry in `clientlaunch.cfg`.
 ## Server tasks
 
 **Add a host.** `/etc/xymon/hosts.cfg` (or a file in `hosts.d/`), then
-restart. The name must match what the client reports.
+restart. The name must match what the client reports, and **the address
+must be unique**: Xymon keys hosts by address, so a second entry for an
+address already listed is ignored. Adding `127.0.0.1 myhost` when
+`127.0.0.1 localhost` is already there does nothing — rename the
+existing entry instead. A host that is not matched still shows green
+from the network tests while none of its client data is ever analysed,
+which is the confusing part.
 
 **Web access.** The UI is `http://<server>/xymon/`. The authenticated
 CGIs read `/etc/xymon/xymonpasswd`, which ships empty and
@@ -167,6 +173,7 @@ to a server that no longer exists says nothing about it.
 | --- | --- |
 | Host missing from the web UI | in `hosts.cfg`? `MACHINEDOTS` matching? unit running? |
 | Host shows as a "ghost" | the reported name differs from `hosts.cfg` |
+| Host is green but has no cpu/disk/memory | it is not matched in `hosts.cfg` — check for a duplicate address |
 | Client runs, no data arrives | `XYMSRV`; port 1984 reachable; `clientlaunch.log` |
 | Sections empty (disk, ports, ifstat) | `net-tools` missing, or the collector failed — `clientlaunch.log` |
 | Web pages 500 | `xymonpasswd` missing or not `apache`-owned; httpd error log |

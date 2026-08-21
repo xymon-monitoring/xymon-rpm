@@ -219,45 +219,30 @@ forever, which no retention count could trim.
 ## Testing
 
 Every build runs `rpmspec -P` (a lua scriptlet with a `#` comment fails
-the whole spec parse), `tests/vercmp.sh` for the version ordering above,
-`tests/packages.sh` over the built rpms (the `Conflicts`, one unit name
-byte-identical in both packages, each role owning only its drop-in, no
-configuration under `/usr`, the shared client tree identical in both),
-and `tests/install.sh`, which installs the client alone, proves
-`dnf install xymon` there fails on the conflict, promotes and demotes,
-then starts httpd and fetches the URLs — static content through its
-symlinks, a missing file that must be 404 rather than a denial, and the
-secure CGI path, which must answer 401.
+the whole spec parse) and four suites over the built rpms:
 
-`tests/publish.sh` publishes into a temporary tree with a throwaway key
-— never the real repository — and asserts the stable channel is a usable
-signed repository before its first release, that a published NEVRA is
-never overwritten, that retention drops whole builds and names them, and
-that a reset spares the stable channel.
+| | |
+| --- | --- |
+| `vercmp.sh` | the version ordering above |
+| `packages.sh` | the `Conflicts`, one unit name byte-identical in both packages, each role owning only its drop-in, no configuration under `/usr`, the client tree identical in both |
+| `install.sh` | installs the client alone, proves `dnf install xymon` there fails on the conflict, promotes and demotes, then serves the URLs — static content through its symlinks, a missing file that must be 404 rather than a denial, the secure CGI answering 401 |
+| `publish.sh` | publishes into a temporary tree with a throwaway key, never the real repository: the stable channel usable before its first release, a published NEVRA never overwritten, retention dropping whole builds and naming them, a reset sparing the stable channel |
 
-One EL and one Fedora target run two more. `tests/systemd.sh` works
-under a real init — the only place scriptlets can be tested at all,
-since without PID 1 every `systemctl` in them is swallowed by `|| :` —
-covering enablement, both swap directions, the drop-ins and teardown.
-`tests/upgrade.sh` installs the build currently in the snapshot channel,
-edits `XYMSRV`, adds a task, drops files into the web tree, upgrades to
-the build under test and proves nothing was lost. It is the only suite
-that starts from a non-empty root, and so the only one that exercises
-`%pretrans`; since its fixture is whatever is published, a layout change
-is exercised by the push after it. Publishing waits on both.
+Three more run on one EL and one Fedora target, and publishing waits on
+all of them:
 
-`tests/monitoring.sh` starts a server, lets its own client report, and
-asserts the data is analysed into `cpu`, `disk`, `memory` and `procs`
-columns — with the board checked *before* any client runs, so a query
-that always returns something cannot pass. It runs as its own job on one
-EL and one Fedora target, and publishing waits on it.
+| | |
+| --- | --- |
+| `systemd.sh` | under a real init — the only place scriptlets can be tested, since without PID 1 every `systemctl` in them is swallowed by `\|\| :` — covering enablement, both swap directions, the drop-ins and teardown |
+| `upgrade.sh` | installs the published build, seeds admin state, upgrades to this one and proves nothing was lost. The only suite starting from a non-empty root, so the only one exercising `%pretrans`; its fixture is whatever is published, so a layout change is exercised by the push after it |
+| `monitoring.sh` | starts a server, lets its own client report, and asserts the data is analysed into `cpu`, `disk`, `memory` and `procs` — with the board checked *before* any client runs, so a query that always returns something cannot pass |
 
-It earned that on its first run: a fresh install shipped `hosts.cfg`
-naming `localhost` while the server's own client reported under
-`uname -n`, and `xymond_client` drops a report whose host it cannot find
-without logging an error. Every other suite passed on that build. The
-host showed green from the network tests the whole time, and no
-threshold was ever evaluated.
+The last one earned its place immediately: a fresh install shipped
+`hosts.cfg` naming `localhost` while the server's own client reported
+under `uname -n`, and `xymond_client` discards a report whose host it
+cannot find without logging anything. The host stayed green from the
+network tests while no threshold was ever evaluated, and every other
+suite passed.
 
 ## Building a branch or a pull request
 

@@ -45,7 +45,7 @@ workaround:
 
 | PR | What it adds | |
 | --- | --- | --- |
-| [#410](https://github.com/xymon-monitoring/xymon/pull/410) | installs libraries and headers | open |
+| [#410](https://github.com/xymon-monitoring/xymon/pull/410) | `make install-devel` installs the libraries and headers | open |
 | [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | open |
 | [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` | open |
 | [#415](https://github.com/xymon-monitoring/xymon/pull/415) | `devel`'s systemd unit, generated from the build's paths, plus `INSTALLSYSTEMDDIR` | open |
@@ -54,12 +54,10 @@ workaround:
 | [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | draft |
 | [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet | draft |
 
-The five open ones merge in any order — all 120 checked. Each is a no-op
-for an existing build except #410, which keeps `install-libs` in the
-server's default `INSTALLTARGETS` where jc's commit put it, so `make
-install` also writes the libraries and headers. #413 and #415 are
-systemd-specific; the rest are plain make and POSIX shell, verified on
-Debian as well as EL.
+The five open ones merge in any order — all 120 checked — and every one
+is a no-op for an existing build: each is opt-in behind a variable or a
+target nobody has to invoke. #413 and #415 are systemd-specific; the
+rest are plain make and POSIX shell, verified on Debian as well as EL.
 
 Two of the open ones delete something Debian carries by hand as well —
 `debian/rules` does #411's symlinks at lines 96-98 and #414's at 72-74 —
