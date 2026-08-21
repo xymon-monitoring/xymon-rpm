@@ -205,12 +205,25 @@ forever, which no retention count could trim.
   upstream's. `clientdata.log` holds one line, `Peer not up, flushing
   message queue`, from startup.
 
-  Not yet distinguished: whether the columns never appear or merely
-  appear late. Every observation stopped at 300s, and no `[vmstat]`
-  section had reached the server by 4 minutes — the client samples with
-  `vmstat 300 2`, so a warm-up window of two client cycles is plausible
-  and untested. The next steps are a longer run and `xymond_client`
-  under `--debug`.
+  `xymond_client --debug` shows it receives the report intact, loads
+  `analysis.cfg`, and logs `Client report from host <host>` — then goes
+  straight to waiting for the next message without emitting anything.
+  So the delivery chain is fine and the worker simply produces no
+  statuses. That also rules out a warm-up window: it is not waiting for
+  data, it processes the message and moves on.
+
+  The most specific lead is one line above that:
+
+      setup_feedback_queue: got ID -1 for key 0xA68C3ED
+
+  `-1` is `msgget()` failing. That queue is how `xymond_client` returns
+  its results to `xymond`, and a worker that can parse but not deliver
+  matches the symptom exactly. The key comes from `ftok()` on
+  `$XYMONHOME`, which differs between this packaging
+  (`/usr/lib/xymon/server`) and a source install (`/opt/xymon/server`),
+  so SysV IPC permissions or key collision are the things to look at
+  next. Whether a source install gets a valid ID there is **not yet
+  measured** — the comparison run failed to enable debug on that side.
 
   `tests/monitoring.sh` demonstrates it. The cause is not established.
 - **No distribution hardening flags** (FORTIFY, stack-protector, PIE):
