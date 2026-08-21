@@ -244,6 +244,16 @@ jobs:
           dnf -y install cpio diffutils
           ./tests/packages.sh out
 
+      # What publishing does to the tree, against a throwaway key in a
+      # temporary directory -- the real repository is never touched. The
+      # publish job itself runs once, at the end, on a tree that already
+      # holds everything, so a mistake there is discovered by users
+      # rather than by CI.
+      - name: Publish checks
+        run: |
+          dnf -y install createrepo_c rpm-sign gnupg2
+          ./tests/publish.sh out
+
       # A green rpmbuild says nothing about whether the package installs.
       - name: Install test
         run: ./tests/install.sh out
