@@ -182,10 +182,15 @@ forever, which no retention count could trim.
 
 - **No distribution hardening flags** (FORTIFY, stack-protector, PIE):
   Xymon's makefiles discard `CFLAGS` from both the command line and the
-  environment, and because `LDFLAGS` *is* honoured, the build must pass
-  `-no-pie` on Fedora and EL10 or the link fails on an `R_X86_64_32`
-  relocation. [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163)
-  fixes the root cause; merging it removes both workarounds.
+  environment. `LDFLAGS` survives, but only reaches the 15 link rules of
+  91 that mention it — 13 in `xymond/`, one each in `xymongen/` and
+  `xymonnet/`. That is enough to matter: the build passes `-no-pie` there
+  or the link fails on an `R_X86_64_32` relocation on Fedora and EL10.
+  The other 76 links never see it and succeed anyway, so the flag is not
+  reaching most of what we ship.
+  [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163) fixes
+  the `CFLAGS` root cause; the patchy `LDFLAGS` coverage is a separate
+  gap nobody has raised upstream.
 - `xymon-tmpfiles.conf` creates `/run/xymon`, which nothing uses.
   [xymon#219](https://github.com/xymon-monitoring/xymon/pull/219) adds
   `XYMONRUNDIR` but defaults it to `$XYMONLOGDIR`, so merging it is not
