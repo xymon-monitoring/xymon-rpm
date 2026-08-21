@@ -4,16 +4,20 @@
 # packages conflict, so exactly one is installed and its drop-in says
 # which role to run.
 #
-# Server: what ExecStart did when the unit was server-only -- xymoncmd
-# loads xymonserver.cfg and execs xymonlaunch on the server's tasks.cfg,
-# which includes the client's duties.
+# Both roles are the same call: xymoncmd loads the role's environment
+# file and execs xymonlaunch in the foreground, which is what a
+# Type=simple unit needs to supervise. xymoncmd finds the env file
+# itself (common/xymoncmd.c:145-151) and fills in MACHINEDOTS and
+# SERVEROSTYPE from uname when they are not already set (:47, :67);
+# lib/environ.c derives MACHINE from MACHINEDOTS, and
+# client/xymonclient.sh derives XYMONOSSCRIPT from SERVEROSTYPE. So
+# nothing here has to compute an environment -- an earlier version of
+# this script did, in shell, and every value it produced was one
+# upstream already had.
 #
-# Client: foreground equivalent of runclient.sh "start", which computes
-# this environment, forks xymonlaunch and exits -- leaving a Type=simple
-# unit nothing to supervise. CLIENTHOSTNAME and CLIENTOS arrive from
-# /etc/sysconfig/xymon-client via the unit. xymon#408 proposes this
-# upstream as "runclient.sh foreground"; the client half becomes a call
-# to it when that lands.
+# Set MACHINEDOTS or SERVEROSTYPE in /etc/sysconfig/xymon-client to
+# report under a different name or run a different OS collector; the
+# unit passes them through and xymoncmd honours them.
 
 XYMONSERVERHOME=/usr/lib/xymon/server
 XYMONCLIENTHOME=/usr/lib/xymon/client
@@ -31,21 +35,12 @@ if [ -e /usr/lib/systemd/system/xymonlaunch.service.d/server.conf ]; then
 		echo "xymonlaunch-run: server role selected but $XYMONSERVERHOME/bin is incomplete" >&2
 		exit 1
 	fi
+	# The server's tasks.cfg is xymonlaunch's default config, and it
+	# includes the embedded client's own entry.
 	exec "$XYMONSERVERHOME/bin/xymoncmd" \
 	     "$XYMONSERVERHOME/bin/xymonlaunch" --no-daemon "$@"
 fi
 
-MACHINEDOTS="${CLIENTHOSTNAME:-$(uname -n)}"
-SERVEROSTYPE="${CLIENTOS:-$(uname -s | tr '[ABCDEFGHIJKLMNOPQRSTUVWXYZ/]' '[abcdefghijklmnopqrstuvwxyz_]')}"
-MACHINE="$(echo "$MACHINEDOTS" | sed -e 's/\./,/g')"
-XYMONOSSCRIPT="xymonclient-$SERVEROSTYPE.sh"
-export XYMONCLIENTHOME MACHINEDOTS MACHINE SERVEROSTYPE XYMONOSSCRIPT
-
-# --env as well as the exports above: systemd starts this with an empty
-# environment, and the launcher expands the paths in clientlaunch.cfg --
-# LOGFILE, CMD, and PIDFILE once xymon#172 lands -- before it reads any
-# task's own ENVFILE. The exports alone leave it resolving those from
-# compiled-in defaults.
-exec "$XYMONCLIENTHOME/bin/xymonlaunch" --no-daemon \
-     --env="$XYMONCLIENTHOME/etc/xymonclient.cfg" \
+exec "$XYMONCLIENTHOME/bin/xymoncmd" \
+     "$XYMONCLIENTHOME/bin/xymonlaunch" --no-daemon \
      --config="$XYMONCLIENTHOME/etc/clientlaunch.cfg" "$@"

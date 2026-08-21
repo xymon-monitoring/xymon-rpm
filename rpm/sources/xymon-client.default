@@ -11,10 +11,14 @@
 # other distributions document here is read only by their patched
 # clients, not by this packaging.
 
-# The hostname the client reports data under, when it must differ from
-# `uname -n`:
-# CLIENTHOSTNAME=""
+# Both names below are upstream's own: xymoncmd fills them in from
+# uname when they are unset, and honours them when they are set.
 
-# Red Hat EL version 3 uses a different vmstat layout than all other
-# Linux versions. Set this ONLY on that particular OS:
-# CLIENTOS="rhel3"
+# The hostname the client reports data under, when it must differ from
+# `uname -n`. It must match the name in the server's hosts.cfg:
+# MACHINEDOTS=""
+
+# The OS whose collector script runs, when it must differ from
+# `uname -s` lowercased -- Red Hat EL 3, for instance, uses a different
+# vmstat layout from every other Linux:
+# SERVEROSTYPE="rhel3"
