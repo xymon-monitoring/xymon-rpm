@@ -16,17 +16,20 @@ written by J.C. Cleaver, and they have simply never been merged to
 written here where none did. Nothing in this repository waits on an
 upstream merge to work.
 
-The unmerged unit is worth reading before changing ours: it already
-wraps `xymoncmd` around `xymonlaunch --no-daemon`, with the comment
-*"we wrap in xymoncmd to eliminate the need for the bulk of the old init
-script"*. That is the same conclusion this packaging reached
-independently, by testing, after withdrawing an upstream PR that would
-have added a `foreground` mode to `runclient.sh` — the answer had been
-sitting on `devel` since 2015.
+That unmerged unit already wraps `xymoncmd` around `xymonlaunch
+--no-daemon`, with the comment *"we wrap in xymoncmd to eliminate the
+need for the bulk of the old init script"* — the same conclusion this
+packaging reached independently, by testing, after withdrawing a PR that
+would have added a `foreground` mode to `runclient.sh`. The answer had
+been on `devel` since 2016.
+[#415](https://github.com/xymon-monitoring/xymon/pull/415) carries it to
+`main`, with the paths substituted from the build rather than hardcoded
+to `/usr/bin` and `/usr/sbin`, so it serves a source install and any
+packaging rather than only an RPM one.
 
 | File | Origin | Why |
 | --- | --- | --- |
-| `xymonlaunch.service` | adapted from `devel` | eleven directives are verbatim from `devel`'s `tools/xymonlaunch.service`, including the `xymoncmd` wrapping. What differs is this packaging's: `ExecStart` calls `xymonlaunch-run` for the role dispatch, and the kill semantics move into the server's drop-in rather than applying to both roles |
+| `xymonlaunch.service` | adapted from `devel` | eleven directives are verbatim from `devel`'s `tools/xymonlaunch.service`, including the `xymoncmd` wrapping. What differs is this packaging's: `ExecStart` calls `xymonlaunch-run` for the role dispatch, and the kill semantics move into the server's drop-in rather than applying to both roles. [#415](https://github.com/xymon-monitoring/xymon/pull/415) brings the `devel` unit to `main` with substituted paths; landing it would leave only those two differences here |
 | `xymonlaunch-run`, `xymonlaunch-server.conf`, `xymonlaunch-client.conf` | written here | the role dispatch itself. `xymonlaunch-run` picks the tree by which role's drop-in is present and runs `xymoncmd xymonlaunch --no-daemon` for either; the drop-ins carry what differs between roles. All three exist because these two packages conflict and share one unit, which no other packaging does |
 | `xymonlaunch.service.preset` | byte-identical to `devel`'s | the file is one line and the same one. What is ours is shipping it *only* in the server package: a fresh client must not enable itself against the baked-in `XYMSRV` |
 | `xymon.sysusers` | written here | [xymon#413](https://github.com/xymon-monitoring/xymon/pull/413) proposes it upstream |
@@ -45,24 +48,33 @@ workaround:
 | [#410](https://github.com/xymon-monitoring/xymon/pull/410) | installs libraries and headers | open |
 | [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | open |
 | [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` | open |
+| [#415](https://github.com/xymon-monitoring/xymon/pull/415) | `devel`'s systemd unit, generated from the build's paths, plus `INSTALLSYSTEMDDIR` | open |
 | [#409](https://github.com/xymon-monitoring/xymon/pull/409) | installs the `lib/` diagnostics | draft |
 | [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | draft |
 | [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet | draft |
 
-They merge in any order — checked across all 5040 orderings. All but
-#410 are no-ops until their variable is set; #410 adds `install-libs` to
-the server's default `INSTALLTARGETS`, so a plain `make install` gains
-the libraries and headers. That is raised on the PR, since #409 gates
-the same kind of addition and the two should agree. Only #413 is
-systemd-specific; the rest are plain make and POSIX shell, verified on
-Debian as well as EL.
+They merge in any order — checked across all 5040 orderings for the
+first six, and all 24 for the four now open once #415 joined them. All
+but #410 are no-ops until their variable is set; #410 adds
+`install-libs` to the server's default `INSTALLTARGETS`, so a plain
+`make install` gains the libraries and headers. That is raised on the
+PR, since #409 gates the same kind of addition and the two should agree.
+#413 and #415 are systemd-specific by nature; the rest are plain make
+and POSIX shell, verified on Debian as well as EL.
+
+#415 is the reason `INSTALLTARGETS +=` exists in it rather than three
+edited assignments: those three lines are what every other change to the
+install has to touch, and editing them directly conflicted with #410 in
+all 24 orders.
 
 The drafts are parked, not abandoned: each replaces a workaround costing
 one `mv` or three lines of `%install`, which is not enough to spend
-upstream review on. The open three each delete something Debian carries
-by hand too — `debian/rules` does #411's symlinks at lines 96-98 and
-#414's at 72-74. A seventh, #408, was withdrawn: `xymoncmd` already runs
-the client in the foreground, so nothing was needed.
+upstream review on. Two of the open ones delete something Debian carries
+by hand as well — `debian/rules` does #411's symlinks at lines 96-98 and
+#414's at 72-74 — and #415 gives every systemd distribution a unit
+instead of each writing its own. One more, #408, was withdrawn:
+`xymoncmd` already runs the client in the foreground, so nothing was
+needed.
 
 `rpm/terabithia/` archives the reference spec and README from
 <https://repo.terabithia.org/rpms/xymon/> — a single unmirrored host —
