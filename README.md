@@ -180,54 +180,6 @@ forever, which no retention count could trim.
 
 ## Known gaps
 
-- **The packaged server never analyses the client data it receives.**
-  The client half works: under `tasks.cfg` the embedded client builds a
-  15,677-byte report with all 17 sections and `xymond` stores it — five
-  minutes later `xymon 127.0.0.1 "clientlog <host>"` returns all of it.
-  But the derived columns never appear. After 300s the board holds only
-  `clientlog conn info trends xymond xymongen xymonnet`, with no `cpu`,
-  `disk`, `memory` or `procs`. So a host shows as up, its measurements
-  are collected and stored, and nothing is evaluated against a
-  threshold.
-
-  An upstream **source install** of the same commit, in the same
-  container image, driven the same way, produces the full column set in
-  **20 seconds** — so this is our packaging, not upstream and not the
-  environment.
-
-  Ruled out by measurement, so nobody repeats them: the `hosts.cfg`
-  entry form (`# conn`, `# bbd http://…`, no tags and no entry all
-  behave the same — the first three give the network columns and none
-  gives the client ones); exporting `XYMONCLIENTHOME` from the
-  dispatcher; a missing worker or config (`xymond_client` runs, its
-  binary is in the `xymon` package, `analysis.cfg` is installed); and
-  the client itself, which builds a complete report. `tasks.cfg` matches
-  upstream's. `clientdata.log` holds one line, `Peer not up, flushing
-  message queue`, from startup.
-
-  `xymond_client --debug` shows it receives the report intact, loads
-  `analysis.cfg`, and logs `Client report from host <host>` — then goes
-  straight to waiting for the next message without emitting anything.
-  So the delivery chain is fine and the worker simply produces no
-  statuses. That also rules out a warm-up window: it is not waiting for
-  data, it processes the message and moves on.
-
-  The worker logs `setup_feedback_queue: got ID -1` just before that,
-  which looks like the answer and is not: `ipcs -q` shows **no SysV
-  message queue on either install**, including the source one that
-  works. The queue is optional and `xymond_client` runs without it.
-
-  Also ruled out: the user it runs as. The unit uses `User=xymon` while
-  early measurements ran as `root`; both fail identically, and the
-  shared memory segments are correctly owned in each case.
-
-  So the worker parses a complete report, recognises the host, and emits
-  nothing, and none of the delivery mechanisms explain it. What has not
-  been compared is the source install's own worker log — two attempts to
-  enable `--debug` there produced no `setup_feedback_queue` line at all,
-  which means the log was not where it was looked for.
-
-  `tests/monitoring.sh` demonstrates it. The cause is not established.
 - **No distribution hardening flags** (FORTIFY, stack-protector, PIE):
   Xymon's makefiles discard `CFLAGS` from both the command line and the
   environment. `LDFLAGS` survives, but only reaches the 15 link rules of
@@ -294,9 +246,18 @@ that starts from a non-empty root, and so the only one that exercises
 `%pretrans`; since its fixture is whatever is published, a layout change
 is exercised by the push after it. Publishing waits on both.
 
-`tests/monitoring.sh` does start a server and wait for data, and it is
-**not wired into CI** because it currently fails — see the known gap
-below. It is the only suite that would notice.
+`tests/monitoring.sh` starts a server, lets its own client report, and
+asserts the data is analysed into `cpu`, `disk`, `memory` and `procs`
+columns — with the board checked *before* any client runs, so a query
+that always returns something cannot pass. It runs as its own job on one
+EL and one Fedora target, and publishing waits on it.
+
+It earned that on its first run: a fresh install shipped `hosts.cfg`
+naming `localhost` while the server's own client reported under
+`uname -n`, and `xymond_client` drops a report whose host it cannot find
+without logging an error. Every other suite passed on that build. The
+host showed green from the network tests the whole time, and no
+threshold was ever evaluated.
 
 ## Building a branch or a pull request
 
