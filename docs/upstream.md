@@ -8,11 +8,12 @@ its workaround.
 
 ## Where the files in `rpm/sources/` come from
 
-Upstream `main` ships no systemd, logrotate or SELinux integration at
-all. It is not that nobody wrote any: the `devel` (4.4) branch has
-`tools/xymonlaunch.service`, its preset and `xymon-tmpfiles.conf`,
-written by J.C. Cleaver, and they have simply never been merged to
-`main`. So the files below are adapted from there where one existed and
+Upstream `main` ships no systemd or SELinux integration at all, and the
+only logrotate file it has is inside the unmaintained `rpm/` packaging
+described at the end of this page. It is not that nobody wrote any: the
+`devel` (4.4) branch has `tools/xymonlaunch.service`, its preset and
+`xymon-tmpfiles.conf`, written by J.C. Cleaver, and they have simply
+never been merged to `main`. So the files below are adapted from there where one existed and
 written here where none did. Nothing in this repository waits on an
 upstream merge to work.
 
@@ -29,14 +30,14 @@ packaging rather than only an RPM one.
 
 | File | Origin | Why |
 | --- | --- | --- |
-| `xymonlaunch.service` | adapted from `devel` | eleven directives are verbatim from `devel`'s `tools/xymonlaunch.service`, including the `xymoncmd` wrapping. What differs is this packaging's: `ExecStart` calls `xymonlaunch-run` for the role dispatch, and the kill semantics move into the server's drop-in rather than applying to both roles. [#415](https://github.com/xymon-monitoring/xymon/pull/415) brings the `devel` unit to `main` with substituted paths; landing it would leave only those two differences here |
+| `xymonlaunch.service` | adapted from `devel` | eleven directives are verbatim from `devel`'s `tools/xymonlaunch.service`, including the `xymoncmd` wrapping. Four things differ, all of them this packaging's: `ExecStart` calls `xymonlaunch-run` for the role dispatch, the kill semantics move into the server's drop-in rather than applying to both roles, `Alias=xymon-client.service` is dropped because one unit already serves both roles, and the second `EnvironmentFile` is `/etc/sysconfig/xymon-client` rather than `/etc/default/xymonlaunch`. [#415](https://github.com/xymon-monitoring/xymon/pull/415) brings the `devel` unit to `main` with substituted paths; landing it would leave only those four differences here |
 | `xymonlaunch-run`, `xymonlaunch-server.conf`, `xymonlaunch-client.conf` | written here | the role dispatch itself. `xymonlaunch-run` picks the tree by which role's drop-in is present and runs `xymoncmd xymonlaunch --no-daemon` for either; the drop-ins carry what differs between roles. All three exist because these two packages conflict and share one unit, which no other packaging does |
 | `xymonlaunch.service.preset` | byte-identical to `devel`'s | the file is one line and the same one. What is ours is shipping it *only* in the server package: a fresh client must not enable itself against the baked-in `XYMSRV` |
 | `xymon.sysusers` | written here | [xymon#413](https://github.com/xymon-monitoring/xymon/pull/413) proposes it upstream |
-| `xymon-tmpfiles.conf` | written here | creates `/run/xymon`, which nothing uses yet (see the README's known gaps) |
-| `xymon-sysctl.conf` | adapted from `devel` | the backfeed-queue tunables; `main` has no equivalent |
+| `xymon-tmpfiles.conf` | byte-identical to `devel`'s | creates `/run/xymon`, which nothing uses yet (see the README's known gaps) |
+| `xymon-sysctl.conf` | byte-identical to `devel`'s | the backfeed-queue tunables; `main` has no equivalent |
 | `xymon.logrotate` | adapted from `devel` | the `devel` copy's postrotate HUPs `xymonlaunch`, which `main` does not relay ([xymon#172](https://github.com/xymon-monitoring/xymon/pull/172)); `copytruncate` until it does |
-| `xymon-client.default`, `xymonlaunch.default` | adapted from `devel` | they document `XYMONSERVERS`, which only patched clients read, and name this packaging's own config paths |
+| `xymon-client.default`, `xymonlaunch.default` | adapted from `devel` | both name this packaging's own config paths instead of upstream's; `xymon-client.default` also documents `XYMONSERVERS`, which only patched clients read |
 | `xymon.te`, `xymon-client.te`, `bb.xml` | copied from `devel` | reference material, shipped as `%doc` only — the policy modules are not compiled by default (see the README's known gaps) |
 
 The upstream gaps these work around are proposed as small PRs rather
@@ -60,7 +61,7 @@ target nobody has to invoke. #413 and #415 are systemd-specific; the
 rest are plain make and POSIX shell, verified on Debian as well as EL.
 
 Two of the open ones delete something Debian carries by hand as well —
-`debian/rules` does #411's symlinks at lines 96-98 and #414's at 72-74 —
+`debian/rules` does #411's symlinks at lines 96-98 and #414's at 62-65 —
 and #415 gives every systemd distribution a unit instead of each writing
 its own. #416 is the odd one out, a bug fix this spec does not need:
 both `runclient.sh` and `xymon.sh` end their case statement with
