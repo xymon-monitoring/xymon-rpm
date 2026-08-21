@@ -185,7 +185,7 @@ merge to work.
 
 | File | Origin | Why |
 | --- | --- | --- |
-| `xymonlaunch.service`, `xymonlaunch-run`, `xymonlaunch-server.conf`, `xymonlaunch-client.conf` | written here | ONE unit for both roles, shipped by both packages; `xymonlaunch-run` picks the server tree when installed, else runs the client in the foreground. Upstream's `runclient.sh` starts `xymonlaunch` without `--no-daemon`, so it forks and the script exits, leaving a `Type=simple` unit nothing to supervise — [xymon#408](https://github.com/xymon-monitoring/xymon/pull/408) proposes a `foreground` mode that would replace the client half |
+| `xymonlaunch.service`, `xymonlaunch-run`, `xymonlaunch-server.conf`, `xymonlaunch-client.conf` | written here | ONE unit for both roles, shipped by both packages; `xymonlaunch-run` picks the tree by which role's drop-in is installed and runs `xymoncmd xymonlaunch --no-daemon` for either. Upstream's own `runclient.sh` and `xymon.sh` both fork and exit, leaving a `Type=simple` unit nothing to supervise; `xymoncmd` avoids them entirely and supplies the environment itself |
 | `xymonlaunch.service.preset` | written here | one line, and deliberately server-only: a fresh client must not enable itself against the baked-in `XYMSRV` |
 | `xymon.sysusers` | written here | [xymon#413](https://github.com/xymon-monitoring/xymon/pull/413) proposes it upstream |
 | `xymon-tmpfiles.conf` | written here | creates `/run/xymon`, which nothing uses yet (see Known gaps) |
@@ -200,7 +200,6 @@ workaround:
 
 | PR | What it adds | |
 | --- | --- | --- |
-| [#408](https://github.com/xymon-monitoring/xymon/pull/408) | `runclient.sh foreground`, for any supervisor | open |
 | [#410](https://github.com/xymon-monitoring/xymon/pull/410) | installs libraries and headers | open |
 | [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | open |
 | [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` | open |
@@ -209,7 +208,9 @@ workaround:
 | [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet | draft |
 
 They merge independently in any order — checked across all 5040
-orderings. All but #410 are no-ops until their variable is set; #410 adds
+orderings (with [#408](https://github.com/xymon-monitoring/xymon/pull/408),
+since withdrawn: `xymoncmd` already runs the client in the foreground,
+so the packaging needed nothing). All but #410 are no-ops until their variable is set; #410 adds
 `install-libs` to the server's default `INSTALLTARGETS`, so a plain
 `make install` gains the libraries and headers (raised with the
 maintainer on the PR, since #409 gates the same kind of addition and the
@@ -218,10 +219,9 @@ and POSIX shell, verified on Debian as well as EL.
 
 The three drafts are parked, not abandoned: each replaces a workaround
 that costs this spec one `mv` or three lines of `%install`, which is not
-enough to spend upstream review on. The four still open each delete
+enough to spend upstream review on. The three still open each delete
 something Debian carries by hand too — `debian/rules` does #411's three
-symlinks at lines 96-98 and #414's three at 72-74, and both Debian's
-`xymon-client.init` and FreeBSD's rc script reimplement #408 inline.
+symlinks at lines 96-98 and #414's three at 72-74.
 
 `rpm/terabithia/` archives the reference spec and README from
 <https://repo.terabithia.org/rpms/xymon/> — a single unmirrored host —

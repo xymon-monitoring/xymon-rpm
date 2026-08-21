@@ -48,7 +48,7 @@ A **client host** (`xymon-client`) has only the client half:
 ```
 /etc/xymon-client/              xymonclient.cfg  ← XYMSRV lives here
 │                               clientlaunch.cfg  localclient.cfg
-/etc/sysconfig/xymon-client     CLIENTHOSTNAME, CLIENTOS
+/etc/sysconfig/xymon-client     MACHINEDOTS, SERVEROSTYPE
 /etc/logrotate.d/xymon          (both roles ship this)
 /usr/lib/xymon/client/
 ├── bin/                        xymonclient.sh, xymonclient-linux.sh,
@@ -109,10 +109,11 @@ right only on the server itself — then restart. For several servers,
 it would report to that unconfigured default: `systemctl enable --now
 xymonlaunch`.
 
-**Set the reported name.** `CLIENTHOSTNAME` in
+**Set the reported name.** `MACHINEDOTS` in
 `/etc/sysconfig/xymon-client` must match the name in the server's
-`hosts.cfg`, or the data arrives as a ghost. `CLIENTOS` overrides the
-collector script chosen for the OS.
+`hosts.cfg`, or the data arrives as a ghost. `SERVEROSTYPE` overrides
+the collector script chosen for the OS. Both are upstream's own names,
+filled in from `uname` when unset.
 
 **Add a check.** A script in `/usr/lib/xymon/client/ext/` plus a
 `[name]` stanza in `clientlaunch.cfg`.
@@ -164,7 +165,7 @@ to a server that no longer exists says nothing about it.
 
 | Symptom | Look here |
 | --- | --- |
-| Host missing from the web UI | in `hosts.cfg`? `CLIENTHOSTNAME` matching? unit running? |
+| Host missing from the web UI | in `hosts.cfg`? `MACHINEDOTS` matching? unit running? |
 | Host shows as a "ghost" | the reported name differs from `hosts.cfg` |
 | Client runs, no data arrives | `XYMSRV`; port 1984 reachable; `clientlaunch.log` |
 | Sections empty (disk, ports, ifstat) | `net-tools` missing, or the collector failed — `clientlaunch.log` |
