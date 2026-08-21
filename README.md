@@ -190,11 +190,27 @@ forever, which no retention count could trim.
   are collected and stored, and nothing is evaluated against a
   threshold.
 
-  `xymond_client` is running, its binary is present in the `xymon`
-  package, and `analysis.cfg` is installed, so the obvious candidates
-  are ruled out. `clientdata.log` records only one line, `Peer not up,
-  flushing message queue`, at startup. Exporting `XYMONCLIENTHOME` from
-  the dispatcher was tried and ruled out by measurement.
+  An upstream **source install** of the same commit, in the same
+  container image, driven the same way, produces the full column set in
+  **20 seconds** — so this is our packaging, not upstream and not the
+  environment.
+
+  Ruled out by measurement, so nobody repeats them: the `hosts.cfg`
+  entry form (`# conn`, `# bbd http://…`, no tags and no entry all
+  behave the same — the first three give the network columns and none
+  gives the client ones); exporting `XYMONCLIENTHOME` from the
+  dispatcher; a missing worker or config (`xymond_client` runs, its
+  binary is in the `xymon` package, `analysis.cfg` is installed); and
+  the client itself, which builds a complete report. `tasks.cfg` matches
+  upstream's. `clientdata.log` holds one line, `Peer not up, flushing
+  message queue`, from startup.
+
+  Not yet distinguished: whether the columns never appear or merely
+  appear late. Every observation stopped at 300s, and no `[vmstat]`
+  section had reached the server by 4 minutes — the client samples with
+  `vmstat 300 2`, so a warm-up window of two client cycles is plausible
+  and untested. The next steps are a longer run and `xymond_client`
+  under `--debug`.
 
   `tests/monitoring.sh` demonstrates it. The cause is not established.
 - **No distribution hardening flags** (FORTIFY, stack-protector, PIE):
