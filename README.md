@@ -212,18 +212,20 @@ forever, which no retention count could trim.
   statuses. That also rules out a warm-up window: it is not waiting for
   data, it processes the message and moves on.
 
-  The most specific lead is one line above that:
+  The worker logs `setup_feedback_queue: got ID -1` just before that,
+  which looks like the answer and is not: `ipcs -q` shows **no SysV
+  message queue on either install**, including the source one that
+  works. The queue is optional and `xymond_client` runs without it.
 
-      setup_feedback_queue: got ID -1 for key 0xA68C3ED
+  Also ruled out: the user it runs as. The unit uses `User=xymon` while
+  early measurements ran as `root`; both fail identically, and the
+  shared memory segments are correctly owned in each case.
 
-  `-1` is `msgget()` failing. That queue is how `xymond_client` returns
-  its results to `xymond`, and a worker that can parse but not deliver
-  matches the symptom exactly. The key comes from `ftok()` on
-  `$XYMONHOME`, which differs between this packaging
-  (`/usr/lib/xymon/server`) and a source install (`/opt/xymon/server`),
-  so SysV IPC permissions or key collision are the things to look at
-  next. Whether a source install gets a valid ID there is **not yet
-  measured** — the comparison run failed to enable debug on that side.
+  So the worker parses a complete report, recognises the host, and emits
+  nothing, and none of the delivery mechanisms explain it. What has not
+  been compared is the source install's own worker log — two attempts to
+  enable `--debug` there produced no `setup_feedback_queue` line at all,
+  which means the log was not where it was looked for.
 
   `tests/monitoring.sh` demonstrates it. The cause is not established.
 - **No distribution hardening flags** (FORTIFY, stack-protector, PIE):
