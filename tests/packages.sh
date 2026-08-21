@@ -251,4 +251,15 @@ for role in server client; do
 		 test -s $work/$role/usr/lib/sysusers.d/xymon.conf"
 done
 
+echo "== the static archives are findable under the conventional name =="
+# Convention puts static libraries in a -static subpackage. There is no
+# shared library to split them from, so they stay in -devel and the
+# Provides records that -- see the comment in the spec. It is metadata,
+# so nothing else would notice it disappearing.
+devel=$(one_rpm 'xymon-devel-[0-9]*.rpm') || exit 1
+check "xymon-devel provides xymon-static" \
+	"rpm -qp --provides $devel | grep -q '^xymon-static'"
+check "and it is the one carrying the archives" \
+	"rpm -qlp $devel | grep -q '\.a$'"
+
 exit "$fail"

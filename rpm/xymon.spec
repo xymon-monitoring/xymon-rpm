@@ -255,6 +255,19 @@ Summary:        Headers and static libraries for building Xymon modules
 # not touch the RRD API does not need it.
 Requires:       pcre2-devel
 Recommends:     rrdtool-devel
+# Convention puts static archives in a -static subpackage, so that the
+# packages which linked them can be found and rebuilt when the library
+# gets a security fix. That split assumes a shared library exists and
+# static is the deliberate alternative; here there is none -- main's
+# build has no rule that produces a .so, and XYMONLIBRARY survives only
+# as a comment in build/Makefile.* that nothing reads. Splitting would
+# leave -devel with headers that link against nothing and -static with
+# archives that have no headers, so the archives stay here. This Provides
+# records the deviation where a tool can see it, and makes a future split
+# a rename rather than a break -- which is what should happen if the
+# shared-library work on devel ever reaches main, at which point the .so
+# belongs in xymon-libs and this package keeps the headers.
+Provides:       xymon-static = %{version}-%{release}
 
 %description devel
 Headers and static libraries for building worker modules and other
