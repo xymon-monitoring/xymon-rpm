@@ -9,15 +9,26 @@ its workaround.
 ## Where the files in `rpm/sources/` come from
 
 Upstream `main` ships no systemd, logrotate or SELinux integration at
-all — those live on the `devel` (4.4) branch, written by J.C. Cleaver.
-Everything needed to package for a systemd distribution is therefore
-written or adapted here. Nothing in this repository waits on an upstream
-merge to work.
+all. It is not that nobody wrote any: the `devel` (4.4) branch has
+`tools/xymonlaunch.service`, its preset and `xymon-tmpfiles.conf`,
+written by J.C. Cleaver, and they have simply never been merged to
+`main`. So the files below are adapted from there where one existed and
+written here where none did. Nothing in this repository waits on an
+upstream merge to work.
+
+The unmerged unit is worth reading before changing ours: it already
+wraps `xymoncmd` around `xymonlaunch --no-daemon`, with the comment
+*"we wrap in xymoncmd to eliminate the need for the bulk of the old init
+script"*. That is the same conclusion this packaging reached
+independently, by testing, after withdrawing an upstream PR that would
+have added a `foreground` mode to `runclient.sh` — the answer had been
+sitting on `devel` since 2015.
 
 | File | Origin | Why |
 | --- | --- | --- |
-| `xymonlaunch.service`, `xymonlaunch-run`, `xymonlaunch-server.conf`, `xymonlaunch-client.conf` | written here | ONE unit for both roles, shipped by both packages; `xymonlaunch-run` picks the tree by which role's drop-in is installed and runs `xymoncmd xymonlaunch --no-daemon` for either. Upstream's own `runclient.sh` and `xymon.sh` both fork and exit, leaving a `Type=simple` unit nothing to supervise; `xymoncmd` avoids them entirely and supplies the environment itself |
-| `xymonlaunch.service.preset` | written here | one line, and deliberately server-only: a fresh client must not enable itself against the baked-in `XYMSRV` |
+| `xymonlaunch.service` | adapted from `devel` | eleven directives are verbatim from `devel`'s `tools/xymonlaunch.service`, including the `xymoncmd` wrapping. What differs is this packaging's: `ExecStart` calls `xymonlaunch-run` for the role dispatch, and the kill semantics move into the server's drop-in rather than applying to both roles |
+| `xymonlaunch-run`, `xymonlaunch-server.conf`, `xymonlaunch-client.conf` | written here | the role dispatch itself. `xymonlaunch-run` picks the tree by which role's drop-in is present and runs `xymoncmd xymonlaunch --no-daemon` for either; the drop-ins carry what differs between roles. All three exist because these two packages conflict and share one unit, which no other packaging does |
+| `xymonlaunch.service.preset` | byte-identical to `devel`'s | the file is one line and the same one. What is ours is shipping it *only* in the server package: a fresh client must not enable itself against the baked-in `XYMSRV` |
 | `xymon.sysusers` | written here | [xymon#413](https://github.com/xymon-monitoring/xymon/pull/413) proposes it upstream |
 | `xymon-tmpfiles.conf` | written here | creates `/run/xymon`, which nothing uses yet (see the README's known gaps) |
 | `xymon-sysctl.conf` | adapted from `devel` | the backfeed-queue tunables; `main` has no equivalent |
