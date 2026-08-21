@@ -180,18 +180,23 @@ forever, which no retention count could trim.
 
 ## Known gaps
 
-- **The packaged server does not collect client data.** Measured side by
-  side in one container, same procedure: our package stores a 91-byte
-  client report and shows `clientlog conn info trends xymongen
-  xymonnet`; an upstream source install of the same commit stores 11817
-  bytes and shows `cpu disk files inode memory msgs ports procs` as
-  well. So a host running this packaging reports itself as up, and none
-  of its actual measurements arrive. `tests/monitoring.sh` demonstrates
-  it; the cause is not established. Exporting `XYMONCLIENTHOME` from the
-  dispatcher was tried and ruled out — with and without it the column
-  set is identical. The untried step is capturing the message the
-  server's embedded client builds under `tasks.cfg`, which is the one
-  path not yet instrumented directly.
+- **The packaged server never analyses the client data it receives.**
+  The client half works: under `tasks.cfg` the embedded client builds a
+  15,677-byte report with all 17 sections and `xymond` stores it — five
+  minutes later `xymon 127.0.0.1 "clientlog <host>"` returns all of it.
+  But the derived columns never appear. After 300s the board holds only
+  `clientlog conn info trends xymond xymongen xymonnet`, with no `cpu`,
+  `disk`, `memory` or `procs`. So a host shows as up, its measurements
+  are collected and stored, and nothing is evaluated against a
+  threshold.
+
+  `xymond_client` is running, its binary is present in the `xymon`
+  package, and `analysis.cfg` is installed, so the obvious candidates
+  are ruled out. `clientdata.log` records only one line, `Peer not up,
+  flushing message queue`, at startup. Exporting `XYMONCLIENTHOME` from
+  the dispatcher was tried and ruled out by measurement.
+
+  `tests/monitoring.sh` demonstrates it. The cause is not established.
 - **No distribution hardening flags** (FORTIFY, stack-protector, PIE):
   Xymon's makefiles discard `CFLAGS` from both the command line and the
   environment. `LDFLAGS` survives, but only reaches the 15 link rules of
