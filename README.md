@@ -71,6 +71,10 @@ BD24 FB87 154D 561B 66F6  66DF 639D E923 AA08 904A
 Snapshots built from `main` are in the same file but disabled; enable per
 host with `dnf config-manager --set-enabled xymon-snapshot`.
 
+**There has been no release yet**, so the stable channel is an empty
+repository and `dnf install xymon` finds nothing in it. Until the first
+`rel-*` tag, enable the snapshot channel above and install from there.
+
 ## Targets
 
 | Target | Container | Published |
