@@ -140,6 +140,22 @@ release lands. A packaging-only fix to a *released* version ships by
 re-dispatching the same tag with `releasenum` bumped, giving `X.Y.Z-2`.
 `tests/vercmp.sh` asserts all of this in CI.
 
+### Commit documentation separately
+
+Documentation is `**.md` and `docs/**`. Everything else is code —
+**including comments inside `rpm/`, `build/`, `tests/` and `.github/`**,
+because the packaging half of the version is keyed on those paths. A
+comment-only edit there still mints a new NEVRA for a byte-identical
+package, and publishing it costs a slot in the five-build snapshot
+retention window.
+
+So keep the two in separate commits. The build only skips when the
+*push* is documentation alone — GitHub matches `paths-ignore` against
+everything in the push, not commit by commit — so a docs-only change is
+free, while a mixed push builds once whether or not the commits were
+split. Split them anyway: it keeps history revertable, and it makes the
+free case possible.
+
 `rpm/baseversion` exists because upstream's `include/version.h` records
 the *last released* version (`4.3.30`, set in 2019), not the one `main`
 is becoming; it goes away if upstream starts bumping `version.h`.
