@@ -310,6 +310,46 @@ jobs:
             cp -r /work/tests /work/out /tmp/ &&
             cd /tmp && ./tests/upgrade.sh /tmp/out'
 
+  # Does it actually monitor? Every other suite would stay green on a
+  # build that collects nothing: this one starts the server, lets its own
+  # client report, and asserts the data is analysed into cpu, disk,
+  # memory and procs columns. It caught a fresh install shipping
+  # hosts.cfg named "localhost" while the client reported under uname -n,
+  # which silently produced no analysis at all.
+  #
+  # Its own job rather than a step in rpm: it installs the server package
+  # and starts daemons, which would disturb the install test running in
+  # the same container. One target per family, as with the others.
+  monitoring:
+    name: monitoring-${{ matrix.name }}
+    runs-on: ubuntu-latest
+    needs: rpm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: el10
+            image: almalinux:10
+            artifact: pub-el10
+          - name: fc44
+            image: fedora:44
+            artifact: pub-fc44
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: out
+
+      - name: Monitoring test
+        run: |
+          set -eux
+          docker run --rm -v "$PWD:/work:ro" ${{ matrix.image }} sh -c '
+            dnf -y install procps-ng >/dev/null &&
+            cp -r /work/tests /work/out /tmp/ &&
+            cd /tmp && ./tests/monitoring.sh /tmp/out'
+
   # What a host's role change does to systemd's state -- enablement,
   # stop ordering, which drop-in is in effect. The rpm job cannot test
   # any of it: its container has no PID 1, so every systemctl call in a
@@ -376,7 +416,7 @@ jobs:
     # The lifecycle test gates publishing as much as the build does:
     # broken swap semantics are exactly the kind of defect that is
     # invisible in a package and painful on a running host.
-    needs: [rpm, systemd-lifecycle, upgrade]
+    needs: [rpm, systemd-lifecycle, upgrade, monitoring]
     # Publish only genuine builds of xymon's main branch or of a release
     # tag.
     #
