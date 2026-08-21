@@ -180,6 +180,18 @@ forever, which no retention count could trim.
 
 ## Known gaps
 
+- **The packaged server does not collect client data.** Measured side by
+  side in one container, same procedure: our package stores a 91-byte
+  client report and shows `clientlog conn info trends xymongen
+  xymonnet`; an upstream source install of the same commit stores 11817
+  bytes and shows `cpu disk files inode memory msgs ports procs` as
+  well. So a host running this packaging reports itself as up, and none
+  of its actual measurements arrive. `tests/monitoring.sh` demonstrates
+  it; the cause is not established. Exporting `XYMONCLIENTHOME` from the
+  dispatcher was tried and ruled out — with and without it the column
+  set is identical. The untried step is capturing the message the
+  server's embedded client builds under `tasks.cfg`, which is the one
+  path not yet instrumented directly.
 - **No distribution hardening flags** (FORTIFY, stack-protector, PIE):
   Xymon's makefiles discard `CFLAGS` from both the command line and the
   environment. `LDFLAGS` survives, but only reaches the 15 link rules of
@@ -246,9 +258,9 @@ that starts from a non-empty root, and so the only one that exercises
 `%pretrans`; since its fixture is whatever is published, a layout change
 is exercised by the push after it. Publishing waits on both.
 
-Not covered: that Xymon actually monitors anything. Every suite tests
-packaging — files, units, scriptlets, upgrades — and none starts a
-server and waits for data.
+`tests/monitoring.sh` does start a server and wait for data, and it is
+**not wired into CI** because it currently fails — see the known gap
+below. It is the only suite that would notice.
 
 ## Building a branch or a pull request
 
