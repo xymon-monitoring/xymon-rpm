@@ -135,14 +135,31 @@ if [ -d "$repodir/xymon-snapshot" ]; then
 	done
 fi
 
+# A channel that has no packages yet still needs metadata. createrepo_c
+# on an empty directory produces valid repodata listing zero packages,
+# and dnf then says "no match for argument" and carries on; with no
+# repodata at all it gets a 404 for repomd.xml and fails the entire
+# transaction, including packages from unrelated repositories. The
+# shipped .repo file enables the stable channel, so until the first
+# release lands that 404 is what every new user meets.
+#
+# The snapshot channel defines which releasever/arch combinations exist,
+# so mirror its layout rather than hardcoding a list that would drift
+# from the build matrix.
+if [ -d "$repodir/xymon-snapshot" ]; then
+	find "$repodir/xymon-snapshot" -mindepth 2 -maxdepth 2 -type d | while read -r d; do
+		mkdir -p "$repodir/xymon/${d#"$repodir"/xymon-snapshot/}"
+	done
+fi
+
 echo "== regenerating metadata =="
-# Every directory holding packages gets its own metadata; that is what a
-# dnf baseurl points at. Not the tree root: the bootstrap xymon-release
-# rpm lives there, and createrepo_c on the root would recursively merge
-# every channel, distro and arch. Remove one an earlier run created.
+# Every channel/releasever/arch directory gets its own metadata; that is
+# what a dnf baseurl points at. Not the tree root: the bootstrap
+# xymon-release rpm lives there, and createrepo_c on the root would
+# recursively merge every channel, distro and arch. Remove one an
+# earlier run created.
 rm -rf "$repodir/repodata"
-find "$repodir" -name '*.rpm' -printf '%h\n' | sort -u | while read -r dir; do
-	[ "$dir" = "$repodir" ] && continue
+find "$repodir" -mindepth 3 -maxdepth 3 -type d | sort -u | while read -r dir; do
 	createrepo_c --update --quiet "$dir"
 	# Sign the metadata as well as the packages, so the package *list* is
 	# verifiable too. Without this, repo_gpgcheck=1 cannot be used and a
