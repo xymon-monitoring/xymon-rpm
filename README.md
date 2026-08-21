@@ -244,6 +244,15 @@ cannot find without logging anything. The host stayed green from the
 network tests while no threshold was ever evaluated, and every other
 suite passed.
 
+One more runs on a schedule rather than against a build. `docs.sh` checks
+that [docs/upstream.md](docs/upstream.md) still matches the source: that
+the pull request table's states are the real ones, that every file its
+provenance table calls copied from `devel` still compares equal to it,
+and that the PRs named as order-independent are exactly the open ones.
+Those claims go stale when something changes upstream, which no push here
+would ever notice. It reports drift without gating publishing — a stale
+sentence is worth a red run, not a held release.
+
 ## Building a branch or a pull request
 
 Actions → **build** → *Run workflow* with a ref: `main` (the default),
