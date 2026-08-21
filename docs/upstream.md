@@ -13,9 +13,9 @@ only logrotate file it has is inside the unmaintained `rpm/` packaging
 described at the end of this page. It is not that nobody wrote any: the
 `devel` (4.4) branch has `tools/xymonlaunch.service`, its preset and
 `xymon-tmpfiles.conf`, written by J.C. Cleaver, and they have simply
-never been merged to `main`. So the files below are adapted from there where one existed and
-written here where none did. Nothing in this repository waits on an
-upstream merge to work.
+never been merged to `main`. So the files below are adapted from there
+where one existed and written here where none did. Nothing in this
+repository waits on an upstream merge to work.
 
 That unmerged unit already wraps `xymoncmd` around `xymonlaunch
 --no-daemon`, with the comment *"we wrap in xymoncmd to eliminate the
@@ -49,16 +49,26 @@ workaround:
 | [#410](https://github.com/xymon-monitoring/xymon/pull/410) | `make install-devel` installs the libraries and headers | open |
 | [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | open |
 | [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` | open |
-| [#415](https://github.com/xymon-monitoring/xymon/pull/415) | `devel`'s systemd unit, generated from the build's paths, plus `INSTALLSYSTEMDDIR` | open |
+| [#415](https://github.com/xymon-monitoring/xymon/pull/415) | `devel`'s systemd unit generated from the build's paths, plus its preset, tmpfiles and defaults files and `INSTALLSYSTEMDDIR` — none of the four are on `main` today | open |
 | [#416](https://github.com/xymon-monitoring/xymon/pull/416) | an unknown verb exits non-zero, not 0 | open |
 | [#409](https://github.com/xymon-monitoring/xymon/pull/409) | installs the `lib/` diagnostics | draft |
 | [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | draft |
 | [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet | draft |
 
-The five open ones merge in any order — all 120 checked — and every one
-is a no-op for an existing build: each is opt-in behind a variable or a
-target nobody has to invoke. #413 and #415 are systemd-specific; the
-rest are plain make and POSIX shell, verified on Debian as well as EL.
+#410, #411, #414, #415 and #416 merge in any order — all 120 orderings
+checked — and every one is a no-op for an existing build: each is opt-in
+behind a variable or a target nobody has to invoke. #413 and #415 are
+systemd-specific; the rest are plain make and POSIX shell, verified on
+Debian as well as EL.
+
+[#421](https://github.com/xymon-monitoring/xymon/pull/421) is a different
+kind of contribution and is not in the table above: it deletes no
+workaround here, it makes upstream's own CI trustworthy. Three server
+tests drew xymond's port from a range overlapping the kernel's ephemeral
+ports, so an unrelated outbound connection could take the port between
+the probe and the bind — which is how #411 came to fail on a test it had
+not touched. It needs no ordering check: it is the only one of these PRs
+touching `tests/`, and it changes no shipped code.
 
 Two of the open ones delete something Debian carries by hand as well —
 `debian/rules` does #411's symlinks at lines 96-98 and #414's at 62-65 —
