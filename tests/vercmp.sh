@@ -5,9 +5,12 @@
 # snapshot users on an old build or drags stable users onto a snapshot.
 # Neither shows up as a failed build, so assert it explicitly.
 #
-# Requires rpmdev-vercmp (rpmdevtools).
-
 set -eu
+
+# Without rpmdevtools every comparison below returns 127 and the suite
+# reports ten ordering failures that are really one missing package.
+command -v rpmdev-vercmp >/dev/null ||
+	{ echo "NOT OK   rpmdev-vercmp not found -- install rpmdevtools"; exit 1; }
 
 fail=0
 
