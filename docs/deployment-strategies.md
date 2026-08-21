@@ -76,12 +76,14 @@ filed off:
   install xymon` on a client host fails with a clear message, rather
   than Debian's silent layering or Terabithia's file-collision noise.
 - **One unit name everywhere.** Both packages ship the same
-  `xymonlaunch.service`, whose `ExecStart` (`xymonlaunch-run`) selects
-  the server tree when installed and otherwise runs the client in the
-  foreground. What differs between roles rides in a drop-in shipped only
-  by that role's package: the server protects xymond's children on stop,
-  the client waits for the network at boot. Double-reporting is
-  unrepresentable, so no guard exists to maintain.
+  `xymonlaunch.service`, whose `ExecStart` (`xymonlaunch-run`) picks the
+  tree by which role's drop-in is present and runs `xymoncmd xymonlaunch
+  --no-daemon` for either — upstream's own `runclient.sh` and `xymon.sh`
+  both fork and exit, leaving `Type=simple` nothing to supervise. What
+  differs between roles rides in a drop-in shipped only by that role's
+  package: the server protects xymond's children on stop, the client
+  waits for the network at boot. Double-reporting is unrepresentable, so
+  no guard exists to maintain.
 - **Role changes are one transaction.** The scriptlets detect a swap by
   the other role's drop-in already being on disk (installs precede
   erases). The departing package stops the service *while its own

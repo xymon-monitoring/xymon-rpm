@@ -87,6 +87,7 @@ repository and `dnf install xymon` finds nothing in it. Until the first
 | `stream9` | `quay.io/centos/centos:stream9` | no — canary |
 | `stream10` | `quay.io/centos/centos:stream10` | no — canary |
 | `fedora-rawhide` | `fedora:rawhide` | no — canary |
+| `selinux` | `almalinux:10` | no — builds the policy with `--with selinux` |
 
 EL builds run on AlmaLinux, a rebuild of *released* RHEL, so they cannot
 need a symbol version RHEL lacks; the dist tag carries no vendor marker,
@@ -106,7 +107,7 @@ rpm/terabithia/     archived reference material, not built
 build/               publish.sh signs and folds packages into the published
                      tree; mkrepofile.sh and mkindex.sh generate the .repo
                      file and the browsable index
-docs/               signing.md, admin-guide.md, deployment-strategies.md
+docs/               admin-guide, deployment-strategies, upstream, signing
 tests/              see Testing
 ```
 
@@ -146,19 +147,17 @@ re-dispatching the same tag with `releasenum` bumped, giving `X.Y.Z-2`.
 
 ### Commit documentation separately
 
-Documentation is `**.md` and `docs/**`. Everything else is code —
+Documentation is `**.md` and `docs/**`; everything else is code,
 **including comments inside `rpm/`, `build/`, `tests/` and `.github/`**,
 because the packaging half of the version is keyed on those paths. A
-comment-only edit there still mints a new NEVRA for a byte-identical
-package, and publishing it costs a slot in the five-build snapshot
-retention window.
+comment-only edit there mints a new NEVRA for a byte-identical package
+and spends a snapshot retention slot.
 
-So keep the two in separate commits. The build only skips when the
-*push* is documentation alone — GitHub matches `paths-ignore` against
-everything in the push, not commit by commit — so a docs-only change is
-free, while a mixed push builds once whether or not the commits were
-split. Split them anyway: it keeps history revertable, and it makes the
-free case possible.
+The build skips only when the *whole push* is documentation — GitHub
+matches `paths-ignore` per push, not per commit — so splitting the
+commits does not by itself save a build. Split them anyway: it keeps
+history revertable, and it is what makes a free docs-only push
+possible.
 
 `rpm/baseversion` exists because upstream's `include/version.h` records
 the *last released* version (`4.3.30`, set in 2019), not the one `main`
@@ -178,58 +177,6 @@ build goes together, or the repository resolves to a missing dependency
 *published run*, packaging rebuilds included: while upstream sits still,
 packaging changes would otherwise pile up inside one upstream commit
 forever, which no retention count could trim.
-
-## Where the files in `rpm/sources/` come from
-
-Upstream `main` ships no systemd, logrotate or SELinux integration at
-all — those live on the `devel` (4.4) branch, written by J.C. Cleaver.
-Everything needed to package for a systemd distribution is therefore
-written or adapted here. Nothing in this repository waits on an upstream
-merge to work.
-
-| File | Origin | Why |
-| --- | --- | --- |
-| `xymonlaunch.service`, `xymonlaunch-run`, `xymonlaunch-server.conf`, `xymonlaunch-client.conf` | written here | ONE unit for both roles, shipped by both packages; `xymonlaunch-run` picks the tree by which role's drop-in is installed and runs `xymoncmd xymonlaunch --no-daemon` for either. Upstream's own `runclient.sh` and `xymon.sh` both fork and exit, leaving a `Type=simple` unit nothing to supervise; `xymoncmd` avoids them entirely and supplies the environment itself |
-| `xymonlaunch.service.preset` | written here | one line, and deliberately server-only: a fresh client must not enable itself against the baked-in `XYMSRV` |
-| `xymon.sysusers` | written here | [xymon#413](https://github.com/xymon-monitoring/xymon/pull/413) proposes it upstream |
-| `xymon-tmpfiles.conf` | written here | creates `/run/xymon`, which nothing uses yet (see Known gaps) |
-| `xymon-sysctl.conf` | adapted from `devel` | the backfeed-queue tunables; `main` has no equivalent |
-| `xymon.logrotate` | adapted from `devel` | the `devel` copy's postrotate HUPs `xymonlaunch`, which `main` does not relay ([xymon#172](https://github.com/xymon-monitoring/xymon/pull/172)); `copytruncate` until it does |
-| `xymon-client.default`, `xymonlaunch.default` | adapted from `devel` | they document `XYMONSERVERS`, which only patched clients read, and name this packaging's own config paths |
-| `xymon.te`, `xymon-client.te`, `bb.xml` | copied from `devel` | reference material, shipped as `%doc` only — the policy modules are not compiled by default (see Known gaps) |
-
-The upstream gaps these work around are proposed as small PRs rather
-than waited on — each lands a feature that lets this spec delete a
-workaround:
-
-| PR | What it adds | |
-| --- | --- | --- |
-| [#410](https://github.com/xymon-monitoring/xymon/pull/410) | installs libraries and headers | open |
-| [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | open |
-| [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` | open |
-| [#409](https://github.com/xymon-monitoring/xymon/pull/409) | installs the `lib/` diagnostics | draft |
-| [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | draft |
-| [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet | draft |
-
-They merge independently in any order — checked across all 5040
-orderings (with [#408](https://github.com/xymon-monitoring/xymon/pull/408),
-since withdrawn: `xymoncmd` already runs the client in the foreground,
-so the packaging needed nothing). All but #410 are no-ops until their variable is set; #410 adds
-`install-libs` to the server's default `INSTALLTARGETS`, so a plain
-`make install` gains the libraries and headers (raised with the
-maintainer on the PR, since #409 gates the same kind of addition and the
-two should agree). Only #413 is systemd-specific; the rest are plain make
-and POSIX shell, verified on Debian as well as EL.
-
-The three drafts are parked, not abandoned: each replaces a workaround
-that costs this spec one `mv` or three lines of `%install`, which is not
-enough to spend upstream review on. The three still open each delete
-something Debian carries by hand too — `debian/rules` does #411's three
-symlinks at lines 96-98 and #414's three at 72-74.
-
-`rpm/terabithia/` archives the reference spec and README from
-<https://repo.terabithia.org/rpms/xymon/> — a single unmirrored host —
-for provenance only; it is never built.
 
 ## Known gaps
 
@@ -324,12 +271,11 @@ rpmbuild -ba rpm/xymon.spec --define 'baseversion 4.3.31'
 
 ## Relationship to upstream
 
-Packaging lives here so it can iterate without a review round per change.
-Once the spec is stable, the intent is to move it and the build workflow
-into `xymon-monitoring/xymon` — the convention Debian packaging follows —
-leaving this repository as the publishing target. The nightly build
-doubles as a drift detector: an upstream change that moves an install
-path or a configure flag goes red here the next day.
+Packaging lives here so it can iterate without a review round per
+change; the intent is to move it into `xymon-monitoring/xymon` once the
+spec is stable. What `rpm/sources/` contains and why, the upstream PRs
+that would let the spec drop its workarounds, and that plan in full are
+in [docs/upstream.md](docs/upstream.md).
 
 ## License
 
