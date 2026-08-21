@@ -49,32 +49,35 @@ workaround:
 | [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | open |
 | [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` | open |
 | [#415](https://github.com/xymon-monitoring/xymon/pull/415) | `devel`'s systemd unit, generated from the build's paths, plus `INSTALLSYSTEMDDIR` | open |
+| [#416](https://github.com/xymon-monitoring/xymon/pull/416) | an unknown verb exits non-zero, not 0 | open |
 | [#409](https://github.com/xymon-monitoring/xymon/pull/409) | installs the `lib/` diagnostics | draft |
 | [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | draft |
 | [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet | draft |
 
-They merge in any order — checked across all 5040 orderings for the
-first six, and all 24 for the four now open once #415 joined them. All
-but #410 are no-ops until their variable is set; #410 adds
-`install-libs` to the server's default `INSTALLTARGETS`, so a plain
-`make install` gains the libraries and headers. That is raised on the
-PR, since #409 gates the same kind of addition and the two should agree.
-#413 and #415 are systemd-specific by nature; the rest are plain make
-and POSIX shell, verified on Debian as well as EL.
+The five open ones merge in any order — all 120 checked. Each is a no-op
+for an existing build except #410, which keeps `install-libs` in the
+server's default `INSTALLTARGETS` where jc's commit put it, so `make
+install` also writes the libraries and headers. #413 and #415 are
+systemd-specific; the rest are plain make and POSIX shell, verified on
+Debian as well as EL.
 
-#415 is the reason `INSTALLTARGETS +=` exists in it rather than three
-edited assignments: those three lines are what every other change to the
-install has to touch, and editing them directly conflicted with #410 in
-all 24 orders.
+Two of the open ones delete something Debian carries by hand as well —
+`debian/rules` does #411's symlinks at lines 96-98 and #414's at 72-74 —
+and #415 gives every systemd distribution a unit instead of each writing
+its own. #416 is the odd one out, a bug fix this spec does not need:
+both `runclient.sh` and `xymon.sh` end their case statement with
+`break`, which does nothing outside a loop, so a mistyped verb prints
+usage and exits **0**.
 
 The drafts are parked, not abandoned: each replaces a workaround costing
-one `mv` or three lines of `%install`, which is not enough to spend
-upstream review on. Two of the open ones delete something Debian carries
-by hand as well — `debian/rules` does #411's symlinks at lines 96-98 and
-#414's at 72-74 — and #415 gives every systemd distribution a unit
-instead of each writing its own. One more, #408, was withdrawn:
-`xymoncmd` already runs the client in the foreground, so nothing was
-needed.
+one `mv` or three lines of `%install`, not enough to spend upstream
+review on. #408 was withdrawn outright — `xymoncmd` already runs the
+client in the foreground, so nothing was needed.
+
+A lesson worth keeping: #415 appends to `INSTALLTARGETS` rather than
+editing the three assignments that set it, because those are the lines
+every install change touches. Editing them directly conflicted with #410
+in every ordering.
 
 `rpm/terabithia/` archives the reference spec and README from
 <https://repo.terabithia.org/rpms/xymon/> — a single unmirrored host —
