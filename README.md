@@ -182,20 +182,30 @@ The upstream gaps these work around are proposed as small PRs rather
 than waited on — each lands a feature that lets this spec delete a
 workaround:
 
-| PR | What it adds |
-| --- | --- |
-| [#408](https://github.com/xymon-monitoring/xymon/pull/408) | `runclient.sh foreground`, for any supervisor |
-| [#409](https://github.com/xymon-monitoring/xymon/pull/409) | installs the `lib/` diagnostics |
-| [#410](https://github.com/xymon-monitoring/xymon/pull/410) | installs libraries and headers |
-| [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` |
-| [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` |
-| [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet |
-| [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` |
+| PR | What it adds | |
+| --- | --- | --- |
+| [#408](https://github.com/xymon-monitoring/xymon/pull/408) | `runclient.sh foreground`, for any supervisor | open |
+| [#410](https://github.com/xymon-monitoring/xymon/pull/410) | installs libraries and headers | open |
+| [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | open |
+| [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` | open |
+| [#409](https://github.com/xymon-monitoring/xymon/pull/409) | installs the `lib/` diagnostics | draft |
+| [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | draft |
+| [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet | draft |
 
-Each is a no-op until its variable is set, so none changes what a source
-install does today, and they merge independently in any order — checked
-across all 5040 orderings. Only #413 is systemd-specific; the rest are
-plain make and POSIX shell, verified on Debian as well as EL.
+They merge independently in any order — checked across all 5040
+orderings. All but #410 are no-ops until their variable is set; #410 adds
+`install-libs` to the server's default `INSTALLTARGETS`, so a plain
+`make install` gains the libraries and headers (raised with the
+maintainer on the PR, since #409 gates the same kind of addition and the
+two should agree). Only #413 is systemd-specific; the rest are plain make
+and POSIX shell, verified on Debian as well as EL.
+
+The three drafts are parked, not abandoned: each replaces a workaround
+that costs this spec one `mv` or three lines of `%install`, which is not
+enough to spend upstream review on. The four still open each delete
+something Debian carries by hand too — `debian/rules` does #411's three
+symlinks at lines 96-98 and #414's three at 72-74, and both Debian's
+`xymon-client.init` and FreeBSD's rc script reimplement #408 inline.
 
 `rpm/terabithia/` archives the reference spec and README from
 <https://repo.terabithia.org/rpms/xymon/> — a single unmirrored host —
