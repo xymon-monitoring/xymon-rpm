@@ -16,21 +16,23 @@
 # picks the server role from the drop-in alone.
 #
 # STATUS: this suite FAILS on the current packaging, and that failure is
-# the finding rather than a bug in the test. Measured side by side in one
-# container, same procedure:
+# the finding rather than a bug in the test. Measured on the real path
+# -- the server's own tasks.cfg client -- in a single run:
 #
-#   our package      clientlog 91 bytes     clientlog conn info trends
-#                                           xymongen xymonnet
-#   source install   clientlog 11817 bytes  ... cpu disk files inode
-#                                           memory msgs ports procs ...
+#   t=300s  clientdata=15677B  columns: clientlog conn info trends
+#                                       xymond xymongen xymonnet
 #
-# The packaged server does not turn client reports into status columns;
-# an upstream source install of the same commit does. The cause is not
-# known. Exporting XYMONCLIENTHOME from the dispatcher was tried and
-# ruled out: with and without it the column set is identical after four
-# minutes. (That export does fix a separate real failure when the client
-# is run directly via `xymoncmd --env=...`, where XYMONCLIENTHOME is
-# empty and the client searches /bin -- but that is not this.)
+# The client half works. It builds a 15,677-byte report with all 17
+# sections, xymond receives and stores it, and `clientlog <host>` returns
+# it in full. What never happens is the analysis: no cpu, disk, memory or
+# procs column ever appears. xymond_client is running, its binary is in
+# the xymon package, analysis.cfg is installed. clientdata.log holds one
+# line, "Peer not up, flushing message queue", from startup.
+#
+# Ruled out by measurement: exporting XYMONCLIENTHOME from the dispatcher
+# changes nothing. (It does fix a different failure -- running the client
+# by hand via `xymoncmd --env=...` leaves XYMONCLIENTHOME empty so it
+# searches /bin -- but that is not the real path and not this bug.)
 #
 # Deliberately NOT wired into .github/workflows/build.yml: it would stop
 # publishing, and the packaging's other properties are worth continuing
