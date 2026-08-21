@@ -1,0 +1,55 @@
+# Checks that docs/upstream.md still describes reality.
+#
+# Deliberately its own workflow rather than a job in build.yml. The claims
+# it tests go stale when something changes upstream -- a pull request is
+# merged, a file lands on devel -- which has nothing to do with whether
+# the packages are good. Wiring it into the build would let a stale
+# sentence block signed packages from publishing, which is the wrong
+# trade: the doc being out of date is worth a red run, not a held release.
+#
+# Runs on a schedule because that is when the drift happens. Nobody pushes
+# to this repository when a PR is merged upstream, so a push-triggered
+# check would never fire on the change it exists to catch.
+name: docs-drift
+
+on:
+  schedule:
+    # Half an hour after the nightly build, so the two do not compete for
+    # runners and the drift report lands next to that day's build result.
+    - cron: '47 3 * * *'
+  workflow_dispatch:
+  # Also on pushes that touch the doc or the checker itself: those are the
+  # moments a human can act on the answer immediately.
+  push:
+    branches: [main]
+    paths:
+      - 'docs/upstream.md'
+      - 'tests/docs.sh'
+      - '.github/workflows/docs-drift.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout packaging
+        uses: actions/checkout@v6
+
+      # blob:none keeps the clone small; the checker only reads file
+      # contents for the handful it compares, and git fetches those on
+      # demand. Both branches are needed: main for what upstream ships,
+      # devel for what the provenance table compares against.
+      - name: Checkout xymon source
+        run: |
+          set -eux
+          git clone --filter=blob:none \
+            https://github.com/xymon-monitoring/xymon.git src
+          git -C src fetch -q origin main devel
+
+      - name: Check docs/upstream.md against the source
+        env:
+          # gh reads public pull requests with the run's own token.
+          GH_TOKEN: ${{ github.token }}
+        run: ./tests/docs.sh src
