@@ -52,18 +52,19 @@ proposed rather than waited on. One (#416) has already merged.
 
 | PR | What it adds | State |
 | --- | --- | --- |
-| [#409](https://github.com/xymon-monitoring/xymon/pull/409) | installs the `lib/` diagnostics | open |
 | [#410](https://github.com/xymon-monitoring/xymon/pull/410) | `make install-devel` installs the libraries and headers | open |
-| [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | open |
+| [#409](https://github.com/xymon-monitoring/xymon/pull/409) | installs the `lib/` diagnostics | draft |
 | [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | draft |
+| [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | draft |
 | [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet | draft |
 | [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` | draft |
 | [#415](https://github.com/xymon-monitoring/xymon/pull/415) | `devel`'s systemd unit generated from the build's paths, plus its preset, tmpfiles and defaults files and `INSTALLSYSTEMDDIR` | draft |
 | [#416](https://github.com/xymon-monitoring/xymon/pull/416) | an unknown verb exits non-zero, not 0 | merged |
 
 Each is opt-in behind a variable or an unused target, so it is a no-op for
-an existing build, which is why
-#409, #410 and #412 merge in any order.
+an existing build and the set stays mutually independent — any subset can
+land in any sequence. Only #410 is open for review at the moment; the rest
+are drafts.
 [#421](https://github.com/xymon-monitoring/xymon/pull/421) is separate: it
 fixes flaky upstream server tests that drew xymond's port from the
 ephemeral range, and changes no shipped code.

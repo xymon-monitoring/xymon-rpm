@@ -114,12 +114,20 @@ else
 
 	# The doc names which PRs merge in any order. That list is only correct
 	# while it is exactly the open, non-draft ones in the table -- it went
-	# stale the moment a sixth PR opened.
+	# stale the moment a sixth PR opened. A "merge in any order" claim needs
+	# at least two PRs to be about; with fewer than two open the claim is
+	# degenerate, so the doc must not make it and the check inverts to say so.
 	named=$(sed -n 's/^#\([0-9, #]*\)and #\([0-9]\{1,\}\) merge in any order.*/\1 \2/p' "$doc" |
 		tr -dc '0-9 ' | tr -s ' ' '\n' | grep . | sort -u | tr '\n' ' ')
 	open=$(awk '$2 == "open" { print $1 }' "/tmp/docs-prs-$$" | sort -u | tr '\n' ' ')
-	check "the PRs named as order-independent are exactly the open ones" \
-		"test '$named' = '$open'"
+	opencount=$(awk '$2 == "open"' "/tmp/docs-prs-$$" | grep -c . || :)
+	if [ "$opencount" -ge 2 ]; then
+		check "the PRs named as order-independent are exactly the open ones" \
+			"test '$named' = '$open'"
+	else
+		check "no order-independence claim while fewer than two PRs are open" \
+			"test -z '$named'"
+	fi
 
 	# "it is the only one of these PRs touching tests/": if a build PR grows
 	# a test change, the two are no longer independent.
