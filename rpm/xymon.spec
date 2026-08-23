@@ -438,6 +438,23 @@ install -pm 0644 include/*.h %{buildroot}%{_includedir}/xymon/include/
 install -pm 0644 lib/*.h     %{buildroot}%{_includedir}/xymon/lib/
 install -pm 0644 lib/*.a     %{buildroot}%{_libdir}/xymon/
 
+# xymon.pc: ship a pkg-config file with -devel. Written by hand because xymon
+# main has no install-devel target yet; when xymon#410 lands it generates the
+# same file and this becomes "make install-devel" with no change to the package.
+mkdir -p %{buildroot}%{_libdir}/pkgconfig
+cat > %{buildroot}%{_libdir}/pkgconfig/xymon.pc <<'PC'
+prefix=%{_prefix}
+includedir=%{_includedir}/xymon
+libdir=%{_libdir}/xymon
+
+Name: xymon
+Description: Xymon monitoring system libraries and headers
+Version: %{version}
+Cflags: -I${includedir}/include
+Libs: -L${libdir} -lxymon -lxymoncomm -lxymontime
+Libs.private: -lpcre2-8 -lssl -lcrypto -lz -ltirpc -lrrd
+PC
+
 # Diagnostic tools. lib/Makefile builds these in its `all` target but has
 # no install rule at all, so they are otherwise discarded with the build
 # tree.
@@ -711,6 +728,7 @@ exit 0
 %{_includedir}/xymon/lib
 %dir %{_libdir}/xymon
 %{_libdir}/xymon/*.a
+%{_libdir}/pkgconfig/xymon.pc
 
 %files tools
 %license COPYING
