@@ -47,8 +47,10 @@ hardcoded, so it serves a source install and any packaging, not only RPM.
 
 ## Gaps sent back upstream
 
-Each lands a feature that lets this spec delete a workaround; it is
-proposed rather than waited on. One (#416) has already merged.
+Each is a feature this packaging proposed upstream — most let the spec
+delete a hand-rolled workaround; one (#443) completes the `www` FHS story
+ahead of the spec consuming it. They are proposed rather than waited on; a
+proposal drops off this list once it merges.
 
 | PR | What it adds | State |
 | --- | --- | --- |
@@ -57,9 +59,9 @@ proposed rather than waited on. One (#416) has already merged.
 | [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | open |
 | [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | draft |
 | [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet | draft |
-| [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` | draft |
+| [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` (build) + `XYMONSTATICWWWDIR` (runtime help lookup) | draft |
 | [#415](https://github.com/xymon-monitoring/xymon/pull/415) | `devel`'s systemd unit generated from the build's paths, plus its preset, tmpfiles and defaults files and `INSTALLSYSTEMDDIR` | draft |
-| [#416](https://github.com/xymon-monitoring/xymon/pull/416) | an unknown verb exits non-zero, not 0 | merged |
+| [#443](https://github.com/xymon-monitoring/xymon/pull/443) | `XYMONCACHEWWWDIR` — lets `rep`/`snap` move to `/var/cache` (not consumed here yet) | draft |
 
 Each is opt-in behind a variable or an unused target, so it is a no-op for
 an existing build, which is why
