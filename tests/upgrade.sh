@@ -72,10 +72,36 @@ echo "== upgrading to the build under test =="
 set -- $(find "$rpmdir" -name '*.rpm' \
 	! -name 'xymon-client-[0-9]*' \
 	! -name '*debuginfo*' ! -name '*debugsource*' ! -name '*.src.rpm')
+
+# Transact only what the fixture has installed -- the set a real
+# `dnf upgrade` would touch.
+set -- $(for f in "$@"; do
+	rpm -q "$(rpm -qp --qf '%{name}' "$f")" >/dev/null 2>&1 && printf '%s ' "$f"
+done)
+
+want=$(rpm -qp --qf '%{version}-%{release}' "$new_server")
+
+# The built version carries the git sha of the ref under test. For an
+# unmerged PR that sha can sort *below* the published snapshot, and
+# `dnf upgrade` silently declines to move backwards -- a false negative
+# with nothing to do with this build. This suite tests the upgrade
+# *mechanics* (scriptlets, %pretrans, state survival); the version
+# *ordering* is vercmp.sh's job. So do the normal upgrade, and if the sha
+# sorted low enough that dnf did nothing, force the same transition with a
+# downgrade -- either path runs the full scriptlet set.
 if ! upgrade_out=$(dnf -y $opts upgrade "$@" 2>&1); then
 	echo "NOT OK   the upgrade transaction failed"
 	printf '%s\n' "$upgrade_out" | grep -iE 'error|conflict' | sed 's/^/         | /'
 	exit 1
+fi
+if [ "$(rpm -q --qf '%{version}-%{release}' xymon)" != "$want" ]; then
+	if ! down_out=$(dnf -y $opts downgrade "$@" 2>&1); then
+		echo "NOT OK   the transition to the build under test failed"
+		printf '%s\n' "$down_out" | grep -iE 'error|conflict' | sed 's/^/         | /'
+		exit 1
+	fi
+	upgrade_out="$upgrade_out
+$down_out"
 fi
 echo "ok       the upgrade transaction succeeded"
 
