@@ -335,6 +335,7 @@ INSTALLWEBDIR=%{_sysconfdir}/xymon/web \
 INSTALLEXTDIR=%{xymonhome}/server/ext \
 INSTALLTMPDIR=%{_sharedstatedir}/xymon/tmp \
 INSTALLWWWDIR=%{_sharedstatedir}/xymon/www \
+INSTALLSTATICWWWDIR=%{_datadir}/xymon \
 ./configure --server
 
 %make_build PKGBUILD=1
@@ -404,17 +405,13 @@ mv %{buildroot}%{_sysconfdir}/xymon/xymon-apache.conf \
 # writes generated pages into www itself, so XYMONWWWDIR stays writable
 # where it is.
 #
-# The static three are symlinked back, so every /xymon/ URL and on-disk
-# path still works and nothing in xymonserver.cfg or the CGIs learns a
-# second location. httpd needs no extra config: the generated one sets
-# FollowSymLinks on the www directory, which is what lets it cross into
-# /usr/share (verified -- without it the same request is a 403).
-# xymon#414 (INSTALLSTATICWWWDIR) would remove the move.
-install -d %{buildroot}%{_datadir}/xymon
-for d in gifs help menu; do
-    mv %{buildroot}%{_sharedstatedir}/xymon/www/$d %{buildroot}%{_datadir}/xymon/$d
-    ln -sf %{_datadir}/xymon/$d %{buildroot}%{_sharedstatedir}/xymon/www/$d
-done
+# INSTALLSTATICWWWDIR (configured above, xymon#414) makes the build install
+# the static three into /usr/share/xymon and symlink them back into the www
+# tree, so every /xymon/ URL and on-disk path still works and nothing in
+# xymonserver.cfg or the CGIs learns a second location. httpd needs no extra
+# config: the generated one sets FollowSymLinks on the www directory, which
+# is what lets it cross into /usr/share (verified -- without it the same
+# request is a 403). This was a hand-rolled mv + symlink loop until #414.
 
 # That config points AuthUserFile/AuthGroupFile at these; the build never
 # creates them, and without the password file every /xymon-seccgi request
