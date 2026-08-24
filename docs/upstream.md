@@ -19,9 +19,9 @@ modification ever happens between clone and build.
 
 ## Where the files in `rpm/sources/` come from
 
-Upstream `main` ships no systemd or SELinux integration, and its only
-logrotate file lives in the unmaintained `rpm/` packaging described
-below. The `devel` (4.4) branch does carry `tools/xymonlaunch.service`,
+Upstream `main` ships no systemd or SELinux integration, and its two
+logrotate files live only in its own unmaintained `rpm/` and `debian/`
+packagings (described below). The `devel` (4.4) branch does carry `tools/xymonlaunch.service`,
 its preset and `xymon-tmpfiles.conf` (written by J.C. Cleaver), but they
 have never been merged to `main`. So the files below are adapted from
 `devel` where one existed and written here where none did. Nothing in
