@@ -335,6 +335,7 @@ INSTALLWEBDIR=%{_sysconfdir}/xymon/web \
 INSTALLEXTDIR=%{xymonhome}/server/ext \
 INSTALLTMPDIR=%{_sharedstatedir}/xymon/tmp \
 INSTALLWWWDIR=%{_sharedstatedir}/xymon/www \
+INSTALLHTTPDCONFDIR=%{_sysconfdir}/httpd/conf.d \
 ./configure --server
 
 %make_build PKGBUILD=1
@@ -391,12 +392,8 @@ ln -sf %{xymonhome}/server/bin/xymon    %{buildroot}%{_bindir}/xymon
 ln -sf %{xymonhome}/server/bin/xymoncmd %{buildroot}%{_bindir}/xymoncmd
 ln -sf %{xymonhome}/server/bin/xymonlaunch %{buildroot}%{_sbindir}/xymonlaunch
 
-# The build generates this into Xymon's own etc, which no web server
-# reads; move it where httpd does. xymon#412 (INSTALLHTTPDCONFDIR) would
-# let the build put it there directly.
-install -d %{buildroot}%{_sysconfdir}/httpd/conf.d
-mv %{buildroot}%{_sysconfdir}/xymon/xymon-apache.conf \
-   %{buildroot}%{_sysconfdir}/httpd/conf.d/xymon-apache.conf
+# xymon-apache.conf is placed straight into the httpd drop-in directory by
+# the build (INSTALLHTTPDCONFDIR, set at configure above), not Xymon's own etc.
 
 # The www tree mixes two kinds of thing. gifs, help and menu are shipped
 # content that never changes on a running host, so the FHS puts them in
