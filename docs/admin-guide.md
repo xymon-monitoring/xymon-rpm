@@ -137,6 +137,21 @@ The swap stops the old role cleanly and keeps the unit enabled; the restart
 brings the new one up. **After a demotion, set `XYMSRV`** — the former
 server's config still says `127.0.0.1`.
 
+## Migrating from the old layout
+
+Before this design, `xymon` required `xymon-client` and a separate
+`xymon-client.service` carried a `Conflicts=` guard.
+
+- **Client-only hosts** upgrade normally: the client package's `%post`
+  carries enablement and any running instance over to
+  `xymonlaunch.service`.
+- **Server hosts** have both packages, which the new `xymon` conflicts
+  with, so the upgrade is one explicit `dnf swap xymon-client xymon`.
+  Until it runs the conflict makes the whole `dnf upgrade` unsolvable,
+  so an unattended updater silently stops. Acceptable only because this
+  packaging is experimental; a stable release would need a `%triggerun`
+  migration or a transitional package.
+
 ## When something is wrong
 
 | Symptom | Look here |
@@ -149,6 +164,25 @@ server's config still says `127.0.0.1`.
 | Web pages 500 | `xymonpasswd` missing or not `apache`-owned; httpd error log |
 | Nothing running after a swap | `systemctl restart xymonlaunch` |
 | `dnf upgrade` fails on a server | pre-conflict layout: `dnf swap xymon-client xymon` |
+
+## Package versions: snapshots vs releases
+
+CI (`.github/workflows/build.yml`) builds two kinds of package from the
+same spec (`rpm/baseversion` sets the base, currently 4.3.31):
+
+- **Snapshots** of upstream `main`, versioned
+  `X.Y.Z-0.<date>git<sha>.<pkgdate>p<pkgsha>`. The first pair identifies
+  the upstream commit, the second the last packaging commit, so a
+  packaging-only fix still mints a new NEVRA. The leading `-0.` sorts
+  below the eventual `-1`, so snapshot users are absorbed cleanly when
+  the release lands. A nightly cron rebuild of `main` is the drift
+  detector: an upstream path or flag change turns it red the next day.
+- **Releases** built from an exact `rel-*` tag as `X.Y.Z-1`. A published
+  NEVRA is immutable, so a packaging-only re-release of a tag bumps
+  `releasenum` to ship `-2`.
+
+Only genuine builds of `main` or a `rel-*` tag publish to the signed
+gh-pages repository; pull requests and one-off branch builds never do.
 
 How this packaging compares with Debian's, Terabithia's and FreeBSD's:
 [deployment-strategies.md](deployment-strategies.md).

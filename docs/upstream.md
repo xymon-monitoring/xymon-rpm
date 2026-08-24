@@ -39,7 +39,7 @@ hardcoded, so it serves a source install and any packaging, not only RPM.
 | `xymonlaunch-run`, `xymonlaunch-server.conf`, `xymonlaunch-client.conf` | written here | the role dispatch itself. `xymonlaunch-run` picks the tree by which role's drop-in is present and runs `xymoncmd xymonlaunch --no-daemon`; the drop-ins carry what differs. All three exist because these two packages conflict and share one unit | — packaging-only |
 | `xymonlaunch.service.preset` | byte-identical to `devel`'s | one line, the same one. What is ours is shipping it *only* in the server package: a fresh client must not enable itself against the baked-in `XYMSRV` | [#415](https://github.com/xymon-monitoring/xymon/pull/415) |
 | `xymon.sysusers` | written here | declares the `xymon` system user and group | [#413](https://github.com/xymon-monitoring/xymon/pull/413) |
-| `xymon-tmpfiles.conf` | byte-identical to `devel`'s | creates `/run/xymon`, which nothing uses yet (see the README's known gaps) | [#415](https://github.com/xymon-monitoring/xymon/pull/415) |
+| `xymon-tmpfiles.conf` | byte-identical to `devel`'s | creates `/run/xymon`, which nothing uses yet — until [xymon#219](https://github.com/xymon-monitoring/xymon/pull/219) points pidfiles and `rrd` control sockets there via `XYMONRUNDIR` (see the README's known gaps) | [#415](https://github.com/xymon-monitoring/xymon/pull/415) |
 | `xymon-sysctl.conf` | byte-identical to `devel`'s | the backfeed-queue tunables; `main` has no equivalent | — none |
 | `xymon.logrotate` | adapted from `devel` | the `devel` copy's postrotate HUPs `xymonlaunch`, which `main` does not relay yet; `copytruncate` until it does | [#172](https://github.com/xymon-monitoring/xymon/pull/172) (the `SENDHUP` enabler) |
 | `xymon-client.default`, `xymonlaunch.default` | adapted from `devel` | both name this packaging's config paths instead of upstream's; `xymon-client.default` also documents `XYMONSERVERS`, which only patched clients read | [#415](https://github.com/xymon-monitoring/xymon/pull/415) (`xymonlaunch.default` only) |
@@ -59,7 +59,7 @@ proposal drops off this list once it merges.
 | [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | open |
 | [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | draft |
 | [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet | draft |
-| [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` (build) + `XYMONSTATICWWWDIR` (runtime help lookup) | draft |
+| [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` (build placement) + `XYMONSTATICWWWDIR` (runtime — re-bases the `help` dir off `XYMONNOTESDIR` onto the static tree in `lib/links.c`) | draft |
 | [#415](https://github.com/xymon-monitoring/xymon/pull/415) | `devel`'s systemd unit generated from the build's paths, plus its preset, tmpfiles and defaults files and `INSTALLSYSTEMDDIR` | draft |
 | [#443](https://github.com/xymon-monitoring/xymon/pull/443) | `XYMONCACHEWWWDIR` — lets `rep`/`snap` move to `/var/cache` (not consumed here yet) | draft |
 
@@ -69,6 +69,10 @@ an existing build, which is why
 [#421](https://github.com/xymon-monitoring/xymon/pull/421) is separate: it
 fixes flaky upstream server tests that drew xymond's port from the
 ephemeral range, and changes no shipped code.
+
+The spec adopts each feature as it lands, via its own consuming PRs — e.g.
+[xymon-rpm #4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) swaps the
+hand-rolled static `mv`+`ln` loop for `INSTALLSTATICWWWDIR` once #414 merges.
 
 `rpm/terabithia/` archives the reference spec and README from
 <https://repo.terabithia.org/rpms/xymon/> for provenance only; it is

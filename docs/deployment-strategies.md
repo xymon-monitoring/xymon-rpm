@@ -137,27 +137,19 @@ static three today, symlinking them back so every `/xymon/` URL and
 on-disk path still works — nothing in `xymonserver.cfg` or the CGIs learns
 a second location, and httpd needs no extra config because the generated
 one already sets `FollowSymLinks` on the www directory. `rep` and `snap`
-stay in the `/var/lib` docroot for now. The `help` link is load-bearing:
-`lib/links.c` derives that directory from `XYMONNOTESDIR`, so it must
-resolve wherever the files live — a coupling xymon#414 removes (below).
+stay in the `/var/lib` docroot for now. The `help` symlink is load-bearing —
+the daemon resolves that directory at runtime, a coupling #414 removes
+(mechanics in [upstream.md](upstream.md)).
 
-Each hand-made move has an upstream proposal to retire it — all opt-in,
-no-op by default:
-
-- **static** (`gifs`/`help`/`menu`) —
-  [xymon#414](https://github.com/xymon-monitoring/xymon/pull/414): both halves,
-  `INSTALLSTATICWWWDIR` (install placement) and `XYMONSTATICWWWDIR` (runtime, so
-  `lib/links.c` resolves `help` from the static dir, not from `XYMONNOTESDIR`).
-  [This repo's #4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) is the
-  consuming side — sets `INSTALLSTATICWWWDIR=%{_datadir}/xymon` and drops the
-  `mv`+`ln` loop (draft until #414 lands; CI-verified against `pr/414`).
-- **client** (`etc`/`logs`/`tmp`) —
-  [xymon#411](https://github.com/xymon-monitoring/xymon/pull/411):
-  `INSTALLCLIENT*DIR`.
-- **regenerable** (`rep`/`snap`) —
-  [xymon#443](https://github.com/xymon-monitoring/xymon/pull/443):
-  `XYMONCACHEWWWDIR`, the runtime knob for a `/var/cache` move this spec has
-  not made yet (target below).
+Each hand-made move has an upstream proposal to make it build-native, all
+opt-in and no-op by default: the static three via `INSTALLSTATICWWWDIR` +
+`XYMONSTATICWWWDIR` ([xymon#414](https://github.com/xymon-monitoring/xymon/pull/414)),
+the client tree via `INSTALLCLIENT*DIR`
+([xymon#411](https://github.com/xymon-monitoring/xymon/pull/411)), and the
+regenerable `rep`/`snap` via `XYMONCACHEWWWDIR`
+([xymon#443](https://github.com/xymon-monitoring/xymon/pull/443), a `/var/cache`
+move this spec has not made yet). Their states, mechanics, and the spec changes
+that adopt them are tracked in [upstream.md](upstream.md).
 
 ### Where the static web content should live
 
@@ -195,37 +187,3 @@ The regenerable third's target is **`/var/cache/xymon/www`** — FHS §5.5,
 "data that can be regenerated" and "deleted without loss" — reached by
 pointing `XYMONCACHEWWWDIR` there and symlinking `www/rep`, `www/snap` back,
 as the static three are. This spec keeps them in the `/var/lib` docroot today.
-
-## Repositories: snapshots vs tagged releases
-
-CI (`.github/workflows/build.yml`) builds two kinds of package from the
-same spec (`rpm/baseversion` sets the base, currently 4.3.31):
-
-- **Snapshots** of upstream `main`, versioned
-  `X.Y.Z-0.<date>git<sha>.<pkgdate>p<pkgsha>`. The first pair identifies
-  the upstream commit, the second the last packaging commit, so a
-  packaging-only fix still mints a new NEVRA. The leading `-0.` sorts
-  below the eventual `-1`, so snapshot users are absorbed cleanly when
-  the release lands. A nightly cron rebuild of `main` is the drift
-  detector: an upstream path or flag change turns it red the next day.
-- **Releases** built from an exact `rel-*` tag as `X.Y.Z-1`. A published
-  NEVRA is immutable, so a packaging-only re-release of a tag bumps
-  `releasenum` to ship `-2`.
-
-Only genuine builds of `main` or a `rel-*` tag publish to the signed
-gh-pages repository; pull requests and one-off branch builds never do.
-
-## Migrating from the old layout
-
-Before this design, `xymon` required `xymon-client` and a separate
-`xymon-client.service` carried a `Conflicts=` guard.
-
-- **Client-only hosts** upgrade normally: the client package's `%post`
-  carries enablement and any running instance over to
-  `xymonlaunch.service`.
-- **Server hosts** have both packages, which the new `xymon` conflicts
-  with, so the upgrade is one explicit `dnf swap xymon-client xymon`.
-  Until it runs the conflict makes the whole `dnf upgrade` unsolvable,
-  so an unattended updater silently stops. Acceptable only because this
-  packaging is experimental; a stable release would need a `%triggerun`
-  migration or a transitional package.
