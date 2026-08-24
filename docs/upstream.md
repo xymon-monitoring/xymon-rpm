@@ -33,17 +33,17 @@ by testing. [#415](https://github.com/xymon-monitoring/xymon/pull/415)
 carries it to `main` with paths substituted from the build rather than
 hardcoded, so it serves a source install and any packaging, not only RPM.
 
-| File | Origin | Why |
-| --- | --- | --- |
-| `xymonlaunch.service` | adapted from `devel` | eleven directives are verbatim from `devel`'s `tools/xymonlaunch.service`, including the `xymoncmd` wrapping. Four things differ, all this packaging's: `ExecStart` calls `xymonlaunch-run` for role dispatch, the kill semantics move into the server's drop-in, `Alias=xymon-client.service` is dropped because one unit serves both roles, and the second `EnvironmentFile` is `/etc/sysconfig/xymon-client`. #415 would leave only those four differences here |
-| `xymonlaunch-run`, `xymonlaunch-server.conf`, `xymonlaunch-client.conf` | written here | the role dispatch itself. `xymonlaunch-run` picks the tree by which role's drop-in is present and runs `xymoncmd xymonlaunch --no-daemon`; the drop-ins carry what differs. All three exist because these two packages conflict and share one unit |
-| `xymonlaunch.service.preset` | byte-identical to `devel`'s | one line, the same one. What is ours is shipping it *only* in the server package: a fresh client must not enable itself against the baked-in `XYMSRV` |
-| `xymon.sysusers` | written here | [xymon#413](https://github.com/xymon-monitoring/xymon/pull/413) proposes it upstream |
-| `xymon-tmpfiles.conf` | byte-identical to `devel`'s | creates `/run/xymon`, which nothing uses yet (see the README's known gaps) |
-| `xymon-sysctl.conf` | byte-identical to `devel`'s | the backfeed-queue tunables; `main` has no equivalent |
-| `xymon.logrotate` | adapted from `devel` | the `devel` copy's postrotate HUPs `xymonlaunch`, which `main` does not relay ([xymon#172](https://github.com/xymon-monitoring/xymon/pull/172)); `copytruncate` until it does |
-| `xymon-client.default`, `xymonlaunch.default` | adapted from `devel` | both name this packaging's config paths instead of upstream's; `xymon-client.default` also documents `XYMONSERVERS`, which only patched clients read |
-| `xymon.te`, `xymon-client.te`, `bb.xml` | copied from `devel` | reference material, shipped as `%doc` only — the policy modules are not compiled by default (see the README's known gaps) |
+| File | Origin | Why | Upstream PR |
+| --- | --- | --- | --- |
+| `xymonlaunch.service` | adapted from `devel` | eleven directives are verbatim from `devel`'s `tools/xymonlaunch.service`, including the `xymoncmd` wrapping. Four things differ, all this packaging's: `ExecStart` calls `xymonlaunch-run` for role dispatch, the kill semantics move into the server's drop-in, `Alias=xymon-client.service` is dropped because one unit serves both roles, and the second `EnvironmentFile` is `/etc/sysconfig/xymon-client`. Once it lands, only those four differences remain | [#415](https://github.com/xymon-monitoring/xymon/pull/415) |
+| `xymonlaunch-run`, `xymonlaunch-server.conf`, `xymonlaunch-client.conf` | written here | the role dispatch itself. `xymonlaunch-run` picks the tree by which role's drop-in is present and runs `xymoncmd xymonlaunch --no-daemon`; the drop-ins carry what differs. All three exist because these two packages conflict and share one unit | — packaging-only |
+| `xymonlaunch.service.preset` | byte-identical to `devel`'s | one line, the same one. What is ours is shipping it *only* in the server package: a fresh client must not enable itself against the baked-in `XYMSRV` | [#415](https://github.com/xymon-monitoring/xymon/pull/415) |
+| `xymon.sysusers` | written here | declares the `xymon` system user and group | [#413](https://github.com/xymon-monitoring/xymon/pull/413) |
+| `xymon-tmpfiles.conf` | byte-identical to `devel`'s | creates `/run/xymon`, which nothing uses yet (see the README's known gaps) | [#415](https://github.com/xymon-monitoring/xymon/pull/415) |
+| `xymon-sysctl.conf` | byte-identical to `devel`'s | the backfeed-queue tunables; `main` has no equivalent | — none |
+| `xymon.logrotate` | adapted from `devel` | the `devel` copy's postrotate HUPs `xymonlaunch`, which `main` does not relay yet; `copytruncate` until it does | [#172](https://github.com/xymon-monitoring/xymon/pull/172) (the `SENDHUP` enabler) |
+| `xymon-client.default`, `xymonlaunch.default` | adapted from `devel` | both name this packaging's config paths instead of upstream's; `xymon-client.default` also documents `XYMONSERVERS`, which only patched clients read | [#415](https://github.com/xymon-monitoring/xymon/pull/415) (`xymonlaunch.default` only) |
+| `xymon.te`, `xymon-client.te`, `bb.xml` | copied from `devel` | reference material, shipped as `%doc` only — the policy modules are not compiled by default (see the README's known gaps) | — `%doc` only |
 
 ## Gaps sent back upstream
 
