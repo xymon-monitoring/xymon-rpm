@@ -144,6 +144,34 @@ Both hand-made moves have upstream proposals that would remove them —
 [xymon#411](https://github.com/xymon-monitoring/xymon/pull/411)
 (`INSTALLCLIENT*DIR`).
 
+### Where the static web content should live
+
+The static three (`gifs`, `help`, `menu`) are the one part of `www` that
+leaves `/var`, and there is a recommended shape for where they land:
+**`/usr/share/xymon/www`**.
+
+- **`/usr/share`, because the FHS says so.** It defines `/usr/share` as
+  read-only, architecture-independent package data, and `/var` as what a
+  program writes — which is exactly the static-vs-generated split. Every
+  Linux packaging that splits lands static in `/usr/share` (Debian, this
+  one, Terabithia); only FreeBSD keeps it under its port prefix, and only
+  because it follows BSD `hier(7)` rather than the FHS.
+- **A `www` subdir — not a bare directory, and not a `static`/`staticwww`
+  name.** `/usr/share` already *means* static, so naming the folder
+  `static` (or `staticwww`) states "static" twice. `www` adds the one thing
+  the location does not — "this is the web content" — and it mirrors the
+  served `/var/lib/xymon/www`, so the symlink reads as a clean parallel:
+  `/var/lib/xymon/www/gifs → /usr/share/xymon/www/gifs`. It also keeps
+  `/usr/share/xymon` free for any non-web data the package might add later.
+
+For contrast: Terabithia nests under `/usr/share/xymon/static` because *its*
+`/usr/share/xymon` is the whole server home (`bin`, `cgi-bin`, `etc`, `www`,
+…), so it has to namespace. A flat `/usr/share/xymon/{gifs,help,menu}` —
+Debian's layout, and what this spec installs today — is fine only while that
+directory holds nothing but web content; the `www` subdir is the more
+self-documenting and future-proof form, and the recommended target for the
+`INSTALLSTATICWWWDIR` the split will eventually use.
+
 ## Repositories: snapshots vs tagged releases
 
 CI (`.github/workflows/build.yml`) builds two kinds of package from the
