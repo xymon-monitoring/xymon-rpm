@@ -145,9 +145,13 @@ Both hand-made moves have upstream proposals that would remove them —
 
 ### Where the static web content should live
 
-The static three (`gifs`, `help`, `menu`) are the one part of `www` that
-leaves `/var`, and there is a recommended shape for where they land:
-**`/usr/share/xymon/www`**.
+This applies only to a packaging that **splits** the tree for the FHS. A
+source install — and FreeBSD — leave the static three where the build
+puts them, inside `INSTALLWWWDIR` (the `www` tree itself): that is
+`INSTALLSTATICWWWDIR`'s no-op default (`= INSTALLWWWDIR`), and it is
+correct there, because a self-contained tree has no `/usr`-vs-`/var` line
+to honour. When a packaging *does* pull the static three out into
+`/usr/share`, the recommended shape is **`/usr/share/xymon/www`**.
 
 - **`/usr/share`, because the FHS says so.** It defines `/usr/share` as
   read-only, architecture-independent package data, and `/var` as what a
