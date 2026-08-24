@@ -141,24 +141,23 @@ stay in the `/var/lib` docroot for now. The `help` link is load-bearing:
 `lib/links.c` derives that directory from `XYMONNOTESDIR`, so it must
 resolve wherever the files live — a coupling xymon#414 removes (below).
 
-The static and client moves the spec makes by hand each have an upstream
-proposal to replace them.
-[xymon#414](https://github.com/xymon-monitoring/xymon/pull/414) now carries
-**both halves of the static move**: `INSTALLSTATICWWWDIR` (build — where the
-files are installed) and `XYMONSTATICWWWDIR` (runtime — where the daemon
-looks, re-basing `help` on the static dir so `lib/links.c` no longer derives
-it from `XYMONNOTESDIR`).
-[This repo's #4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) is the
-consuming side: it sets `INSTALLSTATICWWWDIR=%{_datadir}/xymon` and drops the
-`mv`+`ln` loop, so once #414 lands the static split becomes a one-line
-configure option instead of a hand-rolled `%install` step (draft until then,
-CI-verified against `pr/414`).
-[xymon#411](https://github.com/xymon-monitoring/xymon/pull/411)
-(`INSTALLCLIENT*DIR`) does the same for the client tree. A third,
-[xymon#443](https://github.com/xymon-monitoring/xymon/pull/443)
-(`XYMONCACHEWWWDIR`), would let the **regenerable** `rep`/`snap` output move
-to `/var/cache` — a split this spec does not make yet, but the natural next
-FHS step, config-only because `rep`/`snap` already have runtime variables.
+Each hand-made move has an upstream proposal to retire it — all opt-in,
+no-op by default:
+
+- **static** (`gifs`/`help`/`menu`) —
+  [xymon#414](https://github.com/xymon-monitoring/xymon/pull/414): both halves,
+  `INSTALLSTATICWWWDIR` (install placement) and `XYMONSTATICWWWDIR` (runtime, so
+  `lib/links.c` resolves `help` from the static dir, not from `XYMONNOTESDIR`).
+  [This repo's #4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) is the
+  consuming side — sets `INSTALLSTATICWWWDIR=%{_datadir}/xymon` and drops the
+  `mv`+`ln` loop (draft until #414 lands; CI-verified against `pr/414`).
+- **client** (`etc`/`logs`/`tmp`) —
+  [xymon#411](https://github.com/xymon-monitoring/xymon/pull/411):
+  `INSTALLCLIENT*DIR`.
+- **regenerable** (`rep`/`snap`) —
+  [xymon#443](https://github.com/xymon-monitoring/xymon/pull/443):
+  `XYMONCACHEWWWDIR`, the runtime knob for a `/var/cache` move this spec has
+  not made yet (target below).
 
 ### Where the static web content should live
 
@@ -192,12 +191,10 @@ directory holds nothing but web content; the `www` subdir is the more
 self-documenting and future-proof form, and the recommended target for the
 `INSTALLSTATICWWWDIR` the split will eventually use.
 
-The regenerable third has a matching home: `rep` and `snap` →
-**`/var/cache/xymon/www`** — FHS §5.5, "data that can be regenerated" and
-"deleted without loss." Point `XYMONCACHEWWWDIR` there (xymon#443) and
-symlink `www/rep`, `www/snap` back, exactly as the static three are handled.
-This spec keeps them in the `/var/lib` docroot today; the move is the same
-shape when it is made.
+The regenerable third's target is **`/var/cache/xymon/www`** — FHS §5.5,
+"data that can be regenerated" and "deleted without loss" — reached by
+pointing `XYMONCACHEWWWDIR` there and symlinking `www/rep`, `www/snap` back,
+as the static three are. This spec keeps them in the `/var/lib` docroot today.
 
 ## Repositories: snapshots vs tagged releases
 
