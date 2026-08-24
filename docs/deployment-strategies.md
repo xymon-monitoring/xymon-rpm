@@ -17,12 +17,11 @@ moved into `xymon-client`, and pulled back at install time by
 `Depends: xymon-client`. Every server installs both, so the filesystem
 ends up as the build made it; only package ownership differs.
 
-The cost is at runtime. Two units (`xymon.service`, `xymon-client.service`)
-need a guard so the client one does not double-report on a server:
-`ExecCondition=test ! -x /usr/lib/xymon/server/bin/xymond`. The split also
-inverts ownership — `xymon.service` runs the *client* package's
-`xymonlaunch`, and `xymond_client` was moved into `xymon-client`
-(Debian #903614) with a symlink left in the server tree.
+The cost is at runtime. Debian ships two SysV init scripts (`xymon`,
+`xymon-client`), and the client one carries a guard so it does not
+double-report on a server: `[ -x /usr/lib/xymon/server/bin/xymond ] &&
+exit 0`. The split also moves `xymond_client` into the `xymon-client`
+package (Debian #903614), leaving a symlink to it in the server tree.
 
 ## Terabithia: self-contained server, standalone client
 
@@ -105,7 +104,7 @@ to bend towards the FHS.
 | Client config | `/etc/xymon-client/` | `/etc/xymon/` | `/etc/xymon-client/` | `…/xymon/client/etc/` |
 | Server binaries | `/usr/lib/xymon/server/bin/` | same | `/usr/libexec/xymon/`, `/usr/sbin/` | `…/xymon/server/bin/` |
 | Client binaries | `/usr/lib/xymon/client/bin/` | same | `/usr/libexec/xymon-client/` | `…/xymon/client/bin/` |
-| Static web assets | `/usr/share/xymon/` | `/usr/share/xymon/` | `/var/www/xymon/` | `…/xymon/server/www/` |
+| Static web assets | `/usr/share/xymon/` | `/usr/share/xymon/` | `/usr/share/xymon/static/` | `…/xymon/server/www/` |
 | Generated pages | `/var/lib/xymon/www/` | `/var/lib/xymon/www/` | `/var/www/xymon/` | `…/xymon/server/www/` |
 | Server data / logs | `/var/lib/xymon/`, `/var/log/xymon/` | same | same | `…/xymon/data/`, `…/data/logs/` |
 
