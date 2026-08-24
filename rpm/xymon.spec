@@ -285,11 +285,11 @@ against it with:
 Summary:        Diagnostic tools for the Xymon server
 
 %description tools
-Small standalone programs for inspecting Xymon's configuration parsing and
-internal structures: stackio, locator, tree, availability and loadhosts.
-
-They are built by Xymon's own makefiles but never installed, since lib/ has
-no install rule. Most administrators will not need them.
+Small standalone programs Xymon's makefiles build but never install:
+stackio, locator, tree, availability and loadhosts (inspecting configuration
+parsing and internal structures), and contest (probing a network service by
+hand). Installed here via xymon's install-tools target. Most administrators
+will not need them.
 
 %prep
 %setup -q
@@ -455,12 +455,12 @@ Libs: -L${libdir} -lxymon -lxymoncomm -lxymontime
 Libs.private: -lpcre2-8 -lssl -lcrypto -lz -ltirpc -lrrd
 PC
 
-# Diagnostic tools. lib/Makefile builds these in its `all` target but has
-# no install rule at all, so they are otherwise discarded with the build
-# tree.
-for t in stackio locator tree availability loadhosts; do
-    install -pm 0755 "lib/$t" %{buildroot}%{xymonhome}/server/bin/"$t"
-done
+# Diagnostic tools, via xymon's own opt-in install-tools target (not in the
+# default install set). It installs the programs xymon builds but never
+# installs -- lib/'s five plus xymonnet's contest -- into INSTALLBINDIR
+# (%{xymonhome}/server/bin, as configured above). PKGBUILD skips the chown,
+# so they come out root-owned for packaging.
+make install-tools INSTALLROOT=%{buildroot} PKGBUILD=1
 
 # The client tree ships its own tmp/logs as real dirs; redirect them.
 rm -rf %{buildroot}%{xymonhome}/client/tmp %{buildroot}%{xymonhome}/client/logs
@@ -616,6 +616,7 @@ fi
 %exclude %{xymonhome}/server/bin/tree
 %exclude %{xymonhome}/server/bin/availability
 %exclude %{xymonhome}/server/bin/loadhosts
+%exclude %{xymonhome}/server/bin/contest
 %{xymonhome}/cgi-bin
 %{xymonhome}/cgi-secure
 # Static web content -- gifs, help, menu -- reached through symlinks in
@@ -737,5 +738,6 @@ exit 0
 %{xymonhome}/server/bin/tree
 %{xymonhome}/server/bin/availability
 %{xymonhome}/server/bin/loadhosts
+%{xymonhome}/server/bin/contest
 
 %changelog
