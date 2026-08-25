@@ -175,12 +175,14 @@ rebuilds included.
   [xymon#219](https://github.com/xymon-monitoring/xymon/pull/219) adds
   `XYMONRUNDIR` but defaults it to `$XYMONLOGDIR`, so the spec must also pass
   `XYMONRUNDIR=/run/xymon` — and ship the tmpfiles snippet in the client
-  package, which currently lacks it.
+  package, which currently lacks it. #219 is rebased on current `main`,
+  reviewed and CI-green, still open.
 - `ExecReload` sends `SIGHUP`, which `xymonlaunch` acts on itself but does not
   relay to its children until
   [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172), so use
   `systemctl restart` to reach the daemons; the logrotate `copytruncate` sits
-  behind the same gate. #172 is stacked on #219.
+  behind the same gate. #172 (stacked on #219) is likewise rebased and
+  CI-green, still open.
 - The SELinux modules build with `--with selinux` (`targeted`, `mls`,
   `minimum`) but are **off by default**: nothing in CI runs enforcing, so a
   green build only proves they compile — and their rules still reference
