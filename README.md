@@ -166,11 +166,12 @@ rebuilds included.
 ## Known gaps
 
 - **No distribution hardening flags** (FORTIFY, stack-protector, PIE): Xymon's
-  makefiles discard `CFLAGS`. `LDFLAGS` survives but reaches only 15 of 91
-  link rules — enough that the build must pass `-no-pie` there or the link
+  makefiles discard environment `CFLAGS`, and `LDFLAGS` reached only 15 of 92
+  link rules — patchy enough that the build must pass `-no-pie` or the link
   fails on an `R_X86_64_32` relocation on Fedora and EL10.
-  [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163) fixes the
-  `CFLAGS` root cause; the patchy `LDFLAGS` coverage is a separate, unraised gap.
+  [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163) now closes
+  both halves: commit 1 lets environment `CFLAGS` survive, commit 2 threads
+  `$(LDFLAGS)` through all 92 link rules.
 - `xymon-tmpfiles.conf` creates `/run/xymon`, which nothing uses yet: the
   pidfiles and control sockets that would fill it arrive with #172 (the next
   gap), stacked on this one — the two land together, `#219 → #172`.
