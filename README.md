@@ -170,8 +170,12 @@ rebuilds included.
   link rules — patchy enough that the build must pass `-no-pie` or the link
   fails on an `R_X86_64_32` relocation on Fedora and EL10.
   [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163) now closes
-  both halves: commit 1 lets environment `CFLAGS` survive, commit 2 threads
-  `$(LDFLAGS)` through all 92 link rules.
+  both halves for RPM: commit 1 lets environment `CFLAGS` survive, commit 2
+  threads `$(LDFLAGS)` through all 92 link rules. The preprocessor channel
+  (`CPPFLAGS`, where Debian's `dpkg-buildflags` ships `_FORTIFY_SOURCE`) is
+  still dropped, but Fedora/EL fold FORTIFY into `CFLAGS`, so RPM builds are
+  covered; the Debian gap is tracked in
+  [xymon#444](https://github.com/xymon-monitoring/xymon/issues/444).
 - `xymon-tmpfiles.conf` creates `/run/xymon`, which nothing uses yet: the
   pidfiles and control sockets that would fill it arrive with #172 (the next
   gap), stacked on this one — the two land together, `#219 → #172`.
