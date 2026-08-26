@@ -65,7 +65,7 @@ proposal drops off this list once it merges.
 
 Each is opt-in behind a variable or an unused target, so it is a no-op for
 an existing build, which is why
-#409, #410 and #411 merge in any order.
+#409, #410, #411, #414 and #443 merge in any order.
 [#421](https://github.com/xymon-monitoring/xymon/pull/421) is separate: it
 fixes flaky upstream server tests that drew xymond's port from the
 ephemeral range, and changes no shipped code.
