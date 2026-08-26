@@ -93,7 +93,7 @@ change the dist tag. Fedora is carried at N and N-1.
 ## Layout
 
 ```
-rpm/xymon.spec      the spec; no patches
+rpm/xymon.spec      the spec; no patches (map: docs/spec-structure.md)
 rpm/xymon-release.spec  the bootstrap repo/key package (noarch, no dist tag)
 rpm/baseversion     the version main is working toward (see Versioning)
 rpm/sources/        runtime integration (unit, drop-ins, logrotate, sysusers, ...)
