@@ -100,7 +100,8 @@ rpm/sources/        runtime integration (unit, drop-ins, logrotate, sysusers, ..
 rpm/terabithia/     archived reference material, not built
 build/              publish.sh signs and folds packages into the published tree;
                     mkrepofile.sh and mkindex.sh generate the .repo file and index
-docs/               admin-guide, deployment-strategies, upstream, signing
+docs/               admin-guide, deployment-strategies, upstream, signing,
+                    selinux, spec-structure, build-pipeline, testing, roadmap
 tests/              see Testing
 ```
 
@@ -200,6 +201,9 @@ rebuilds included.
   in `%post`, because a package must not carry the build host's name.
 
 ## Testing
+
+How the suites are layered and how to run one is in [docs/testing.md](docs/testing.md); the full pipeline is in [docs/build-pipeline.md](docs/build-pipeline.md).
+
 
 Every build runs `rpmspec -P` (a lua scriptlet with a `#` comment fails the
 spec parse) and four suites over the built rpms:
