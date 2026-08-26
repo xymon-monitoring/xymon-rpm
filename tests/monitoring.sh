@@ -125,6 +125,21 @@ done
 check "the status has a colour, not just a name" \
 	"echo '$board' | grep -qE '\\|(green|yellow|red|clear)\\|'"
 
+# conn is the one column the client cannot produce: it comes from
+# xymonnet, which is what actually runs the ping helper the package ships
+# -- fping by default, xymonping with --with xymonping. Nothing else in
+# this suite would notice a helper that is absent, mis-pathed in
+# xymonserver.cfg's FPING, or unable to open a socket, because every other
+# column is parsed out of the client's own report. Assert green rather
+# than merely present: a helper that cannot run still produces a conn
+# column, just a red one. xymonlaunch runs xymonnet on a five minute
+# schedule, far outside this window, so run it once directly.
+echo "== the ping helper works =="
+check "xymonnet ran" \
+	"$SH/bin/xymoncmd $SH/bin/xymonnet --timeout=10 >/tmp/xymonnet.log 2>&1"
+check "conn went green" \
+	"wait_for 30 \"$SH/bin/xymon 127.0.0.1 'xymondboard host=$host' | grep -q '|conn|green|'\""
+
 # Deliberately not asserted: anything under /var/lib/xymon/hostdata.
 # That is xymond_hostdata's schedule rather than a property of "does it
 # monitor", and it was not written within 30s of a first client report

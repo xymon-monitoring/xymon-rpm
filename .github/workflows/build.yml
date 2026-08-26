@@ -306,6 +306,10 @@ jobs:
         run: |
           set -eux
           docker run --rm -v "$PWD:/work:ro" ${{ matrix.image }} sh -c '
+            ver=$(rpm -E %rhel)
+            case "$ver" in [0-9]*) dnf -y install \
+              "https://dl.fedoraproject.org/pub/epel/epel-release-latest-${ver}.noarch.rpm" \
+              >/dev/null ;; esac
             dnf -y install curl >/dev/null &&
             cp -r /work/tests /work/out /tmp/ &&
             cd /tmp && ./tests/upgrade.sh /tmp/out'
@@ -346,6 +350,10 @@ jobs:
         run: |
           set -eux
           docker run --rm -v "$PWD:/work:ro" ${{ matrix.image }} sh -c '
+            ver=$(rpm -E %rhel)
+            case "$ver" in [0-9]*) dnf -y install \
+              "https://dl.fedoraproject.org/pub/epel/epel-release-latest-${ver}.noarch.rpm" \
+              >/dev/null ;; esac
             dnf -y install procps-ng >/dev/null &&
             cp -r /work/tests /work/out /tmp/ &&
             cd /tmp && ./tests/monitoring.sh /tmp/out'
@@ -390,7 +398,11 @@ jobs:
           # manager as PID 1. Derive one that can.
           docker build -t xymon-systemd - <<EOF
           FROM ${{ matrix.image }}
-          RUN dnf -y install systemd && dnf clean all
+          RUN ver=\$(rpm -E %rhel); \
+              case "\$ver" in [0-9]*) dnf -y install \
+                "https://dl.fedoraproject.org/pub/epel/epel-release-latest-\${ver}.noarch.rpm" ;; \
+              esac; \
+              dnf -y install systemd && dnf clean all
           CMD ["/usr/lib/systemd/systemd"]
           EOF
           docker run -d --name sd --privileged --cgroupns=host \
