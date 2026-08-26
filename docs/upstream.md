@@ -59,9 +59,9 @@ proposal drops off this list once it merges.
 | [#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | open |
 | [#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | draft |
 | [#413](https://github.com/xymon-monitoring/xymon/pull/413) | a `sysusers.d` snippet | draft |
-| [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` (build placement) + `XYMONSTATICWWWDIR` (runtime — re-bases the `help` dir off `XYMONNOTESDIR` onto the static tree in `lib/links.c`) | draft |
+| [#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` (build placement) + `XYMONSTATICWWWDIR` (runtime — re-bases the `help` dir off `XYMONNOTESDIR` onto the static tree in `lib/links.c`) | open |
 | [#415](https://github.com/xymon-monitoring/xymon/pull/415) | `devel`'s systemd unit generated from the build's paths, plus its preset, tmpfiles and defaults files and `INSTALLSYSTEMDDIR` | draft |
-| [#443](https://github.com/xymon-monitoring/xymon/pull/443) | `XYMONCACHEWWWDIR` — lets `rep`/`snap` move to `/var/cache` (not consumed here yet) | draft |
+| [#443](https://github.com/xymon-monitoring/xymon/pull/443) | `XYMONCACHEWWWDIR` — lets `rep`/`snap` move to `/var/cache` (not consumed here yet) | open |
 
 Each is opt-in behind a variable or an unused target, so it is a no-op for
 an existing build, which is why
