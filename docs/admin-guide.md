@@ -167,22 +167,17 @@ Before this design, `xymon` required `xymon-client` and a separate
 
 ## Package versions: snapshots vs releases
 
-CI (`.github/workflows/build.yml`) builds two kinds of package from the
-same spec (`rpm/baseversion` sets the base, currently 4.3.31):
+Two kinds of package come from the same spec:
 
-- **Snapshots** of upstream `main`, versioned
-  `X.Y.Z-0.<date>git<sha>.<pkgdate>p<pkgsha>`. The first pair identifies
-  the upstream commit, the second the last packaging commit, so a
-  packaging-only fix still mints a new NEVRA. The leading `-0.` sorts
-  below the eventual `-1`, so snapshot users are absorbed cleanly when
-  the release lands. A nightly cron rebuild of `main` is the drift
-  detector: an upstream path or flag change turns it red the next day.
-- **Releases** built from an exact `rel-*` tag as `X.Y.Z-1`. A published
-  NEVRA is immutable, so a packaging-only re-release of a tag bumps
-  `releasenum` to ship `-2`.
+- **Snapshots** track upstream `main`, rebuilt several times a week — the
+  bleeding edge, in the `xymon-snapshot` channel (off by default).
+- **Releases** are cut from a `rel-*` tag — the stable channel. There has been
+  no release yet, so until the first tag the stable channel is empty and you
+  install from the snapshot channel.
 
-Only genuine builds of `main` or a `rel-*` tag publish to the signed
-gh-pages repository; pull requests and one-off branch builds never do.
+A snapshot sorts below the eventual release, so a snapshot host is absorbed
+into the stable channel cleanly when the release lands. How the version
+strings are built, and why, is in the README's *Versioning*.
 
 How this packaging compares with Debian's, Terabithia's and FreeBSD's:
 [deployment-strategies.md](deployment-strategies.md).

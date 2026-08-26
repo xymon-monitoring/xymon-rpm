@@ -47,6 +47,5 @@ publish.
 
 ## Drift detection
 
-Two nightly schedules (see [upstream.md](upstream.md) *Drift detection*):
-`build.yml` rebuilds `main` so a moved install path goes red the next day, and
-`docs-drift.yml` runs `docs.sh` to catch `upstream.md` drifting from reality.
+Two nightly crons guard against upstream and doc drift — the detail is in
+[upstream.md](upstream.md) *Drift detection*.

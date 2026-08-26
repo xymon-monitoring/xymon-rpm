@@ -39,6 +39,10 @@ to a GitHub issue.
   needs real-host validation, and the review rule.
 - **Cut the first release.** The stable channel is empty until the first
   `rel-*` tag; cut it when 4.3.31 releases upstream.
+- **A stable-release upgrade path.** A server upgrade currently needs a manual
+  `dnf swap` — the package conflict makes `dnf upgrade` stop otherwise. A stable
+  release needs a `%triggerun` migration or a transitional package
+  ([admin-guide.md](admin-guide.md) *Migrating from the old layout*).
 - **Watch the signing key expiry** ([signing.md](signing.md) *Renewing before
   expiry*).
 
