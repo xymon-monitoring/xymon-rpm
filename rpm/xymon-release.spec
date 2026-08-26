@@ -17,6 +17,12 @@ License:        GPL-2.0-only
 URL:            https://github.com/xymon-monitoring/xymon-rpm
 BuildArch:      noarch
 
+# The server package requires fping, which exists only in EPEL on EL. Weak,
+# not strong, on purpose: this is one noarch build for every EL and Fedora,
+# and Fedora ships no epel-release at all -- an unsatisfiable Recommends is
+# skipped there, where an unsatisfiable Requires would break the package.
+Recommends:     epel-release
+
 Source0:        xymon.repo
 Source1:        RPM-GPG-KEY-xymon
 

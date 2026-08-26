@@ -16,9 +16,17 @@
 %{?gitsnapshot: %global xymonrelease %{gitsnapshot}}
 %{!?gitsnapshot: %global xymonrelease %{releasenum}}
 
-# xymonping is a setuid-root ICMP helper. Upstream's own CI builds it, so
-# it is on by default; --without xymonping falls back to fping at runtime.
-%bcond_without xymonping
+# Ping helper. fping is the default: upstream's own configure prefers it
+# when it finds one, and still calls its bundled xymonping "not yet fully
+# stable" (build/fping.sh offers xymonping either way -- what differs is
+# which the prompt defaults to). Choosing it drops the setuid bit from the
+# xymonping binary, which is still shipped but inert.
+#
+# The cost is a repository: fping is in no RHEL repo -- not base, not CRB
+# -- only EPEL, on every EL version. EL hosts therefore need EPEL enabled
+# before the server package will install. Fedora carries it in base.
+# --with xymonping restores the setuid helper and drops the dependency.
+%bcond_with xymonping
 
 # SELinux policy modules, off by default: nothing in CI runs enforcing,
 # so a green build proves only that they compile. Enable with
@@ -312,7 +320,13 @@ export LDFLAGS="-no-pie"
 
 # XYMONHOSTNAME is baked as "localhost" because the alternative is the
 # build host's name; %%post rewrites it on first install.
+#
+# USERFPING is not redundant with USEXYMONPING=n: without it build/fping.sh
+# probes for fping by *running* it and re-prompts on failure, and with stdin
+# at EOF that loop never ends -- the build hangs instead of failing. Setting
+# it skips the probe. Ignored when USEXYMONPING=y, so it needs no condition.
 USEXYMONPING=%{?with_xymonping:y}%{!?with_xymonping:n} \
+USERFPING=%{_sbindir}/fping \
 ENABLESSL=y \
 ENABLELDAP=y \
 ENABLELDAPSSL=y \
