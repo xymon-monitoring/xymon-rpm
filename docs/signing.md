@@ -131,3 +131,7 @@ RSA rather than ed25519 because EL8's rpm predates reliable EdDSA support
 and EL8 is supported until 2029. Three years rather than never, so a leaked
 key is not a problem forever. Piping the export straight into
 `gh secret set` keeps the private key off disk and off screen.
+
+A replacement changes the fingerprint, so update every copy of it: this file's
+*The key* section, the README's *Installing* block, and `rpm/fingerprint`
+(the value CI checks against).
