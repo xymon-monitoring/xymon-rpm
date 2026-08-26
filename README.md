@@ -194,7 +194,8 @@ rebuilds included.
   `minimum`) but are **off by default**: nothing in CI runs enforcing, so a
   green build only proves they compile — and their rules still reference
   `/var/cache/xymon`, which this layout does not use. Independently, `%post`
-  labels the CGI and www paths when `semanage` is present.
+  labels the CGI and www paths when `semanage` is present. How to build,
+  load and validate the modules is in [docs/selinux.md](docs/selinux.md).
 - `XYMONSERVERHOSTNAME` is baked as `localhost` and rewritten from `uname -n`
   in `%post`, because a package must not carry the build host's name.
 
