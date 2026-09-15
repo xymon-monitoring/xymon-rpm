@@ -1,0 +1,82 @@
+# Enforces the attribution rule in AGENTS.md on the two surfaces CI can see:
+# the commit messages a pull request carries, and its title and body.
+#
+# Its own workflow rather than a job in build.yml, for the reason docs-drift
+# has one: a credit line says nothing about whether the packages are good, and
+# a text problem should not stand between a tested build and its signing.
+#
+# Also on pushes to main. main carries no ruleset, so a commit can arrive
+# there without passing through a pull request at all -- and the surface that
+# check cannot see, the pull request body, does not exist on that path either.
+name: attribution
+
+on:
+  pull_request:
+    # `edited` is the type that matters most here: a body is usually credited
+    # when it is written, which is after the pull request is opened, and the
+    # default type list does not include it.
+    types: [opened, edited, reopened, synchronize]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout packaging
+        uses: actions/checkout@v6
+        # Default depth on purpose. A full history here means cloning
+        # gh-pages, which carries every published rpm -- gigabytes, to read
+        # text the API already holds. All this step has to produce is the
+        # script.
+
+      # A title and a body are contributor-controlled text, and on a fork they
+      # are controlled by someone this repository has not vetted. They reach
+      # the script through the environment and a file, never interpolated into
+      # the shell, so nothing in them can run as a command.
+      - name: Check the pull request title and body
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -eu
+          printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY" > pr.txt
+          ./tests/attribution.sh "the pull request title or body" pr.txt
+
+      - name: Check the commit messages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -eu
+          # The messages come from the API rather than from the clone above:
+          # a message is not in the tree, so reading it from git would mean
+          # fetching history this check has no other use for.
+          if [ -n "${PR:-}" ]; then
+            gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR/commits" |
+              jq -s 'flatten' > commits.json
+          elif [ -n "${BEFORE:-}" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$AFTER" \
+              --jq '.commits' > commits.json
+          else
+            # A branch's first push sends an all-zeroes "before", so there is
+            # no range to compare: check the commit that was pushed.
+            gh api "repos/$GITHUB_REPOSITORY/commits/$AFTER" --jq '[.]' > commits.json
+          fi
+          n=$(jq length commits.json)
+          echo "checking $n commit message(s)"
+          fail=0
+          i=0
+          while [ "$i" -lt "$n" ]; do
+            jq -r ".[$i].commit.message" commits.json > msg.txt
+            ./tests/attribution.sh "commit $(jq -r ".[$i].sha[0:7]" commits.json)" msg.txt || fail=1
+            i=$((i + 1))
+          done
+          exit "$fail"
