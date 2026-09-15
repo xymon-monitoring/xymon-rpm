@@ -91,35 +91,58 @@ done
 # The stable channel keeps everything forever: people pin versions and
 # roll back. Snapshots are pre-releases shipped disabled by default, so
 # they are pruned to stop the tree growing without bound. Retention is
-# per package directory and counts *builds*, not files: dropping half a
-# build leaves a repository that resolves to a missing dependency.
+# per package directory and removes whole *builds*, never files: dropping
+# half a build leaves a repository that resolves to a missing dependency.
+#
+# What is counted is upstream commits, and each keeps only its newest
+# packaging rebuild. The two halves are not equivalent: rolling back on a
+# snapshot channel means going back to a different state of Xymon, and an
+# older packaging of the state you already have is not that. Counting
+# builds instead spent all five slots on one upstream commit the day this
+# repository merged five packaging changes, which is how the rule was
+# found.
+#
+# It bounds the tree harder than counting builds did, not less: packaging
+# rebuilds can no longer occupy more than one slot each, so the ceiling
+# is keep x one build rather than keep x anything.
 keep=${XYMON_SNAPSHOT_KEEP:-5}
 
 # The build id is the Release field minus the dist tag: the upstream half
 # 0.<date>git<sha>, plus the packaging half .<datetime>p<sha> when there
-# is one. Counting the packaging half is what bounds the tree -- while
-# upstream sits still, packaging changes would otherwise pile up inside
-# one upstream id forever. Fixed-width datetimes lead both halves, so a
-# reverse sort is newest-first, and an id with no packaging half sorts
-# below every rebuild of the same commit.
+# is one. Fixed-width datetimes lead both halves, so a reverse sort is
+# newest-first, and an id with no packaging half sorts below every
+# rebuild of the same commit.
 buildid() {
 	printf '%s\n' "${1##*/}" \
 	| sed -nE 's/.*-(0\.[0-9]{8}git[0-9a-f]+(\.[0-9]{12}p[0-9a-f]+)?)\..*/\1/p'
 }
 
+# The upstream half alone -- the grouping key.
+upstreamid() {
+	printf '%s\n' "${1##*/}" \
+	| sed -nE 's/.*-(0\.[0-9]{8}git[0-9a-f]+)(\.[0-9]{12}p[0-9a-f]+)?\..*/\1/p'
+}
+
 if [ -d "$repodir/xymon-snapshot" ]; then
-	echo "== pruning snapshots (keeping the newest $keep builds per directory) =="
+	echo "== pruning snapshots (keeping $keep upstream builds per directory, newest packaging of each) =="
 	find "$repodir/xymon-snapshot" -name '*.rpm' -printf '%h\n' | sort -u | while read -r dir; do
 		all=$(for f in "$dir"/*.rpm; do
 			[ -e "$f" ] || continue
-			buildid "$f"
+			printf '%s\t%s\n' "$(upstreamid "$f")" "$(buildid "$f")"
 		done | sort -ru)
-		total=$(echo "$all" | grep -c . || :)
-		[ "$total" -le "$keep" ] && continue
+		# Newest first, so the first row of each upstream id is its newest
+		# packaging rebuild. Everything not in this set goes, whether it is
+		# a superseded rebuild or an upstream commit past the window.
+		kept=$(printf '%s\n' "$all" | awk -F'\t' '!seen[$1]++' | head -n "$keep" | cut -f2)
+		drop=$(printf '%s\n' "$all" | cut -f2 | while read -r b; do
+			[ -n "$b" ] || continue
+			printf '%s\n' "$kept" | grep -qxF "$b" || printf '%s\n' "$b"
+		done)
+		[ -n "$drop" ] || continue
 		# Compare ids rather than globbing them: an id with no packaging
 		# half is a prefix of every rebuild of the same commit, so
 		# rm *"$b"* would take newer builds down with the old one.
-		echo "$all" | tail -n +$((keep + 1)) | while read -r b; do
+		printf '%s\n' "$drop" | while read -r b; do
 			[ -n "$b" ] || continue
 			n=0
 			for f in "$dir"/*.rpm; do
@@ -129,8 +152,15 @@ if [ -d "$repodir/xymon-snapshot" ]; then
 				n=$((n + 1))
 			done
 			# Named, not silent: a repository that quietly loses
-			# builds looks like one that never had them.
-			echo "  - ${dir#"$repodir"/}: dropped build $b ($n packages)"
+			# builds looks like one that never had them. Say which of
+			# the two rules dropped it -- they are not the same event.
+			u=$(printf '%s\n' "$b" | sed -E 's/(\.[0-9]{12}p[0-9a-f]+)$//')
+			if printf '%s\n' "$kept" | grep -q "^$u"; then
+				why="superseded packaging of $u"
+			else
+				why="upstream build past the newest $keep"
+			fi
+			echo "  - ${dir#"$repodir"/}: dropped build $b ($n packages, $why)"
 		done
 	done
 fi

@@ -10,9 +10,9 @@
 # empty repository -- it gets a 404 for repomd.xml and fails the entire
 # transaction, including packages from unrelated repositories, so the
 # shipped .repo file broke dnf outright on any machine that installed it.
-# And retention counts builds rather than files, which is only correct if
-# a build's packages are removed together; half a build left behind
-# resolves to a missing dependency.
+# And retention counts upstream commits rather than files, which is only
+# correct if a build's packages are removed together; half a build left
+# behind resolves to a missing dependency.
 #
 # Run from the repository root with the built packages in ./out, or in a
 # directory given as the first argument. Needs createrepo_c, rpm-sign and
@@ -112,25 +112,50 @@ check "republishing the same build leaves the package alone" \
 check "and says so rather than silently overwriting" \
 	"grep -q 'already published' $work/publish.log"
 
-echo "== retention removes whole builds =="
-# Fabricate several builds of one upstream commit by renaming, which is
-# what a run of packaging-only changes produces.
+echo "== retention keeps upstream builds, one packaging rebuild each =="
+# Two dimensions, because the rule has two. Several packaging rebuilds of
+# one upstream commit are what a busy day in this repository produces;
+# several upstream commits are what a user rolls back across. Counting
+# builds let the first evict the second entirely -- five packaging merges
+# in one morning left the published tree holding one upstream commit.
 dir=$(find "$repo/xymon-snapshot" -name '*.rpm' -printf '%h\n' | head -1)
 base=$(basename "$snap")
+upstream_ids() {
+	find "$dir" -name '*.rpm' -printf '%f\n' |
+		sed -nE 's/.*-(0\.[0-9]{8}git[0-9a-f]+)\..*/\1/p' | sort -u
+}
+# three more packaging rebuilds of the commit just published
 i=1
-while [ $i -le 7 ]; do
+while [ $i -le 3 ]; do
 	cp "$dir/$base" "$dir/$(echo "$base" | sed "s/p[0-9a-f]*\./p00000$i./")" 2>/dev/null || :
 	i=$((i + 1))
 done
+# and four older upstream commits, one packaging rebuild each
+i=1
+while [ $i -le 4 ]; do
+	cp "$dir/$base" \
+		"$dir/$(echo "$base" | sed "s/0\.[0-9]\{8\}git[0-9a-f]*\./0.2026010${i}git000000${i}./")" \
+		2>/dev/null || :
+	i=$((i + 1))
+done
+published=$(printf '%s\n' "$base" | sed -nE 's/.*-(0\.[0-9]{8}git[0-9a-f]+)\..*/\1/p')
 total_before=$(find "$dir" -name '*.rpm' | wc -l)
 XYMON_SNAPSHOT_KEEP=3 ./build/publish.sh "$art/.." "$repo" > "$work/prune.log" 2>&1
 kept=$(find "$dir" -name '*.rpm' | wc -l)
 check "pruning happened at all (had $total_before)" \
 	"test $kept -lt $total_before"
-check "it kept the requested number of builds, not of files" \
-	"test $kept -le 4"
-check "each removal is named in the log" \
-	"grep -q 'dropped build' $work/prune.log"
+check "it kept three upstream commits, not three files" \
+	"test \$(upstream_ids | grep -c .) -eq 3"
+check "the newest upstream commit survived the packaging churn" \
+	"upstream_ids | grep -qxF '$published'"
+check "and it kept one packaging rebuild of it, not four" \
+	"test \$(find $dir -name \"*$published*\" -printf '%f\\n' |
+		 sed -nE 's/.*-(0\\.[0-9]{8}git[0-9a-f]+\\.[0-9]{12}p[0-9a-f]+)\\..*/\\1/p' |
+		 sort -u | grep -c .) -eq 1"
+check "a superseded packaging rebuild says why it went" \
+	"grep -q 'superseded packaging of' $work/prune.log"
+check "an upstream commit past the window says why it went" \
+	"grep -q 'upstream build past the newest' $work/prune.log"
 
 echo "== reset republishes from this run alone =="
 XYMON_SNAPSHOT_RESET=1 ./build/publish.sh "$art/.." "$repo" > "$work/reset.log" 2>&1
