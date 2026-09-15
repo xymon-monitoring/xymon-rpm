@@ -45,6 +45,13 @@ commits. A `concurrency` group serialises overlapping runs so two publishes
 cannot race the `gh-pages` push. No key present (a fork) → build and test, skip
 publish.
 
+`gh-pages` carries no history: each publish replaces it with a single orphan
+commit, force-pushed. Pages serves the tip alone, so the history was read by
+nobody — and a signed rpm differs in every byte from the previous build of the
+same package, so git could not compress it either. Left to accumulate it also
+defeated `publish.sh`'s retention in silence, keeping every snapshot the
+published tree had pruned.
+
 ## Drift detection
 
 Two nightly crons guard against upstream and doc drift — the detail is in

@@ -454,9 +454,9 @@ jobs:
     permissions:
       contents: write
     # Two overlapping runs (a nightly and a push) would both clone
-    # gh-pages, and the second to push would be rejected as
-    # non-fast-forward -- leaving that run's packages silently
-    # unpublished. Serialize the job instead.
+    # gh-pages and both force-push it, and the second would overwrite the
+    # first's packages rather than fail. Serialize the job: this group is
+    # what makes the force-push in "Commit and push" safe.
     concurrency:
       group: publish-gh-pages
       cancel-in-progress: false
@@ -575,6 +575,14 @@ jobs:
           if git diff --cached --quiet; then
             echo "nothing new to publish"
           else
-            git commit -m "Publish packages from ${GITHUB_SHA::7}"
-            git push origin gh-pages
+            # Replace the branch rather than add to it. Pages serves the
+            # tip alone, so the history is read by nobody -- and it is the
+            # one thing here git cannot compress, because a signed rpm
+            # differs in every byte from the previous build of the same
+            # package. Left to accumulate it also defeated publish.sh's
+            # retention in silence: the tree pruned old snapshots, the
+            # history kept every one of them.
+            git checkout -q --orphan published-now
+            git commit -q -m "Publish packages from ${GITHUB_SHA::7}"
+            git push --force origin published-now:gh-pages
           fi
