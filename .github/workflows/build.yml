@@ -586,14 +586,18 @@ jobs:
           printf '%s\n' 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' \
             > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/known_hosts"
-          # A config file rather than GIT_SSH_COMMAND, and absolute paths
-          # rather than ~. A tilde is expanded by the shell only at the start
-          # of a word, so `-o UserKnownHostsFile=~/.ssh/known_hosts` reached
-          # ssh literally, no host key was found, and the clone died with
-          # "Host key verification failed" -- while `-i ~/.ssh/archive`, where
-          # the tilde does begin the word, had worked. ssh expands ~ correctly
-          # for its own defaults, so letting it find both files is simpler
-          # than passing either.
+          # Both paths absolute, and the config named explicitly at the clone
+          # below. Two ways of leaving that to something else have already
+          # failed here, for different reasons and with the same message:
+          #
+          #   -o UserKnownHostsFile=~/.ssh/known_hosts   the shell expands a
+          #     tilde only at the start of a word, so ssh got a literal ~
+          #     (while -i ~/.ssh/archive, where it does begin the word, worked)
+          #   ssh's own default lookup                   it finds ~/.ssh/config
+          #     through the passwd entry, not $HOME, and this container runs as
+          #     root: the files are written to /github/home, ssh reads /root
+          #
+          # Nothing below relies on a tilde or on where ssh thinks home is.
           cat > "$HOME/.ssh/config" <<EOF
           Host github.com
             IdentityFile $HOME/.ssh/archive
@@ -606,6 +610,7 @@ jobs:
         if: steps.key.outputs.ok == 'true'
         run: |
           set -eu
+          export GIT_SSH_COMMAND="ssh -F $HOME/.ssh/config"
           git config --global --add safe.directory '*'
           # No fallback that starts empty. The archive is seeded, so a clone
           # that fails is a failure -- a credential expired, the repository
@@ -664,6 +669,7 @@ jobs:
         run: |
           set -eu
           cd published
+          export GIT_SSH_COMMAND="ssh -F $HOME/.ssh/config"
           git config user.name "xymon-rpm publisher"
           git config user.email "noreply@github.com"
           git add -A
