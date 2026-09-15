@@ -644,3 +644,63 @@ jobs:
             git commit -q -m "Publish packages from ${GITHUB_SHA::7}"
             git push --force origin published-now:gh-pages
           fi
+
+      # --- first half of taking the published tree out of git ---
+      #
+      # Pages can serve an uploaded artifact instead of a branch, which would
+      # leave this repository at about a megabyte and stop a contributor
+      # cloning the published rpms. That change cannot be rehearsed: publish
+      # never runs from a pull request, so the first real run is the test. And
+      # what it replaces is the state store -- publish.sh merges into the
+      # previous tree -- so a bug in it would take the fallback away at the
+      # same moment it was needed.
+      #
+      # So it lands in two halves. This is the first: build and upload the
+      # artifact while the branch above is still written and still served.
+      # Both steps are continue-on-error, so nothing here can fail the publish
+      # users depend on, and the deploy itself is a separate job for the same
+      # reason. The second half deletes the branch, once a few nights have
+      # shown the artifact carries the same tree.
+      - name: Stage the published tree for Pages
+        if: steps.key.outputs.ok == 'true'
+        continue-on-error: true
+        run: |
+          set -eu
+          # Without the clone's own .git: tens of megabytes of objects that
+          # nobody browses, and that the branch already holds.
+          rm -rf site
+          mkdir site
+          tar -C published --exclude=.git -cf - . | tar -C site -xf -
+          du -sh site
+
+      - name: Upload it as a Pages artifact
+        if: steps.key.outputs.ok == 'true'
+        continue-on-error: true
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  # Deploying is its own job because the github-pages environment can refuse
+  # one, and a refusal blocks the whole job rather than a step. Attached to
+  # publish it would stop the publish; here it stops nothing.
+  #
+  # It fails until two settings change, and is expected to: Pages still builds
+  # from the gh-pages branch rather than from a workflow, and the environment's
+  # deployment branch policy still names gh-pages rather than main, which is
+  # where this runs. Both are in the repository settings. Until then the red
+  # job is the only sign, and the published site is unaffected.
+  pages:
+    name: pages
+    needs: publish
+    if: needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy the published tree
+        id: deploy
+        uses: actions/deploy-pages@v4
