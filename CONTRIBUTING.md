@@ -21,6 +21,7 @@ activation and policy.**
 |---|---|
 | Xymon's behaviour, its build, what `make install` produces | `xymon-monitoring/xymon` |
 | what an RPM installs, requires, starts, migrates or labels | here |
+| something that belongs upstream, which upstream has not landed yet | here, as an interim override that names the upstream pull request |
 | the old `rpm/` directory inside `xymon-monitoring/xymon` | nowhere — it is unmaintained and builds nothing anyone ships |
 
 A directory that Xymon's own configuration declares but its `Makefile` never
@@ -34,9 +35,45 @@ lands on Debian and FreeBSD at the same time as on this packaging, so it needs
 those packagers told before it merges, not after. Say so in the pull request
 rather than discovering it at release time.
 
-[docs/upstream.md](docs/upstream.md) tracks the gaps this packaging compensates
-for and the upstream pull requests that would close each one. A workaround
-added here without an entry there is a workaround nobody will ever remove.
+### When upstream is right but not yet available
+
+The rule says where a fix belongs, not when you can have it. A gap that belongs
+upstream may be compensated here in the meantime — that is a good part of what
+this packaging is for — on one condition: **the compensation names the upstream
+pull request that will delete it**, in the spec comment beside it and in
+[docs/upstream.md](docs/upstream.md) *Gaps sent back upstream*. That comment is
+what lets someone who was not there remove the workaround later. Without it,
+the override is not interim, it is a permanent divergence nobody will recognise
+as removable.
+
+### The boundary moves
+
+Which side a thing belongs to is dated, not settled. A compensation is
+downstream because upstream does not offer the mechanism *today*; the day its
+pull request merges, the same code becomes divergence. So the table does not
+classify once and for all — it records where the line runs now.
+
+That is what `tests/docs.sh` watches, nightly: it reads the *Gaps sent back
+upstream* table and checks each pull request's real state. When one merges, the
+drift check goes red — not because something broke, but because a compensation
+just stopped being one.
+
+## Where to file an issue
+
+Report where you met the problem, not where the fix belongs — telling those
+apart is often the work the issue exists to do.
+
+- It went wrong installing, upgrading, starting, or in what a package put on
+  disk → **here**.
+- It went wrong in Xymon itself, however you installed it →
+  **`xymon-monitoring/xymon`**.
+
+Triage is where the rule above applies, and it is the opportunity a report
+creates: understanding it is the only moment anyone knows enough to place the
+fix. Write it where it belongs, not where the issue happened to land — the
+repository that iterates fastest is the tempting one, and taking it is how a
+downstream accumulates divergence nobody decided on. The issue can stay with
+its reporter; say in it which repository took the work, and why.
 
 ## Where a change gets written down
 
@@ -130,6 +167,10 @@ squash merge, in `git log --oneline`. Write it so that line is enough.
 - Say what is wrong before what changes: the defect in a sentence, then the
   mechanism that fixes it. A reader who stops after two sentences should still
   know why the pull request exists.
+- **Say which side of the boundary the change is on, and why.** Not a formality:
+  it is the question most often answered wrong, and answering it in writing is
+  what stops a fix landing here because here is convenient. If it is an interim
+  override, name the upstream pull request that will delete it.
 - Carry what a reviewer cannot infer from the diff — a distribution floor, an
   ordering against an upstream pull request, a scriptlet deliberately left
   alone, something you could not test.
@@ -157,16 +198,12 @@ Match the file you are editing. The spec is one long file written in one voice;
 a block that reads differently from the ones around it costs a reviewer more
 than it saves you.
 
-Two things the spec does deliberately, which look like noise until you need
-them:
-
-- **Every workaround names its upstream pull request in a comment.** That
-  comment is what lets the workaround be deleted later by someone who was not
-  there when it was written. A compensation added without one is permanent by
-  accident.
-- **The spec is commented for *why*, not *what*.** `docs/spec-structure.md` is
-  the map of where things are, so a comment that restates the map goes stale in
-  two places at once.
+One thing the spec does deliberately, which looks like noise until you need it:
+**it is commented for *why*, not *what*.** `docs/spec-structure.md` is the map
+of where things are, so a comment that restates the map goes stale in two
+places at once. The other rule about spec comments — that a workaround names
+the upstream pull request that will delete it — is in *Which repository*
+above, because it is a condition on the override, not a matter of style.
 
 Shell in `build/` and `tests/` is POSIX-ish and runs under `set -eu`. It runs
 in Fedora and EL containers, so GNU tools are available — but a test that
