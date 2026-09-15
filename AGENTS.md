@@ -57,25 +57,19 @@ the result.
 
 ## Where things are
 
-- `rpm/xymon.spec` is the packaging: one spec, five packages, built from the
-  upstream tree with no patches. It is heavily commented inline, and
-  [docs/spec-structure.md](docs/spec-structure.md) is the map of where to
-  look — the comments say why, that file says where.
-- `rpm/sources/` holds what upstream does not ship: the systemd unit and its
-  role drop-ins, the SELinux policy sources, sysusers, tmpfiles, logrotate.
-  [docs/upstream.md](docs/upstream.md) records where each one came from and
-  which upstream pull request would let it go away.
-- `rpm/xymon-release.spec` is the bootstrap package that installs the
-  repository file and the signing key.
-- `build/` holds the publishing helpers — `publish.sh` (sign, sort into
-  channels, prune old snapshots), `mkrepofile.sh`, `mkindex.sh`.
-- `tests/` is the regression suite, one shell script per suite.
-  [docs/testing.md](docs/testing.md) says which runs where and how to run one
-  yourself; the suites are layered cheap to expensive, and a break should fail
-  at the cheapest one that can see it.
-- `.github/workflows/build.yml` is the whole pipeline: build matrix, the four
-  test jobs, and publishing. [docs/build-pipeline.md](docs/build-pipeline.md)
-  describes it in prose.
+README *Layout* is the map of the tree, and is not repeated here. What it does
+not say is which document answers which question:
+
+- **why the spec does something** — the inline comments, which are dense.
+  [docs/spec-structure.md](docs/spec-structure.md) says *where* to look; the
+  comments say *why*, and a comment that restates the map is a bug in both.
+- **where a file in `rpm/sources/` came from, and what would delete it** —
+  [docs/upstream.md](docs/upstream.md).
+- **which suite covers what, and how to run one** —
+  [docs/testing.md](docs/testing.md). They are layered cheap to expensive; a
+  break should fail at the cheapest one that can see it.
+- **what the pipeline does, job by job** —
+  [docs/build-pipeline.md](docs/build-pipeline.md).
 
 ## Do not
 
