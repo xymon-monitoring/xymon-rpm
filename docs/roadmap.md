@@ -49,9 +49,6 @@ to a GitHub issue.
 - **Validate on genuine RHEL and OracleLinux.** CI builds on AlmaLinux (a RHEL
   rebuild), which cannot surface a symbol RHEL lacks; real RHEL/OL testing is a
   standing gap. Recruit downstream testers.
-- **Add a `CONTRIBUTING.md`.** No front door for a new packager: how to install
-  the snapshot and report, where to file (rpm issues vs source issues), what
-  needs real-host validation, and the review rule.
 - **Cut the first release.** The stable channel is empty until the first
   `rel-*` tag; cut it when 4.3.31 releases upstream.
 - **A stable-release upgrade path.** A server upgrade currently needs a manual
