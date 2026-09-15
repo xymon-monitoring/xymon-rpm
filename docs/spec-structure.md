@@ -1,6 +1,6 @@
 # How the spec is laid out
 
-`rpm/xymon.spec` is one spec, ~740 lines, that builds five packages from the
+`rpm/xymon.spec` is one spec, ~780 lines, that builds five packages from the
 upstream tree with no patches. It reads long because it compensates in
 `%install` and the scriptlets for things upstream does not yet provide (see
 [upstream.md](upstream.md) for which upstream PRs would let each go away).

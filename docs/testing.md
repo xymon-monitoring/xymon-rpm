@@ -21,7 +21,7 @@ suite that can see it.
 | `monitoring.sh` | a running server + its client | `monitoring` job |
 | `docs.sh` | `upstream.md` vs the source | `docs-drift.yml` (schedule) |
 | `attribution.sh` | one text file | `attribution.yml` (pull requests, pushes to `main`) |
-| `compensations.sh` | the spec and the two trackers | `docs-drift.yml` (schedule) |
+| `compensations.sh` | the spec, the two trackers, every document | `docs-drift.yml` (schedule) |
 
 The first four read from the built rpms and run inside the container matrix.
 The next three need PID 1 or a non-empty root, so they are separate jobs on
@@ -31,8 +31,11 @@ release. `attribution.sh` guards text rather than packages — a commit message,
 a pull request title and body — so it has its own workflow for the same reason.
 `compensations.sh` joins `docs.sh` in `docs-drift.yml`: it asserts that every
 upstream pull request the spec cites is held by a tracker, which is how a
-workaround becomes visible as removable on the day its pull request merges.
-Neither of those two reads an rpm.
+workaround becomes visible as removable on the day its pull request merges. It
+also asserts the citation form, `xymon#NNN`, in the spec and in every document
+— without which the first assertion is optional, since a bare number is simply
+not seen, and in a document a bare one renders as a link to this repository's
+own issue of that number. Neither of those two reads an rpm.
 
 ## Two that earn their place
 

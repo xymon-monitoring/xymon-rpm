@@ -85,18 +85,14 @@ not say is which document answers which question:
   unmaintained, it builds a different layout, and it is not what these packages
   come from. A change to the packaging belongs here; sent there it is reviewed
   by nobody and shipped to nobody.
-- **Do not write `%changelog` entries.** Both specs end with an empty
-  `%changelog` on purpose: `Version` and `Release` are computed at build time
-  from the two git trees (README *Versioning*), so a hand-written entry
-  describes a version that never existed.
+- **Do not touch `Version`, `Release` or `%changelog`.** `CONTRIBUTING.md`
+  *Versioning* has the three prohibitions and what each costs. It is worth
+  naming here at all only because a generator reaches for a `%changelog` entry
+  by default, the way it reaches for an attribution trailer.
 - **Do not edit `rpm/terabithia/`.** It archives the reference spec and README
   from <https://repo.terabithia.org/rpms/xymon/> for provenance only. Nothing
   there is built. Bringing one of its ideas across means writing it into
   `rpm/xymon.spec`, and saying in the pull request that is where it came from.
-- **Do not change a published `Version`-`Release` pair.** A published NEVRA is
-  immutable (`build/publish.sh:78`): shipping different bytes under a name
-  someone has already installed is the one failure a package manager cannot
-  recover from. Bump `Version` instead.
 
 ## What a change here has to survive
 

@@ -192,19 +192,20 @@ pull request that would let the spec drop its workaround, are in
   all 92 link rules, so the spec passes `%{optflags}` and `%{build_ldflags}`
   and no longer needs the `-no-pie` that undid the asymmetry.
 - `xymon-tmpfiles.conf` creates `/run/xymon`, which nothing uses yet: the
-  pidfiles and control sockets that would fill it arrive with #172 (the next
-  gap), stacked on this one — the two land together, `#219 → #172`.
+  pidfiles and control sockets that would fill it arrive with xymon#172 (the
+  next gap), stacked on this one — the two land together,
+  `xymon#219 → xymon#172`.
   [xymon#219](https://github.com/xymon-monitoring/xymon/pull/219) adds
   `XYMONRUNDIR` but defaults it to `$XYMONLOGDIR`, so the spec must also pass
   `XYMONRUNDIR=/run/xymon` — and ship the tmpfiles snippet in the client
-  package, which currently lacks it. #219 is rebased on current `main`,
+  package, which currently lacks it. xymon#219 is rebased on current `main`,
   reviewed and CI-green, in draft.
 - `ExecReload` sends `SIGHUP`, which `xymonlaunch` acts on itself but does not
   relay to its children until
   [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172), so use
   `systemctl restart` to reach the daemons; the logrotate `copytruncate` sits
-  behind the same gate. #172 (stacked on #219) is likewise rebased and
-  CI-green, in draft.
+  behind the same gate. xymon#172 (stacked on xymon#219) is likewise rebased
+  and CI-green, in draft.
 - The SELinux modules build with `--with selinux` (`targeted`, `mls`,
   `minimum`) but are **off by default**: nothing in CI runs enforcing, so a
   green build only proves they compile — and their rules still reference

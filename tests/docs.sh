@@ -101,8 +101,8 @@ if ! command -v gh >/dev/null 2>&1; then
 	echo "NOT OK   gh not found -- the pull request assertions cannot run"
 	fail=1
 else
-	# Rows are: | [#NNN](url) | what it adds | open|draft |
-	sed -n 's/^| \[#\([0-9]\{1,\}\)\][^|]*|[^|]*| *\([a-z]*\) *|.*/\1 \2/p' "$doc" > "/tmp/docs-prs-$$"
+	# Rows are: | [xymon#NNN](url) | what it adds | open|draft |
+	sed -n 's/^| \[xymon#\([0-9]\{1,\}\)\][^|]*|[^|]*| *\([a-z]*\) *|.*/\1 \2/p' "$doc" > "/tmp/docs-prs-$$"
 	[ -s "/tmp/docs-prs-$$" ] || { echo "NOT OK   no PR rows parsed out of $doc"; fail=1; }
 
 	while read -r n claimed; do
@@ -117,7 +117,7 @@ else
 	# stale the moment a sixth PR opened. A "merge in any order" claim needs
 	# at least two PRs to be about; with fewer than two open the claim is
 	# degenerate, so the doc must not make it and the check inverts to say so.
-	named=$(sed -n 's/^#\([0-9, #]*\)and #\([0-9]\{1,\}\) merge in any order.*/\1 \2/p' "$doc" |
+	named=$(sed -n 's/^xymon#\([0-9, xymon#]*\)and xymon#\([0-9]\{1,\}\) merge in any order.*/\1 \2/p' "$doc" |
 		tr -dc '0-9 ' | tr -s ' ' '\n' | grep . | sort -u | tr '\n' ' ')
 	open=$(awk '$2 == "open" { print $1 }' "/tmp/docs-prs-$$" | sort -u | tr '\n' ' ')
 	opencount=$(awk '$2 == "open"' "/tmp/docs-prs-$$" | grep -c . || :)
