@@ -54,12 +54,21 @@ inside the container matrix.
 
 The `publish` job gates on all four test jobs and only runs for `main` or a
 dispatched `rel-*` tag (a tag build is the release flow). It imports the
-signing key, downloads every target's rpms, checks out the `gh-pages`
-published tree, and runs `build/publish.sh` — which signs, sorts each package
-into the stable or `xymon-snapshot` channel by its `Release` field, and
-commits. A `concurrency` group serialises overlapping runs so two publishes
-cannot race the `gh-pages` push. No key present (a fork) → build and test, skip
-publish.
+signing key, downloads every target's rpms, checks out the published tree from
+`xymon-monitoring/xymon-rpm-archive`, and runs `build/publish.sh` — which
+signs, sorts each package into the stable or `xymon-snapshot` channel by its
+`Release` field, and commits. A `concurrency` group serialises overlapping runs
+so two publishes cannot race the push. No key present (a fork) → build and
+test, skip publish.
+
+The tree lives in its own repository so that cloning the packaging does not
+fetch the rpms with it. Reaching another repository needs its own credential,
+since `github.token` is scoped to the one running the workflow: a deploy key,
+which reaches exactly that repository, belongs to no person and does not
+expire ([signing.md](signing.md) *Rotating the archive deploy key*). The clone
+has no fallback that starts empty — the archive is seeded, so a clone that
+fails is a failure, and publishing on top of nothing would serve one run's
+packages and drop every other build from the channel.
 
 ### Serving the tree from an artifact
 
@@ -82,34 +91,34 @@ Two repository settings govern this, and they do different things. The
 may deploy at all: it named only `gh-pages` while the workflow runs on `main`,
 so the job failed outright — *branch "main" is not allowed to deploy to
 github-pages due to environment protection rules* — until `main` was added.
-The Pages source decides what is *served*: while it is the `gh-pages` branch, a
-deployment from `main` is accepted and recorded but the branch build is what
-answers a request.
+The Pages source decides what is *served*. It is GitHub Actions now, so the
+artifact answers a request; while it was the `gh-pages` branch, a deployment
+from `main` was accepted and recorded and the branch build answered instead.
 
 That split gave the change the only rehearsal available to it, since `publish`
 never runs from a pull request: with the branch policy open and the source
 still the branch, the artifact path ran green end to end while users were
-served exactly as before. The source has since been switched to GitHub
-Actions, so the artifact is what answers a request now — checked by hashing
-`repomd.xml` off the live site against the blob in the branch, which matched,
-and by downloading a signed rpm from it.
+served exactly as before. The switch was then checked by hashing `repomd.xml`
+off the live site against the blob the branch held, which matched, and by
+downloading a signed rpm from it.
 
-The branch is still written, so reverting is one setting: Pages built from
-`gh-pages` again. That is the whole point of stopping here rather than going
-on.
+If either setting is changed back the `pages` job fails and the site stops
+being updated, which is the symptom to look for.
 
-Where it goes from here is a choice rather than a remainder — keep the branch,
-delete it, or move it to an archive repository — and
-[roadmap.md](roadmap.md) *Decisions* has the three with what each costs.
+### The archive
 
-### The branch itself
+The published tree moved out of this repository's `gh-pages` branch and into
+`xymon-monitoring/xymon-rpm-archive`, which serves nothing and exists to be
+cloned by the publish job and read by a person. `gh-pages` is no longer
+written; it is left frozen at the tree as it stood when the archive took over,
+and deleting it is a separate act whose only effect is to make a clone of this
+repository cheap.
 
-`gh-pages` carries no history: each publish replaces it with a single orphan
-commit, force-pushed. Pages serves the tip alone, so the history was read by
-nobody — and a signed rpm differs in every byte from the previous build of the
-same package, so git could not compress it either. Left to accumulate it also
-defeated `publish.sh`'s retention in silence, keeping every snapshot the
-published tree had pruned.
+The archive carries no history: each publish replaces `main` with a single
+orphan commit, force-pushed. Nothing reads an older one — a signed rpm differs
+in every byte from the previous build of the same package, so git could not
+compress the history either, and letting it accumulate defeated `publish.sh`'s
+retention in silence, keeping every snapshot the published tree had pruned.
 
 ## Drift detection
 
