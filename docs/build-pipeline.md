@@ -12,7 +12,7 @@ lint                               (no container; publish waits on it too)
 
 rpm (matrix: el8/9/10, fc43/44, stream9/10*, rawhide*, selinux)
  ├─ systemd-lifecycle ┐
- ├─ upgrade           ├─ publish   (needs all five; main / rel-* only)
+ ├─ upgrade           ├─ publish ── pages   (needs all five; main / rel-* only)
  └─ monitoring        ┘
    (* = canary: allowed to fail, never published)
 ```
@@ -60,6 +60,33 @@ into the stable or `xymon-snapshot` channel by its `Release` field, and
 commits. A `concurrency` group serialises overlapping runs so two publishes
 cannot race the `gh-pages` push. No key present (a fork) → build and test, skip
 publish.
+
+### Serving the tree from an artifact
+
+Pages can serve an uploaded artifact instead of a branch, which would leave
+this repository at about a megabyte and stop a contributor cloning the
+published rpms along with the packaging. That change cannot be rehearsed —
+`publish` never runs from a pull request — and it replaces the state store
+`publish.sh` merges into, so a bug in it would remove the fallback at the
+moment it was wanted. It lands in two halves.
+
+The first half is in place: `publish` stages the tree without the clone's
+`.git` and uploads it as a Pages artifact, while still writing and serving the
+branch. Both steps are `continue-on-error`, and the deploy is the separate
+`pages` job, because the `github-pages` environment can refuse a deployment and
+a refusal blocks a whole job rather than a step — attached to `publish` it
+would stop the publish.
+
+`pages` fails until two repository settings change, and is expected to: Pages
+still builds from the `gh-pages` branch rather than from a workflow, and the
+environment's deployment branch policy still names `gh-pages` rather than
+`main`, which is where the workflow runs. Until both move, the red job is the
+only symptom and the served site is untouched.
+
+The second half deletes the branch, once several nights have shown the artifact
+carries the same tree.
+
+### The branch itself
 
 `gh-pages` carries no history: each publish replaces it with a single orphan
 commit, force-pushed. Pages serves the tip alone, so the history was read by
