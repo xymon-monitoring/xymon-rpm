@@ -59,10 +59,13 @@ downstream because upstream does not offer the mechanism *today*; the day its
 pull request merges, the same code becomes divergence. So the table does not
 classify once and for all — it records where the line runs now.
 
-That is what `tests/docs.sh` watches, nightly: it reads the *Gaps sent back
-upstream* table and checks each pull request's real state. When one merges, the
-drift check goes red — not because something broke, but because a compensation
-just stopped being one.
+Two checks watch that, nightly, from opposite ends. `tests/docs.sh` reads the
+*Gaps sent back upstream* table and checks each pull request's real state: when
+one merges, the drift check goes red — not because something broke, but because
+a compensation just stopped being one. `tests/compensations.sh` takes the
+condition above and checks it the other way, that every `xymon#NNN` the spec
+cites is still held by a tracker — so a citation the merged proposal left
+behind is named rather than waiting for someone to read the spec.
 
 ## Where to file an issue
 
@@ -214,6 +217,12 @@ places at once. The other rule about spec comments — that a workaround names
 the upstream pull request that will delete it — is in *Which repository*
 above, because it is a condition on the override, not a matter of style.
 
-Shell in `build/` and `tests/` is POSIX-ish and runs under `set -eu`. It runs
-in Fedora and EL containers, so GNU tools are available — but a test that
-depends on one is pinning the container, not the packaging, and should say so.
+Shell is POSIX-ish and runs under `set -eu`. It does not live only in `build/`
+and `tests/`: `rpm/sources/xymonlaunch-run` is a shell script the packages
+ship, which is why the `lint` job finds scripts by shebang rather than by
+`*.sh`. That job runs `shellcheck -S error`, which the tree passes today;
+`build.yml` says why that level and not `warning`.
+
+Test scripts run in Fedora and EL containers, so GNU tools are available — but
+a test that depends on one is pinning the container, not the packaging, and
+should say so.

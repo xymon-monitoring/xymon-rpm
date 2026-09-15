@@ -8,12 +8,20 @@ pull request*).
 ## The job graph
 
 ```
+lint                                    (shellcheck; gates nothing)
+
 rpm (matrix: el8/9/10, fc43/44, stream9/10*, rawhide*, selinux)
  ├─ systemd-lifecycle ┐
  ├─ upgrade           ├─ publish   (needs all four; main / rel-* only)
  └─ monitoring        ┘
    (* = canary: allowed to fail, never published)
 ```
+
+`lint` is outside the graph on purpose: it runs `shellcheck -S error` over
+every shell script in the tree in a few seconds, and `publish` does not wait
+on it. Gating a signed release on it would tie the release to the shellcheck
+version on a hosted runner, and a syntax error in `build/publish.sh` aborts
+that script at runtime under `set -eu` anyway.
 
 `systemd-lifecycle`, `upgrade` and `monitoring` need PID 1 or a non-empty
 root, so they run as their own jobs on one EL + one Fedora target rather than

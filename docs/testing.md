@@ -1,9 +1,12 @@
 # The regression tests
 
-The suites live in `tests/`. README *Testing* is the catalogue — what each
-suite asserts and why. This file is the shape: which run where, and how to run
-one yourself. The design is a cheap-to-expensive net — a break should fail at
-the cheapest suite that can see it.
+The suites live in `tests/`. README *Testing* catalogues the ones that read a
+built rpm — what each asserts and why. The three that guard text rather than
+packages — `docs.sh`, `attribution.sh`, `compensations.sh` — are not there;
+each carries its own reasoning in its header, and the table below says where
+it runs. This file is the shape: which run where, and how to run one yourself.
+The design is a cheap-to-expensive net — a break should fail at the cheapest
+suite that can see it.
 
 ## Layered from cheap to expensive
 
