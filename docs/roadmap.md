@@ -27,6 +27,14 @@ to a GitHub issue.
   catches and an author does not, because the author checks what they meant
   rather than what they wrote. Against that, the repository now has an outside
   contributor, so a reviewer exists where none did.
+
+  **The disclosure rule waits on this.** CONTRIBUTING *Pull requests* asks an
+  author to say in the pull request if they merged their own — a social rule
+  standing in for the protection that does not exist. An audit of the twenty-nine
+  merged on 15 September found it followed in 2 of the 27 it binds, so it is not
+  standing in for much. Required review would retire it rather than mend it:
+  there would be no self-merge left to disclose. So how it is rewritten follows
+  from this decision and should not be patched ahead of it.
 - **The published tree, and where it lives.** *Decided.* It is in
   `xymon-monitoring/xymon-rpm-archive`, reaches users as a Pages artifact the
   publish job uploads, and is no longer a branch of this repository.
