@@ -182,17 +182,15 @@ build and install gaps this packaging compensates for, each with the upstream
 pull request that would let the spec drop its workaround, are in
 [docs/upstream.md](docs/upstream.md) *Gaps sent back upstream*.
 
-- **No distribution hardening flags** (FORTIFY, stack-protector, PIE): Xymon's
-  makefiles discard environment `CFLAGS`, and `LDFLAGS` reached only 15 of 92
-  link rules — patchy enough that the build must pass `-no-pie` or the link
-  fails on an `R_X86_64_32` relocation on Fedora and EL10.
-  [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163) now closes
-  both halves for RPM: commit 1 lets environment `CFLAGS` survive, commit 2
-  threads `$(LDFLAGS)` through all 92 link rules. The preprocessor channel
-  (`CPPFLAGS`, where Debian's `dpkg-buildflags` ships `_FORTIFY_SOURCE`) is
-  still dropped, but Fedora/EL fold FORTIFY into `CFLAGS`, so RPM builds are
-  covered; the Debian gap is tracked in
-  [xymon#444](https://github.com/xymon-monitoring/xymon/issues/444).
+- **The preprocessor channel is still dropped** — `CPPFLAGS`, where Debian's
+  `dpkg-buildflags` ships `_FORTIFY_SOURCE`. Fedora and EL fold FORTIFY into
+  `CFLAGS`, so RPM builds are covered and this is a Debian gap, tracked in
+  [xymon#444](https://github.com/xymon-monitoring/xymon/issues/444). The RPM
+  half closed with
+  [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163): the
+  makefiles take environment `CFLAGS` with `?=` and carry `$(LDFLAGS)` into
+  all 92 link rules, so the spec passes `%{optflags}` and `%{build_ldflags}`
+  and no longer needs the `-no-pie` that undid the asymmetry.
 - `xymon-tmpfiles.conf` creates `/run/xymon`, which nothing uses yet: the
   pidfiles and control sockets that would fill it arrive with #172 (the next
   gap), stacked on this one — the two land together, `#219 → #172`.

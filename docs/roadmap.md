@@ -79,8 +79,10 @@ to a GitHub issue.
 
 ## Tracked elsewhere (pointers, not tasks)
 
-- Enabling distribution hardening — [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163)
-  (RPM) and the Debian `CPPFLAGS` gap [xymon#444](https://github.com/xymon-monitoring/xymon/issues/444)
+- Enabling distribution hardening — done for RPM with
+  [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163); the Debian
+  `CPPFLAGS` gap remains,
+  [xymon#444](https://github.com/xymon-monitoring/xymon/issues/444)
 - `/run/xymon` + `SIGHUP` relay — the `#219 → #172` stack (README *Known gaps*)
 - Consuming a merged upstream feature — one spec PR each, e.g.
   [xymon-rpm#4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) once
