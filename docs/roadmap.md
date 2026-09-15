@@ -19,6 +19,21 @@ to a GitHub issue.
   review; keep it open; or a middle path — protect `main` but require review
   only for `rpm/` and `build/`, letting docs-only through (matches the
   "commit documentation separately" split). Decide deliberately.
+- **Whether to take the published repository out of git entirely.** #12 stopped
+  `gh-pages` accumulating — a publish now replaces it with one orphan commit
+  instead of adding to it — but the branch still holds ~300 MB that every clone
+  pays for, and each publish still writes ~60 MB of blobs that only GitHub's
+  garbage collection removes. The alternative is Pages' `workflow` build type:
+  `actions/deploy-pages` serves an uploaded artifact, nothing enters git, and
+  this repository stays at ~1 MB. The cost is that `publish.sh` is incremental
+  — it merges into the previous tree and prunes it — so the state it needs would
+  have to come from somewhere other than a branch: the live site, enumerated
+  from `repodata/*-primary.xml.gz`, or a Release asset holding a tarball. A
+  branch is also a backup you can check out, which neither of those is. What
+  decides this is already measuring itself: [#15](https://github.com/xymon-monitoring/xymon-rpm/issues/15)
+  watches whether the repository size falls back to the published tree. If
+  GitHub's collection keeps up, this is not worth building; if the size climbs,
+  #12 only moved the growth out of sight of clones. Decide when #15 closes.
 - **The eventual move upstream.** [upstream.md](upstream.md) intends to move
   the spec and workflow into `xymon-monitoring/xymon` once stable, leaving this
   repo as the publish target. Part of that is deciding the fate of upstream's
