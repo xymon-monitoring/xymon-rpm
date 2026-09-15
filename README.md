@@ -171,6 +171,11 @@ rebuilds included.
 
 ## Known gaps
 
+Runtime shortfalls waiting on upstream. This is one half of the ledger: the
+build and install gaps this packaging compensates for, each with the upstream
+pull request that would let the spec drop its workaround, are in
+[docs/upstream.md](docs/upstream.md) *Gaps sent back upstream*.
+
 - **No distribution hardening flags** (FORTIFY, stack-protector, PIE): Xymon's
   makefiles discard environment `CFLAGS`, and `LDFLAGS` reached only 15 of 92
   link rules — patchy enough that the build must pass `-no-pie` or the link

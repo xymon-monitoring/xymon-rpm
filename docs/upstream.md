@@ -52,6 +52,9 @@ delete a hand-rolled workaround; one (#443) completes the `www` FHS story
 ahead of the spec consuming it. They are proposed rather than waited on; a
 proposal drops off this list once it merges.
 
+This is one half of the ledger. Runtime shortfalls — what does not work yet,
+rather than what the spec compensates for — are in README *Known gaps*.
+
 | PR | What it adds | State |
 | --- | --- | --- |
 | [#409](https://github.com/xymon-monitoring/xymon/pull/409) | installs the `lib/` diagnostics | open |

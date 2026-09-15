@@ -24,6 +24,12 @@ activation and policy.**
 | something that belongs upstream, which upstream has not landed yet | here, as an interim override that names the upstream pull request |
 | the old `rpm/` directory inside `xymon-monitoring/xymon` | nowhere — it is unmaintained and builds nothing anyone ships |
 
+That last row is about today. [docs/upstream.md](docs/upstream.md) *Where the
+packaging should eventually live* intends to move this packaging into that
+repository once the spec is stable, and deciding what becomes of its stale
+`rpm/` and `debian/` is part of that move. Until it happens, a packaging change
+sent there is reviewed by nobody and shipped to nobody.
+
 A directory that Xymon's own configuration declares but its `Makefile` never
 creates is an upstream gap, even though you meet it as a missing directory in
 an RPM. Reloading a web server after dropping a configuration file into its
@@ -182,15 +188,18 @@ squash merge, in `git log --oneline`. Write it so that line is enough.
 
 ## Versioning
 
-`Version` and `Release` are computed at build time from both git trees — the
-upstream commit being packaged and the packaging commit — so neither is edited
-by hand and `%changelog` stays empty. README *Versioning* has the form.
+README *Versioning* has the scheme and the reason for it, including why a
+published NEVRA is never rewritten. What it means for you, in three
+prohibitions:
 
-One rule follows from it and is absolute: **a published `Version`-`Release`
-pair is immutable** (`build/publish.sh:78`). Two different builds producing the
-same NEVRA is a versioning bug, not something to paper over by republishing.
-Changing what an already-published name contains is the one failure a package
-manager cannot recover from.
+- Do not edit `Version` or `Release`. Both are computed at build time from the
+  two git trees.
+- Do not write a `%changelog` entry. It stays empty because there is no
+  hand-written version for it to describe.
+- Do not republish a NEVRA. Two builds producing the same one is a versioning
+  bug to fix, not something to paper over. `build/publish.sh:81` will not
+  overwrite a published file — it leaves the first copy in place and says so,
+  so the second build's package is silently not the one users get.
 
 ## Style
 
