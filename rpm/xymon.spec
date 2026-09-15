@@ -259,6 +259,11 @@ role or the other, and both run it as xymonlaunch.service.
 Summary:        Local threshold analysis for the Xymon client
 # Either role satisfies this: the server ships xymond_client itself and
 # the standalone client needs this package to get it.
+#
+# The binary stays in the xymon package as well, rather than being moved
+# out into this one: a server needs xymond_client for its own analysis, so
+# removing it there would break every server that did not also install
+# this package. Shipping it twice is the cheaper of the two.
 Requires:       (xymon = %{version}-%{release} or xymon-client = %{version}-%{release})
 
 %description client-local
@@ -266,11 +271,6 @@ Installs xymond_client on a client machine, so thresholds can be evaluated
 locally instead of on the server. Configure it through localclient.cfg,
 which the xymon-client package installs, and add --local to the client's
 entry in clientlaunch.cfg.
-
-The binary is the same one the server uses, and is deliberately shared
-with the xymon package rather than moved out of it: a Xymon server needs
-xymond_client for its own analysis, so removing it there to place it here
-would break every server that did not also install this package.
 
 %package devel
 Summary:        Headers and static libraries for building Xymon modules
@@ -298,13 +298,8 @@ Provides:       xymon-static = %{version}-%{release}
 
 %description devel
 Headers and static libraries for building worker modules and other
-components against Xymon.
-
-Xymon's build installs neither, so they are collected here from the build
-tree. `include/` and `lib/` are kept as siblings under a single directory
-because libxymon.h reaches its remaining headers by relative path
-("../lib/..."), so flattening them would break every include. Build
-against it with:
+components against Xymon. Xymon's own build installs neither, so this
+package collects them from the build tree. Build against it with:
 
     cc -I%{_includedir}/xymon/include ... -L%{_libdir}/xymon -lxymon
 
@@ -467,7 +462,7 @@ cp -p %{SOURCE9} %{SOURCE10} %{SOURCE12} .
 
 # Development files. The build installs neither headers nor the static
 # libraries, so take them from the build tree. include/ and lib/ must stay
-# siblings: libxymon.h pulls in 64 further headers as "../lib/...", so a
+# siblings: libxymon.h pulls in 52 further headers as "../lib/...", so a
 # flat include directory would break on the first #include.
 install -d %{buildroot}%{_includedir}/xymon/include \
            %{buildroot}%{_includedir}/xymon/lib \

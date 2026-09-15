@@ -20,13 +20,17 @@ on:
     # runners and the drift report lands next to that day's build result.
     - cron: '47 3 * * *'
   workflow_dispatch:
-  # Also on pushes that touch the doc or the checker itself: those are the
-  # moments a human can act on the answer immediately.
+  # Also on pushes that touch a document or a checker: those are the moments a
+  # human can act on the answer immediately. The list is what the two checkers
+  # read -- compensations.sh reads every document, not only the trackers -- so
+  # widening one without the other leaves the rest waiting for the cron.
   push:
     branches: [main]
     paths:
-      - 'docs/upstream.md'
+      - 'docs/**'
       - 'README.md'
+      - 'AGENTS.md'
+      - 'CONTRIBUTING.md'
       - 'rpm/xymon.spec'
       - 'rpm/xymon-release.spec'
       - 'tests/docs.sh'
