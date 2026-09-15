@@ -112,6 +112,15 @@ The pipeline is the specification, and it is cheaper to read than to trigger:
   PID 1 or a non-empty root, so they are separate jobs on one EL and one Fedora
   target. `upgrade.sh` is the only suite that starts from a non-empty root, so
   the only one that exercises `%pretrans`.
+- The `lint` job runs `shellcheck -S error` over every shell script in the
+  tree, found by shebang rather than by `*.sh` — `rpm/sources/xymonlaunch-run`
+  is one of them.
+- `tests/attribution.sh` reads the attribution rule above on every pull
+  request — its title, its body, and each commit message it carries — and on
+  every push to `main`.
+- `tests/compensations.sh` asserts, nightly, that every `xymon#NNN` the spec
+  cites is still held by a tracker. It is what stops a workaround outliving
+  the proposal that justified it.
 - The `publish` job never runs from a pull request. A change to it is therefore
   unverifiable by CI, and the pull request has to carry its own evidence.
 

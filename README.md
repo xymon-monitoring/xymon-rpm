@@ -159,15 +159,21 @@ it goes away if upstream starts bumping `version.h`.
 ## Retention
 
 The stable channel keeps everything forever — people pin versions and roll
-back. The snapshot channel keeps the newest **5 builds** per directory to stay
-within GitHub Pages limits; the **build** workflow can override that for one
+back. The snapshot channel keeps the newest **5 upstream commits** per
+directory, and of each only its newest packaging rebuild, to stay within
+GitHub Pages limits; the **build** workflow can override the number for one
 run with `snapshot_keep`, or republish the channel from that run alone with
 `snapshot_reset`.
 
+Counting upstream commits rather than published runs is what makes those five
+worth five. Rolling back on a snapshot channel means going back to a different
+state of Xymon, and an older packaging of the state you already have is not
+that — so a morning of packaging merges can no longer spend every slot on one
+upstream commit.
+
 Pruning removes whole builds, never single packages — every package of a build
 goes together, or the repo resolves to a missing dependency — and each removal
-is named in the publish log. A build is one *published run*, packaging
-rebuilds included.
+is named in the publish log, with which of the two rules dropped it.
 
 ## Known gaps
 
