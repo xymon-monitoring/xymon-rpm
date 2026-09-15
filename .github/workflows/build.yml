@@ -511,16 +511,16 @@ jobs:
       image: fedora:44
     permissions:
       contents: write
-    # Two overlapping runs (a nightly and a push) would both clone
-    # gh-pages and both force-push it, and the second would overwrite the
-    # first's packages rather than fail. Serialize the job: this group is
-    # what makes the force-push in "Commit and push" safe.
+    # Two overlapping runs would both clone the archive and both force-push
+    # it, and the second would overwrite the first's packages rather than
+    # fail. Serialize the job: this group is what makes the force-push in
+    # "Commit and push" safe.
     concurrency:
-      group: publish-gh-pages
+      group: publish-archive
       cancel-in-progress: false
     steps:
       - name: Install tooling
-        run: dnf -y install createrepo_c rpm-sign rpm-build rpmdevtools gnupg2 git-core findutils
+        run: dnf -y install createrepo_c rpm-sign rpm-build rpmdevtools gnupg2 git-core findutils openssh-clients
 
       - name: Checkout packaging
         uses: actions/checkout@v6
@@ -562,22 +562,46 @@ jobs:
           pattern: pub-*
           path: artifacts
 
-      - name: Check out the published repository
+      # The published tree lives in xymon-rpm-archive, not in a branch of this
+      # repository, so a contributor cloning the packaging does not fetch
+      # hundreds of megabytes of rpms with it. Reaching another repository
+      # needs a credential of its own: github.token is scoped to the one
+      # running the workflow. A deploy key rather than a token, because it
+      # reaches exactly one repository, belongs to no person, and expires
+      # never -- see docs/signing.md *Rotating the archive deploy key*.
+      - name: Set up the archive deploy key
         if: steps.key.outputs.ok == 'true'
+        env:
+          ARCHIVE_DEPLOY_KEY: ${{ secrets.ARCHIVE_DEPLOY_KEY }}
+        run: |
+          set -eu
+          [ -n "$ARCHIVE_DEPLOY_KEY" ] || { echo "ARCHIVE_DEPLOY_KEY is not set"; exit 1; }
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$ARCHIVE_DEPLOY_KEY" > "$HOME/.ssh/archive"
+          chmod 600 "$HOME/.ssh/archive"
+          # Pinned rather than scanned: ssh-keyscan trusts whatever answers,
+          # which is the thing a known_hosts file exists to stop. This is
+          # github.com's ed25519 host key as published at /meta.
+          printf '%s\n' 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' \
+            > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Check out the published tree
+        if: steps.key.outputs.ok == 'true'
+        env:
+          GIT_SSH_COMMAND: ssh -i ~/.ssh/archive -o IdentitiesOnly=yes -o UserKnownHostsFile=~/.ssh/known_hosts
         run: |
           set -eu
           git config --global --add safe.directory '*'
-          git clone --branch gh-pages --depth 1 \
-            "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
-            published 2>/dev/null || {
-              echo "gh-pages does not exist yet; creating it"
-              git clone --depth 1 \
-                "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" \
-                published
-              git -C published checkout --orphan gh-pages
-              git -C published rm -rq --cached . || true
-              find published -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-            }
+          # No fallback that starts empty. The archive is seeded, so a clone
+          # that fails is a failure -- a credential expired, the repository
+          # gone, GitHub down -- and publishing on top of nothing would serve
+          # this run's packages and drop every other build from the channel.
+          # Seeding a new archive is a deliberate act, done by hand once.
+          git clone --branch main --depth 1 \
+            git@github.com:xymon-monitoring/xymon-rpm-archive.git published
+          echo "  $(find published -name '*.rpm' | wc -l) packages already published"
 
       - name: Sign and publish
         if: steps.key.outputs.ok == 'true'
@@ -633,6 +657,11 @@ jobs:
           if git diff --cached --quiet; then
             echo "nothing new to publish"
           else
+            # To the archive. gh-pages is no longer written: Pages serves the
+            # uploaded artifact, so the branch served nothing, and leaving it
+            # frozen rather than deleting it here keeps a copy of the tree as
+            # it stood when the archive took over. Deleting it is a separate,
+            # deliberate act.
             # Replace the branch rather than add to it. Pages serves the
             # tip alone, so the history is read by nobody -- and it is the
             # one thing here git cannot compress, because a signed rpm
@@ -642,7 +671,7 @@ jobs:
             # history kept every one of them.
             git checkout -q --orphan published-now
             git commit -q -m "Publish packages from ${GITHUB_SHA::7}"
-            git push --force origin published-now:gh-pages
+            git push --force origin published-now:main
           fi
 
       # --- first half of taking the published tree out of git ---
@@ -684,11 +713,10 @@ jobs:
   # one, and a refusal blocks the whole job rather than a step. Attached to
   # publish it would stop the publish; here it stops nothing.
   #
-  # It fails until two settings change, and is expected to: Pages still builds
-  # from the gh-pages branch rather than from a workflow, and the environment's
-  # deployment branch policy still names gh-pages rather than main, which is
-  # where this runs. Both are in the repository settings. Until then the red
-  # job is the only sign, and the published site is unaffected.
+  # Two repository settings govern it and both are now set: Pages builds from
+  # a workflow, and the github-pages environment allows main to deploy. If
+  # either is changed back this job fails and the site stops being updated,
+  # which is the symptom to look for.
   pages:
     name: pages
     needs: publish

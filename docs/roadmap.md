@@ -27,68 +27,31 @@ to a GitHub issue.
   catches and an author does not, because the author checks what they meant
   rather than what they wrote. Against that, the repository now has an outside
   contributor, so a reviewer exists where none did.
-- **Whether to take the published repository out of git entirely.** #12 stopped
-  `gh-pages` accumulating — a publish now replaces it with one orphan commit
-  instead of adding to it — but the branch still holds a published tree that
-  every clone pays for, and each publish still writes ~60 MB of blobs that only
-  GitHub's garbage collection removes. The alternative is Pages' `workflow` build type:
-  `actions/deploy-pages` serves an uploaded artifact, nothing enters git, and
-  this repository stays at ~1 MB. The cost is that `publish.sh` is incremental
-  — it merges into the previous tree and prunes it — so the state it needs would
-  have to come from somewhere other than a branch: the live site, enumerated
-  from `repodata/*-primary.xml.gz`, or a Release asset holding a tarball. A
-  branch is also a backup you can check out, which neither of those is.
+- **The published tree, and where it lives.** *Decided.* It is in
+  `xymon-monitoring/xymon-rpm-archive`, reaches users as a Pages artifact the
+  publish job uploads, and is no longer a branch of this repository.
+  [build-pipeline.md](build-pipeline.md) *Serving the tree from an artifact*
+  and *The archive* have the mechanism.
 
-  [#15](https://github.com/xymon-monitoring/xymon-rpm/issues/15) settled the
-  half of this it was watching, and settled it against building C: GitHub's
-  collection kept up easily, taking the repository from 2.15 GiB to 41 MB
-  within hours of the first orphan push rather than the week or two expected.
-  Unbounded growth is not a reason to do this.
+  Three ways were open, and the reasoning is what dates rather than the
+  outcome. Keeping `gh-pages` cost about four seconds of a publish and nothing
+  on GitHub, but every clone of this repository fetched the rpms with it —
+  roughly 460 MB at a full retention window. Deleting it outright made the
+  clone cheap and needed a new state store written on the publishing path,
+  giving up a copy of the published tree that a person can check out and
+  restore. Moving it kept both, at the price of a credential, since
+  `github.token` reaches only the repository running the workflow.
 
-  The other two reasons are untouched by that, and this entry did not name
-  them. A contributor still clones the published tree — roughly 460 MB once the
-  retention window refills, at ten upstream builds of about 60 MB each — and
-  that cost is what couples retention to contribution: raising
-  `XYMON_SNAPSHOT_KEEP` buys rollback depth by making every clone larger.
-  Taking the tree out of git decouples them. So this is no
-  longer a fix for a growth problem, it is a convenience — and one whose value
-  rose when retention went to ten.
+  What settled it was that the first two traded one property for the other and
+  the third did not. [#15](https://github.com/xymon-monitoring/xymon-rpm/issues/15)
+  had already removed the reason usually given for this — unbounded growth — by
+  showing GitHub's collection take the repository from 2.15 GiB to 41 MB in
+  hours.
 
-  Done in a step that could be stopped at, for the reason that kept it parked:
-  `publish` never runs from a pull request, so the first real run is the test,
-  and what changes is the state store itself. That step is in place — the
-  artifact is built and uploaded at every publish, beside the branch
-  ([build-pipeline.md](build-pipeline.md) *Serving the tree from an artifact*).
-  The environment allows `main` to deploy and Pages now serves the artifact
-  rather than the branch. The branch is still written, so reverting is one
-  setting.
-
-  That is a resting point rather than a half-finished job, and what follows is
-  a choice rather than a remainder. Three ways on:
-
-  - **Keep the branch.** It costs about four seconds of a publish and nothing
-    on GitHub, since collection reclaims what a force-push orphans. It buys no
-    new code and a copy of what was published that a person can check out,
-    diff and restore. What it does not buy is a cheap clone: every branch is
-    fetched by a default one.
-  - **Delete it.** The clone falls to about a megabyte, and `publish.sh` then
-    needs the previous tree from somewhere else — the prior run's artifact, or
-    a Release asset. That is new code on the publishing path, and it gives up
-    the restorable copy.
-  - **Move it to an archive repository.** `publish.sh` keeps cloning a branch
-    and only the URL changes, so no state store is written; the packaging
-    repository loses the weight; the restorable copy survives. The price is a
-    credential, because `github.token` reaches only the repository running the
-    workflow, and a secret to rotate is worth more thought than a line of
-    shell. Note the trap: the workflow starts an empty orphan branch when the
-    clone fails, so an archive that has not been seeded would publish one run's
-    packages and drop the rest.
-
-  None of them is urgent. The published tree is one upstream build today, so a
-  clone is tens of megabytes rather than hundreds, and it takes about a month
-  at upstream's pace for the retention window to fill and the cost to be real.
-  Deciding after a few nightly publishes also keeps the attribution clean: this
-  path changed twice today and has run once.
+  `gh-pages` is frozen rather than deleted: it holds the tree as it stood when
+  the archive took over. Deleting it is the step that actually makes a clone of
+  this repository cheap, and it can wait until several publishes have gone to
+  the archive.
 - **The eventual move upstream.** [upstream.md](upstream.md) intends to move
   the spec and workflow into `xymon-monitoring/xymon` once stable, leaving this
   repo as the publish target. Part of that is deciding the fate of upstream's
