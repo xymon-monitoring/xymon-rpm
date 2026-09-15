@@ -78,8 +78,8 @@ not say is which document answers which question:
   is the tarball, and nothing modifies the tree between clone and build. A
   defect in Xymon is fixed in `xymon-monitoring/xymon`, not compensated here.
   What may legitimately live here is activation and policy — a service name, a
-  scriptlet, a distribution's file layout. When the boundary is unclear, state
-  in the pull request which side you think it falls on and why.
+  scriptlet, a distribution's file layout. Which side a change falls on goes in
+  the pull request; `CONTRIBUTING.md` *Descriptions* says when it is required.
 - **Do not fix RPM packaging in the `xymon` repository.** That tree still
   carries an old `rpm/xymon.spec` from before this repository existed. It is
   unmaintained, it builds a different layout, and it is not what these packages
