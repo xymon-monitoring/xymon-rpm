@@ -19,6 +19,14 @@ to a GitHub issue.
   review; keep it open; or a middle path — protect `main` but require review
   only for `rpm/` and `build/`, letting docs-only through (matches the
   "commit documentation separately" split). Decide deliberately.
+
+  Two things worth weighing that were not known when this was written. Every
+  change so far has merged without a review — not one merged pull request
+  carries one — and consecutive audits of the contribution files each found
+  problems in the pull requests that preceded them: the kind a second reader
+  catches and an author does not, because the author checks what they meant
+  rather than what they wrote. Against that, the repository now has an outside
+  contributor, so a reviewer exists where none did.
 - **Whether to take the published repository out of git entirely.** #12 stopped
   `gh-pages` accumulating — a publish now replaces it with one orphan commit
   instead of adding to it — but the branch still holds ~300 MB that every clone
@@ -29,11 +37,23 @@ to a GitHub issue.
   — it merges into the previous tree and prunes it — so the state it needs would
   have to come from somewhere other than a branch: the live site, enumerated
   from `repodata/*-primary.xml.gz`, or a Release asset holding a tarball. A
-  branch is also a backup you can check out, which neither of those is. What
-  decides this is already measuring itself: [#15](https://github.com/xymon-monitoring/xymon-rpm/issues/15)
-  watches whether the repository size falls back to the published tree. If
-  GitHub's collection keeps up, this is not worth building; if the size climbs,
-  #12 only moved the growth out of sight of clones. Decide when #15 closes.
+  branch is also a backup you can check out, which neither of those is.
+
+  [#15](https://github.com/xymon-monitoring/xymon-rpm/issues/15) settled the
+  half of this it was watching, and settled it against building C: GitHub's
+  collection kept up easily, taking the repository from 2.15 GiB to 41 MB
+  within hours of the first orphan push rather than the week or two expected.
+  Unbounded growth is not a reason to do this.
+
+  The other two reasons are untouched by that, and this entry did not name
+  them. A contributor still clones the published tree — around 230 MB once the
+  retention window refills — and that cost is what couples retention to
+  contribution: raising `XYMON_SNAPSHOT_KEEP` buys rollback depth by making
+  every clone larger. Taking the tree out of git decouples them. So this is no
+  longer a fix for a growth problem, it is a convenience — worth doing
+  deliberately rather than soon, and worth doing as a change that touches
+  nothing else, since the publishing path is the only code here whose failure a
+  user meets.
 - **The eventual move upstream.** [upstream.md](upstream.md) intends to move
   the spec and workflow into `xymon-monitoring/xymon` once stable, leaving this
   repo as the publish target. Part of that is deciding the fate of upstream's
