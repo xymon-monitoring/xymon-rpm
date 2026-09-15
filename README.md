@@ -265,13 +265,24 @@ dnf -y builddep rpm/xymon.spec
 rpmbuild -ba rpm/xymon.spec --define 'baseversion 4.3.31'
 ```
 
+## Contributing
+
+Changes go through a pull request. The rules are in
+[CONTRIBUTING.md](CONTRIBUTING.md): which repository a change belongs in —
+this one is not always the answer — how a title and a description are
+written, when a change may merge without a review, and what counts as saying
+how you tested it. [AGENTS.md](AGENTS.md) adds what a coding agent needs on
+top of those, and `CLAUDE.md` imports it for Claude Code.
+
 ## Relationship to upstream
 
 Packaging lives here so it can iterate without a review round per change; the
 intent is to move it into `xymon-monitoring/xymon` once the spec is stable.
 What `rpm/sources/` contains and why, the upstream PRs that would let the spec
 drop its workarounds, and that plan in full are in
-[docs/upstream.md](docs/upstream.md).
+[docs/upstream.md](docs/upstream.md). Which of the two repositories a given
+change belongs to is the first thing [CONTRIBUTING.md](CONTRIBUTING.md)
+settles.
 
 ## License
 
