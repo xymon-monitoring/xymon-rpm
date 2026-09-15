@@ -57,13 +57,13 @@ to a GitHub issue.
   Being done in halves, for the reason that kept it parked: `publish` never
   runs from a pull request, so the first real run is the test, and what changes
   is the state store itself. The first half is in place — the artifact is built
-  and uploaded while the branch is still written and served
+  and uploaded at every publish, beside the branch
   ([build-pipeline.md](build-pipeline.md) *Serving the tree from an artifact*).
-  The environment now allows `main` to deploy, so that path runs green end to
-  end while the branch is still what Pages serves — the rehearsal this change
-  could not otherwise get. What remains is switching the Pages source to
-  GitHub Actions, which moves what is served, and then the second half:
-  deleting the branch, which is what actually makes a clone cheap.
+  The environment allows `main` to deploy and Pages now serves the artifact
+  rather than the branch. The branch is still written, so reverting is one
+  setting. What remains is the second half — deleting it — which is what
+  actually makes a clone cheap, and which should wait until several nights have
+  shown the two trees agreeing.
 - **The eventual move upstream.** [upstream.md](upstream.md) intends to move
   the spec and workflow into `xymon-monitoring/xymon` once stable, leaving this
   repo as the publish target. Part of that is deciding the fate of upstream's
