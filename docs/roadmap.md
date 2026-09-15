@@ -53,6 +53,38 @@ to a GitHub issue.
   this repository cheap, and it waits on a few publishes going to the archive
   first — [#37](https://github.com/xymon-monitoring/xymon-rpm/issues/37) has
   the check to run and the command.
+- **Whether to put the packages in Fedora, and through it EPEL.** RHEL itself is
+  not a community path — Red Hat decides what it ships and supports. "Official
+  for RHEL" means EPEL in practice, EPEL is built from Fedora, so the route is
+  Fedora first and EPEL branches after: a review ticket, a sponsor for a first
+  package, then dist-git and Koji. Xymon is in neither today (checked against
+  Fedora's project API, where `nagios` answers and `xymon` and `hobbit` do not),
+  so it is a new submission rather than taking one over.
+
+  What it buys is what a user notices: no third-party repository to add, no
+  `.repo` file, no key to trust. That is also the cost. This packaging iterates
+  — versions derived from two git trees, a publish per commit, no hand-written
+  changelog — and a distribution package is the opposite regime. The question
+  under the question is whether one spec serves both or a submission is its own.
+
+  The spec is closer than third-party specs usually are: SPDX licence, no
+  obsolete tags, no patches, scriptlet `Requires(pre/post)`, sysusers with an
+  EL8 fallback, every `%config` `noreplace`, and `Provides: %{name}-static` in
+  the form the guidelines ask for. The one hard blocker — a build that ignored
+  the distribution's flags — closed when `%build` took `%{optflags}`.
+
+  Four things remain, and only one is a decision:
+  - `%changelog` is empty because the version is derived; Fedora wants entries.
+    One written at each release satisfies it without touching the model.
+  - `Conflicts: xymon-client` between subpackages is what a review pushes back
+    on hardest, and it is
+    [deployment-strategies.md](deployment-strategies.md) rather than an
+    oversight. Changing it changes the product, not the packaging. **This is
+    the decision.**
+  - `%pretrans` in lua is the layout migration, and it ends when no supported
+    upgrade starts from the old layout — after the first release.
+  - The SELinux policy is `%bcond_with`, off, and its target is an unpublished
+    canary. Nothing to decide until it ships.
 - **The eventual move upstream.** [upstream.md](upstream.md) intends to move
   the spec and workflow into `xymon-monitoring/xymon` once stable, leaving this
   repo as the publish target. Part of that is deciding the fate of upstream's
