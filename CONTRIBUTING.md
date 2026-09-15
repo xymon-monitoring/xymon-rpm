@@ -180,6 +180,14 @@ squash merge, in `git log --oneline`. Write it so that line is enough.
   it is the question most often answered wrong, and answering it in writing is
   what stops a fix landing here because here is convenient. If it is an interim
   override, name the upstream pull request that will delete it.
+- **Name the documents the change makes stale, or say that none does.** A rule
+  lives in a document and is proved in a pull request: the pull request is read
+  once, by a reviewer deciding, and the document is read by everyone
+  afterwards. A change that rewrites a rule and explains itself only here
+  leaves the document stating the old one, and nothing catches that —
+  `tests/docs.sh` and `tests/compensations.sh` each watch one narrow claim, and
+  no check reads prose against behaviour. Grepping the tree for the behaviour
+  you changed is the whole cost.
 - Carry what a reviewer cannot infer from the diff — a distribution floor, an
   ordering against an upstream pull request, a scriptlet deliberately left
   alone, something you could not test.
