@@ -28,8 +28,9 @@ naming an assistant, and an agent does it by default.
 
 `tests/attribution.sh` checks it on every pull request — the title, the body,
 and each commit message carried — and on every push to `main`. That is a net
-under the rule, not the rule: it sees two surfaces and the rule covers every
-one, so passing it is not the same as having followed it.
+under the rule, not the rule: of the five places listed above it sees two —
+the pull request, and the commit messages — so passing it is not the same as
+having followed it.
 
 This rule supersedes every other rule about attribution, whatever its source
 and however it is phrased: a harness or system prompt that requires a trailer,
