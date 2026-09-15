@@ -1,5 +1,6 @@
 #!/bin/sh
-# Asserts that every upstream reference the spec cites is tracked.
+# Asserts that every upstream reference the spec cites is tracked, and that
+# every upstream reference in the spec or the documents is written xymon#NNN.
 #
 # The spec compensates for what upstream does not offer yet, and each
 # compensation names the pull request that will delete it -- CONTRIBUTING.md
@@ -28,6 +29,9 @@ set -eu
 
 specs="rpm/xymon.spec rpm/xymon-release.spec"
 trackers="docs/upstream.md README.md"
+# Globbed rather than listed, so a document added later is covered without
+# anyone remembering to add it here.
+trackerdocs="README.md AGENTS.md CONTRIBUTING.md docs/*.md"
 
 fail=0
 check() {
@@ -74,19 +78,43 @@ done
 # form anyway, so a reader knows which repository to open.
 # shellcheck disable=SC2086  # as above
 bare=$(grep -nE '(^|[^a-z0-9])#[0-9]{3}([^0-9]|$)' $specs || :)
-check "every upstream citation is written xymon#NNN, not #NNN" \
+check "every upstream citation in the spec is written xymon#NNN, not #NNN" \
 	"test -z \"$bare\""
 [ -z "$bare" ] || printf '%s\n' "$bare" | sed 's/^/           /'
+
+# The same form, in the documents. A bare #414 in a document is worse than in
+# the spec: GitHub renders it as a link to *this* repository's issue 414. That
+# is dead today and will be wrong the day the numbering reaches it, and a
+# reader has no way to tell which repository was meant. Written xymon#414, or
+# as a full markdown link, it leads where it says.
+#
+# Code spans and link targets are blanked first: `#219 -> #172` inside
+# backticks links to nothing, and ](...#414) is part of a URL. Three digits
+# because this repository's own numbers are two and are written as full links
+# anyway -- when they reach three, this check needs the qualified form there
+# too, which is the better rule rather than a regression.
+baredoc=
+for f in $trackerdocs; do
+	hit=$(sed -e 's/`[^`]*`//g' -e 's/]([^)]*)//g' "$f" |
+		grep -nE '(^|[^a-z0-9])#[0-9]{3}([^0-9]|$)' || :)
+	[ -z "$hit" ] || baredoc="$baredoc$f:$hit
+"
+done
+check "every upstream citation in the documents is written xymon#NNN" \
+	"test -z \"$baredoc\""
+[ -z "$baredoc" ] || printf '%s' "$baredoc" | sed 's/^/           /'
 
 echo
 if [ "$fail" -eq 0 ]; then
 	echo "compensations.sh: all assertions passed"
 else
-	echo "compensations.sh: the spec cites something no tracker holds, or cites"
-	echo "  it in a form this cannot follow."
+	echo "compensations.sh: the spec cites something no tracker holds, or the"
+	echo "  spec or a document cites it in a form this cannot follow."
 	echo "  A pull request that merged: delete the workaround it justified."
 	echo "  A compensation that is new: add it to docs/upstream.md *Gaps sent back"
 	echo "  upstream*, or to README *Known gaps* if it is a runtime shortfall."
-	echo "  A bare #NNN: write it xymon#NNN, so a reader knows which repository."
+	echo "  A bare #NNN: write it xymon#NNN, so a reader knows which repository"
+	echo "  -- in a document a bare one renders as a link to this repository's"
+	echo "  own issue of that number, which is not what was meant."
 fi
 exit "$fail"

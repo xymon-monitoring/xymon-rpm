@@ -138,7 +138,7 @@ on-disk path still works — nothing in `xymonserver.cfg` or the CGIs learns
 a second location, and httpd needs no extra config because the generated
 one already sets `FollowSymLinks` on the www directory. `rep` and `snap`
 stay in the `/var/lib` docroot for now. The `help` symlink is load-bearing —
-the daemon resolves that directory at runtime, a coupling #414 removes
+the daemon resolves that directory at runtime, a coupling xymon#414 removes
 (mechanics in [upstream.md](upstream.md)).
 
 Each hand-made move has an upstream proposal to make it build-native, all
