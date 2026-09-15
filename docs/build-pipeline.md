@@ -68,10 +68,10 @@ this repository at about a megabyte and stop a contributor cloning the
 published rpms along with the packaging. That change cannot be rehearsed —
 `publish` never runs from a pull request — and it replaces the state store
 `publish.sh` merges into, so a bug in it would remove the fallback at the
-moment it was wanted. It lands in two halves.
+moment it was wanted. So it was done in a step that could be stopped at.
 
-The first half is in place: `publish` stages the tree without the clone's
-`.git` and uploads it as a Pages artifact, while still writing and serving the
+That step is in place: `publish` stages the tree without the clone's
+`.git` and uploads it as a Pages artifact, while still writing the
 branch. Both steps are `continue-on-error`, and the deploy is the separate
 `pages` job, because the `github-pages` environment can refuse a deployment and
 a refusal blocks a whole job rather than a step — attached to `publish` it
@@ -98,8 +98,9 @@ The branch is still written, so reverting is one setting: Pages built from
 `gh-pages` again. That is the whole point of stopping here rather than going
 on.
 
-The second half deletes the branch, once several nights have shown the artifact
-carries the same tree.
+Where it goes from here is a choice rather than a remainder — keep the branch,
+delete it, or move it to an archive repository — and
+[roadmap.md](roadmap.md) *Decisions* has the three with what each costs.
 
 ### The branch itself
 
