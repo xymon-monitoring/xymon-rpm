@@ -54,16 +54,41 @@ to a GitHub issue.
   longer a fix for a growth problem, it is a convenience — and one whose value
   rose when retention went to ten.
 
-  Being done in halves, for the reason that kept it parked: `publish` never
-  runs from a pull request, so the first real run is the test, and what changes
-  is the state store itself. The first half is in place — the artifact is built
-  and uploaded at every publish, beside the branch
+  Done in a step that could be stopped at, for the reason that kept it parked:
+  `publish` never runs from a pull request, so the first real run is the test,
+  and what changes is the state store itself. That step is in place — the
+  artifact is built and uploaded at every publish, beside the branch
   ([build-pipeline.md](build-pipeline.md) *Serving the tree from an artifact*).
   The environment allows `main` to deploy and Pages now serves the artifact
   rather than the branch. The branch is still written, so reverting is one
-  setting. What remains is the second half — deleting it — which is what
-  actually makes a clone cheap, and which should wait until several nights have
-  shown the two trees agreeing.
+  setting.
+
+  That is a resting point rather than a half-finished job, and what follows is
+  a choice rather than a remainder. Three ways on:
+
+  - **Keep the branch.** It costs about four seconds of a publish and nothing
+    on GitHub, since collection reclaims what a force-push orphans. It buys no
+    new code and a copy of what was published that a person can check out,
+    diff and restore. What it does not buy is a cheap clone: every branch is
+    fetched by a default one.
+  - **Delete it.** The clone falls to about a megabyte, and `publish.sh` then
+    needs the previous tree from somewhere else — the prior run's artifact, or
+    a Release asset. That is new code on the publishing path, and it gives up
+    the restorable copy.
+  - **Move it to an archive repository.** `publish.sh` keeps cloning a branch
+    and only the URL changes, so no state store is written; the packaging
+    repository loses the weight; the restorable copy survives. The price is a
+    credential, because `github.token` reaches only the repository running the
+    workflow, and a secret to rotate is worth more thought than a line of
+    shell. Note the trap: the workflow starts an empty orphan branch when the
+    clone fails, so an archive that has not been seeded would publish one run's
+    packages and drop the rest.
+
+  None of them is urgent. The published tree is one upstream build today, so a
+  clone is tens of megabytes rather than hundreds, and it takes about a month
+  at upstream's pace for the retention window to fill and the cost to be real.
+  Deciding after a few nightly publishes also keeps the attribution clean: this
+  path changed twice today and has run once.
 - **The eventual move upstream.** [upstream.md](upstream.md) intends to move
   the spec and workflow into `xymon-monitoring/xymon` once stable, leaving this
   repo as the publish target. Part of that is deciding the fate of upstream's
