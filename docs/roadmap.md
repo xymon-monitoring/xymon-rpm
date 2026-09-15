@@ -59,10 +59,11 @@ to a GitHub issue.
   is the state store itself. The first half is in place — the artifact is built
   and uploaded while the branch is still written and served
   ([build-pipeline.md](build-pipeline.md) *Serving the tree from an artifact*).
-  It waits on two repository settings: Pages built from a workflow rather than
-  from the `gh-pages` branch, and the `github-pages` environment allowed to
-  deploy from `main`. The second half deletes the branch, and is what actually
-  makes a clone cheap.
+  The environment now allows `main` to deploy, so that path runs green end to
+  end while the branch is still what Pages serves — the rehearsal this change
+  could not otherwise get. What remains is switching the Pages source to
+  GitHub Actions, which moves what is served, and then the second half:
+  deleting the branch, which is what actually makes a clone cheap.
 - **The eventual move upstream.** [upstream.md](upstream.md) intends to move
   the spec and workflow into `xymon-monitoring/xymon` once stable, leaving this
   repo as the publish target. Part of that is deciding the fate of upstream's

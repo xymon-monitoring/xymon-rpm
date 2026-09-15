@@ -77,11 +77,21 @@ branch. Both steps are `continue-on-error`, and the deploy is the separate
 a refusal blocks a whole job rather than a step — attached to `publish` it
 would stop the publish.
 
-`pages` fails until two repository settings change, and is expected to: Pages
-still builds from the `gh-pages` branch rather than from a workflow, and the
-environment's deployment branch policy still names `gh-pages` rather than
-`main`, which is where the workflow runs. Until both move, the red job is the
-only symptom and the served site is untouched.
+Two repository settings govern this, and they do different things. The
+`github-pages` environment's deployment branch policy decides whether the job
+may deploy at all: it named only `gh-pages` while the workflow runs on `main`,
+so the job failed outright — *branch "main" is not allowed to deploy to
+github-pages due to environment protection rules* — until `main` was added.
+The Pages source decides what is *served*: while it is the `gh-pages` branch, a
+deployment from `main` is accepted and recorded but the branch build is what
+answers a request.
+
+That split is useful rather than awkward. With the branch policy open and the
+source still the branch, the artifact path runs green end to end while users
+are served exactly as before — which is the only rehearsal this change can get,
+since `publish` never runs from a pull request. Switching the source to GitHub
+Actions is then the step that moves what is served, onto a path already known
+to work.
 
 The second half deletes the branch, once several nights have shown the artifact
 carries the same tree.
