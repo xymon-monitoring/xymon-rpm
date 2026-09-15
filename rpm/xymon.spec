@@ -322,20 +322,25 @@ no install rule. Most administrators will not need them.
 %setup -q
 
 %build
-# No distribution hardening flags: on main there is no working way to
-# pass them. On the make command line, CFLAGS= overrides makefile `+=`
-# and drops lib/Makefile's -I../include; via the environment,
-# build/Makefile.Linux assigns CFLAGS with a plain `=` and discards it.
-# LDFLAGS *does* survive, which is the trap -- exporting both compiles
-# without -fPIC but links with -pie. xymon#163 makes the environment
-# route work; until then the package carries Xymon's own -g -O2 and no
-# FORTIFY/stack-protector/PIE, and restoring them is two exports here.
+# The distribution's hardening flags, through the environment and not the
+# make command line: CFLAGS= on the command line overrides the makefiles'
+# `+=` and drops lib/Makefile's -I../include, while the environment is
+# what build/Makefile.Linux now reads, taking CFLAGS with `?=` and
+# carrying $(LDFLAGS) into every link rule (xymon#163).
 #
-# The same asymmetry has to be undone for Fedora and EL10, whose gcc is
-# built --enable-default-pie: the link would default to -pie against
-# non-PIC objects and die on an R_X86_64_32 relocation. EL8/EL9 gcc does
-# not, which is why only the newer targets hit it. Goes away with xymon#163.
-export LDFLAGS="-no-pie"
+# Before that, neither channel worked and the packages shipped Xymon's own
+# -g -O2 with no FORTIFY, stack-protector or PIE. CFLAGS was assigned with
+# a plain `=` and discarded while LDFLAGS survived, so exporting both
+# compiled without -fPIC and linked with -pie -- which is why the build
+# carried -no-pie, to undo that on Fedora and EL10, whose gcc is built
+# --enable-default-pie and whose link died on an R_X86_64_32 relocation
+# against non-PIC objects. Objects compiled from %%{optflags} carry -fPIE,
+# so the relocation does not arise and the workaround goes with the gap it
+# worked around.
+export CFLAGS="%{optflags}"
+# Guarded: an unconditional export would clear LDFLAGS on any target where
+# the macro is undefined, which is worse than leaving it alone.
+%{?build_ldflags:export LDFLAGS="%{build_ldflags}"}
 
 # XYMONHOSTNAME is baked as "localhost" because the alternative is the
 # build host's name; %%post rewrites it on first install.
