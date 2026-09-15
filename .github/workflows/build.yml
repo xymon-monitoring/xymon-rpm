@@ -58,6 +58,44 @@ env:
   XYMON_REF: ${{ github.event.inputs.xymon_ref || 'main' }}
 
 jobs:
+  # Cheapest job in the file, and first because it reads that way: no
+  # container, no rpm, a few seconds. It is a regression guard rather than a
+  # cleanup -- the tree reports nothing at this level today, which is the
+  # cheapest moment to adopt one.
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout packaging
+        uses: actions/checkout@v6
+
+      - name: shellcheck the shell this repository owns
+        run: |
+          set -eu
+          # Discovered by shebang, not by *.sh: rpm/sources/xymonlaunch-run is
+          # a shell script this packaging ships, and it carries no extension.
+          # A glob over tests/ and build/ would have missed the one file that
+          # runs on a user's machine. rpm/terabithia/ is archived reference
+          # material that is never built, and its spec is not ours to lint.
+          git ls-files | grep -v '^rpm/terabithia/' | while read -r f; do
+            head -1 "$f" | grep -qE '^#!.*/(env +)?(sh|bash|dash|ksh)$' &&
+              printf '%s\n' "$f"
+          done > /tmp/shell-files
+          [ -s /tmp/shell-files ] ||
+            { echo "no shell script found -- the shebang discovery has broken"; exit 1; }
+          sed 's/^/  /' /tmp/shell-files
+          # -S error, deliberately, and not warning. At warning this tree
+          # reports six findings and every one is a deliberate idiom:
+          # `set -- $(find ...)`, where the word split is the mechanism and
+          # quoting would hand the tests a single argument full of newlines;
+          # `eval "$@"` in a POSIX wait_for, which has no arrays to prefer;
+          # and two variables shellcheck cannot follow, one through the check
+          # helper's command string and one through `eval "rpmfile=\$$role"`.
+          # Six suppressions for no defect would teach the wrong lesson, and
+          # "fixing" the first by quoting it would break install.sh and
+          # upgrade.sh. Raise the level when a finding at it is a real one.
+          xargs shellcheck -S error < /tmp/shell-files
+
   rpm:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
