@@ -50,8 +50,9 @@ to a GitHub issue.
 
   `gh-pages` is frozen rather than deleted: it holds the tree as it stood when
   the archive took over. Deleting it is the step that actually makes a clone of
-  this repository cheap, and it can wait until several publishes have gone to
-  the archive.
+  this repository cheap, and it waits on a few publishes going to the archive
+  first — [#37](https://github.com/xymon-monitoring/xymon-rpm/issues/37) has
+  the check to run and the command.
 - **The eventual move upstream.** [upstream.md](upstream.md) intends to move
   the spec and workflow into `xymon-monitoring/xymon` once stable, leaving this
   repo as the publish target. Part of that is deciding the fate of upstream's
