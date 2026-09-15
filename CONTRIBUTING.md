@@ -134,8 +134,12 @@ does not move to a tool.
 - One change per pull request. A fix and the cleanup you noticed next to it are
   two pull requests.
 - Say what you verified, and how. "Built and installed on el9" is useful;
-  "should work" is not. If you could not test something, say that too — it is
-  not held against you, and it tells a reviewer where to look.
+  "should work" is not. A change to prose carries the same obligation with a
+  different instrument: name the grep that shows nothing else in the tree still
+  states the old rule — which is the grep the stale element under *Descriptions*
+  already costs you, so it is a sentence rather than an errand. If you could not
+  test something, say that too — it is not held against you, and it tells a
+  reviewer where to look.
 - **Name the distribution you actually tested on.** CI builds AlmaLinux and
   Fedora containers. That is not RHEL, not SUSE, and not a machine with SELinux
   in enforcing mode, so a report from any of those is worth more than another
@@ -173,13 +177,24 @@ squash merge, in `git log --oneline`. Write it so that line is enough.
 
 ### Descriptions
 
+A description carries what the diff does not. That is the measure, and it is
+why the list below is not a form to fill in: each element answers something a
+reviewer cannot read off the change itself, so one the diff already answers
+needs no writing out. A corrected sentence in a document wants the defect and
+no more; a scriptlet that reorders an upgrade wants all of it. A description
+several times the length of its change is usually the form being filled in.
+
 - Say what is wrong before what changes: the defect in a sentence, then the
   mechanism that fixes it. A reader who stops after two sentences should still
-  know why the pull request exists.
-- **Say which side of the boundary the change is on, and why.** Not a formality:
-  it is the question most often answered wrong, and answering it in writing is
-  what stops a fix landing here because here is convenient. If it is an interim
-  override, name the upstream pull request that will delete it.
+  know why the pull request exists. This one is never optional — a change
+  with no stated defect is a change nobody can review.
+- **Say which side of the boundary the change is on, and why** — whenever the
+  change touches what a package installs, requires, starts, migrates or labels,
+  or what upstream provides. Not a formality there: it is the question most
+  often answered wrong, and answering it in writing is what stops a fix landing
+  here because here is convenient. If it is an interim override, name the
+  upstream pull request that will delete it. A change to this repository's own
+  prose has no side to be on, and saying so is noise.
 - **Name the documents the change makes stale, or say that none does.** A rule
   lives in a document and is proved in a pull request: the pull request is read
   once, by a reviewer deciding, and the document is read by everyone
@@ -187,14 +202,18 @@ squash merge, in `git log --oneline`. Write it so that line is enough.
   leaves the document stating the old one, and nothing catches that —
   `tests/docs.sh` and `tests/compensations.sh` each watch one narrow claim, and
   no check reads prose against behaviour. Grepping the tree for the behaviour
-  you changed is the whole cost.
+  you changed is the whole cost, and *none* is a complete answer.
 - Carry what a reviewer cannot infer from the diff — a distribution floor, an
   ordering against an upstream pull request, a scriptlet deliberately left
   alone, something you could not test.
-- Show the evidence, compactly. A before-and-after `rpm -q` line, a package
-  listing, a measurement. A table of three rows says what three paragraphs say.
-- Cite what can be checked. A claim about the tree carries `file:line`; a claim
-  about another change carries its number, and upstream ones are written
+- Show the evidence, compactly, for what a reader would otherwise take on
+  trust: a before-and-after `rpm -q` line, a package listing, a measurement. A
+  table of three rows says what three paragraphs say. A diff a reviewer can
+  read whole is its own evidence.
+- Cite what can be checked. A claim about a particular place in the tree
+  carries `file:line` — naming a file as the subject of a sentence does not,
+  and a line number on prose that is about to be edited is worse than none. A
+  claim about another change carries its number, and upstream ones are written
   `xymon#411` so a reader knows which repository to open.
 
 ## Versioning
