@@ -29,9 +29,9 @@ to a GitHub issue.
   contributor, so a reviewer exists where none did.
 - **Whether to take the published repository out of git entirely.** #12 stopped
   `gh-pages` accumulating — a publish now replaces it with one orphan commit
-  instead of adding to it — but the branch still holds ~300 MB that every clone
-  pays for, and each publish still writes ~60 MB of blobs that only GitHub's
-  garbage collection removes. The alternative is Pages' `workflow` build type:
+  instead of adding to it — but the branch still holds a published tree that
+  every clone pays for, and each publish still writes ~60 MB of blobs that only
+  GitHub's garbage collection removes. The alternative is Pages' `workflow` build type:
   `actions/deploy-pages` serves an uploaded artifact, nothing enters git, and
   this repository stays at ~1 MB. The cost is that `publish.sh` is incremental
   — it merges into the previous tree and prunes it — so the state it needs would
@@ -46,10 +46,11 @@ to a GitHub issue.
   Unbounded growth is not a reason to do this.
 
   The other two reasons are untouched by that, and this entry did not name
-  them. A contributor still clones the published tree — around 230 MB once the
-  retention window refills — and that cost is what couples retention to
-  contribution: raising `XYMON_SNAPSHOT_KEEP` buys rollback depth by making
-  every clone larger. Taking the tree out of git decouples them. So this is no
+  them. A contributor still clones the published tree — roughly 460 MB once the
+  retention window refills, at ten upstream builds of about 60 MB each — and
+  that cost is what couples retention to contribution: raising
+  `XYMON_SNAPSHOT_KEEP` buys rollback depth by making every clone larger.
+  Taking the tree out of git decouples them. So this is no
   longer a fix for a growth problem, it is a convenience — worth doing
   deliberately rather than soon, and worth doing as a change that touches
   nothing else, since the publishing path is the only code here whose failure a

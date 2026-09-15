@@ -98,14 +98,14 @@ done
 # packaging rebuild. The two halves are not equivalent: rolling back on a
 # snapshot channel means going back to a different state of Xymon, and an
 # older packaging of the state you already have is not that. Counting
-# builds instead spent all five slots on one upstream commit the day this
-# repository merged five packaging changes, which is how the rule was
-# found.
+# builds instead spent every slot on one upstream commit the day this
+# repository merged five packaging changes in a morning, which is how the
+# rule was found.
 #
 # It bounds the tree harder than counting builds did, not less: packaging
 # rebuilds can no longer occupy more than one slot each, so the ceiling
 # is keep x one build rather than keep x anything.
-keep=${XYMON_SNAPSHOT_KEEP:-5}
+keep=${XYMON_SNAPSHOT_KEEP:-10}
 
 # The build id is the Release field minus the dist tag: the upstream half
 # 0.<date>git<sha>, plus the packaging half .<datetime>p<sha> when there

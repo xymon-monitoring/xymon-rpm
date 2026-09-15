@@ -159,14 +159,14 @@ it goes away if upstream starts bumping `version.h`.
 ## Retention
 
 The stable channel keeps everything forever — people pin versions and roll
-back. The snapshot channel keeps the newest **5 upstream commits** per
+back. The snapshot channel keeps the newest **10 upstream commits** per
 directory, and of each only its newest packaging rebuild, to stay within
 GitHub Pages limits; the **build** workflow can override the number for one
 run with `snapshot_keep`, or republish the channel from that run alone with
 `snapshot_reset`.
 
-Counting upstream commits rather than published runs is what makes those five
-worth five. Rolling back on a snapshot channel means going back to a different
+Counting upstream commits rather than published runs is what makes those slots
+worth having. Rolling back on a snapshot channel means going back to a different
 state of Xymon, and an older packaging of the state you already have is not
 that — so a morning of packaging merges can no longer spend every slot on one
 upstream commit.
