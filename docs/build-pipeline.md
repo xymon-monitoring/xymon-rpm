@@ -120,6 +120,21 @@ in every byte from the previous build of the same package, so git could not
 compress the history either, and letting it accumulate defeated `publish.sh`'s
 retention in silence, keeping every snapshot the published tree had pruned.
 
+**The archive has a package before the site does**, by about three quarters of
+a minute: `publish` pushes it as its last act, and `pages` is a separate job
+that starts afterwards. Measured on one publish — archive at 20:37:12, Pages
+deployment finished at 20:37:59. Verifying against the site in that window gets
+a 404 for a file that exists, which is what to expect rather than a fault; read
+the archive instead, at
+`raw.githubusercontent.com/xymon-monitoring/xymon-rpm-archive/main/`.
+
+That order is the safe one and not an accident. If a deployment fails, the tree
+is already saved and the next publish resumes from it. Reversed — deploy, then
+push — a failed push would leave the site ahead of the state store, and the
+next publish would rebuild from a stale tree and unpublish packages. A reader
+sees the previous tree, whole, for under a minute: the site is one artifact and
+changes in one step, so metadata never points at files that are not there.
+
 ## Drift detection
 
 Two nightly crons guard against upstream and doc drift — the detail is in
