@@ -224,6 +224,9 @@ jobs:
           if tag=$(git -C src describe --exact-match --tags 2>/dev/null); then
             base="${tag#rel-}"
             echo "snapshot=" >> "$GITHUB_OUTPUT"
+            # Source0 names what was packaged. On a tag that is the tag, so
+            # the spec never has to guess how a release is named.
+            echo "gitref=${tag}" >> "$GITHUB_OUTPUT"
           else
             date=$(git -C src log -1 --format=%cd --date=format:%Y%m%d)
             # The packaging checkout is owned by the runner user, not the
@@ -238,6 +241,7 @@ jobs:
             pkgdate=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y%m%d%H%M -- $pkgpaths)
             pkgref=$(git log -1 --format=%h --abbrev=7 -- $pkgpaths)
             echo "snapshot=0.${date}git${ref}.${pkgdate}p${pkgref}" >> "$GITHUB_OUTPUT"
+            echo "gitref=${ref}" >> "$GITHUB_OUTPUT"
           fi
           echo "base=${base}" >> "$GITHUB_OUTPUT"
 
@@ -271,7 +275,8 @@ jobs:
             ${{ matrix.rpmdefine && format('--define "{0}"', matrix.rpmdefine) || '' }} \
             --define "baseversion ${{ steps.ver.outputs.base }}" \
             --define "releasenum ${{ github.event.inputs.releasenum || '1' }}" \
-            ${{ steps.ver.outputs.snapshot && format('--define "gitsnapshot {0}"', steps.ver.outputs.snapshot) || '' }}
+            ${{ steps.ver.outputs.snapshot && format('--define "gitsnapshot {0}"', steps.ver.outputs.snapshot) || '' }} \
+            --define "gitref ${{ steps.ver.outputs.gitref }}"
 
       - name: Verify version ordering
         run: ./tests/vercmp.sh

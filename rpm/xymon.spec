@@ -50,7 +50,26 @@ Release:        %{xymonrelease}%{?dist}
 Summary:        Xymon network and systems monitor
 License:        GPL-2.0-only
 URL:            https://github.com/xymon-monitoring/xymon
-Source0:        xymon-%{version}.tar.gz
+# The file rpmbuild reads is produced by the build -- a git archive of the
+# ref being packaged -- so this URL is never fetched. It is here because it
+# is the only line in the spec that says which upstream tree the packages
+# come from, and a reader cannot tell that from a bare filename.
+#
+# GitHub's /archive/<ref>/<filename> form is what keeps both true at once:
+# the last component is a filename hint, so the basename stays
+# xymon-%%{version}.tar.gz and rpmbuild still finds the local copy, while
+# the ref half names the commit or the tag.
+#
+# gitref is what the build was made from -- the upstream commit for a
+# snapshot, the tag itself for a release -- and the build passes it because
+# only the build knows. Guessing it here would mean guessing a tag naming
+# convention: upstream carries rel_4_2_0 from 2006 and 4.3.31-root, no
+# release has been cut under this project yet, and the shape of the first
+# one is not decided. Undefined, for the hand build in README *Building
+# locally*, it falls back to the version, which is a guess -- but that
+# build publishes nothing and its reader knows what they checked out.
+%{!?gitref: %global gitref %{version}}
+Source0:        %{url}/archive/%{gitref}/%{name}-%{version}.tar.gz
 
 # Runtime integration files; README.md tables their provenance and why.
 #   ONE unit for both roles, shipped identically by both packages;
