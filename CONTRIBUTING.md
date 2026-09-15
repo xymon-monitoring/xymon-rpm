@@ -91,6 +91,16 @@ than repeating it. Copy a fact only when the second reader cannot reach the
 first copy — a test asserting a string is a legitimate copy, because it fails
 when the string changes.
 
+Reaching is not the whole test, and alone it forbids too much: inside one tree
+every reader can reach everything. The question underneath is a maintenance
+one — **the day this changes, does someone have to edit both places?** A
+premise restated so that a comment stands on its own fails that test and is
+not a second copy. *A published NEVRA is immutable* opens comments in the
+spec, the workflow and `build/publish.sh`, each justifying a different local
+decision, and nothing this project does can make it false. What the rule is
+about is a fact this project maintains: a number, a path, a behaviour we
+chose, a rule we wrote. Those go in one place.
+
 | surface | who reads it | what it carries |
 |---|---|---|
 | pull request title | everyone scanning the list, and `git log --oneline` after a squash | the component, then what the change makes true |
