@@ -1,4 +1,6 @@
-# Checks that docs/upstream.md still describes reality.
+# Checks that the documentation still describes reality: docs/upstream.md
+# against the source, and the spec's upstream citations against the trackers
+# that are supposed to hold them.
 #
 # Deliberately its own workflow rather than a job in build.yml. The claims
 # it tests go stale when something changes upstream -- a pull request is
@@ -24,7 +26,11 @@ on:
     branches: [main]
     paths:
       - 'docs/upstream.md'
+      - 'README.md'
+      - 'rpm/xymon.spec'
+      - 'rpm/xymon-release.spec'
       - 'tests/docs.sh'
+      - 'tests/compensations.sh'
       - '.github/workflows/docs-drift.yml'
 
 permissions:
@@ -36,6 +42,12 @@ jobs:
     steps:
       - name: Checkout packaging
         uses: actions/checkout@v6
+
+      # Before the xymon clone, because it needs no source tree: it reads
+      # this repository's spec against this repository's trackers. Running it
+      # first means a network failure fetching xymon cannot hide its result.
+      - name: Check the spec's citations against the trackers
+        run: ./tests/compensations.sh
 
       # blob:none keeps the clone small; the checker only reads file
       # contents for the handful it compares, and git fetches those on

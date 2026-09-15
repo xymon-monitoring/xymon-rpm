@@ -315,7 +315,7 @@ no install rule. Most administrators will not need them.
 # The same asymmetry has to be undone for Fedora and EL10, whose gcc is
 # built --enable-default-pie: the link would default to -pie against
 # non-PIC objects and die on an R_X86_64_32 relocation. EL8/EL9 gcc does
-# not, which is why only the newer targets hit it. Goes away with #163.
+# not, which is why only the newer targets hit it. Goes away with xymon#163.
 export LDFLAGS="-no-pie"
 
 # XYMONHOSTNAME is baked as "localhost" because the alternative is the
