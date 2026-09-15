@@ -112,9 +112,9 @@ The pipeline is the specification, and it is cheaper to read than to trigger:
   PID 1 or a non-empty root, so they are separate jobs on one EL and one Fedora
   target. `upgrade.sh` is the only suite that starts from a non-empty root, so
   the only one that exercises `%pretrans`.
-- The `lint` job runs `shellcheck -S error` over every shell script in the
-  tree, found by shebang rather than by `*.sh` — `rpm/sources/xymonlaunch-run`
-  is one of them.
+- The `lint` job shellchecks every shell script the repository owns, and
+  `publish` waits on it. [docs/build-pipeline.md](docs/build-pipeline.md) has
+  the level, the discovery rule and why publishing is gated on it.
 - `tests/attribution.sh` reads the attribution rule above on every pull
   request — its title, its body, and each commit message it carries — and on
   every push to `main`.

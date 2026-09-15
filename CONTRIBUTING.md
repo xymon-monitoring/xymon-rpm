@@ -225,11 +225,11 @@ places at once. The other rule about spec comments — that a workaround names
 the upstream pull request that will delete it — is in *Which repository*
 above, because it is a condition on the override, not a matter of style.
 
-Shell is POSIX-ish and runs under `set -eu`. It does not live only in `build/`
-and `tests/`: `rpm/sources/xymonlaunch-run` is a shell script the packages
-ship, which is why the `lint` job finds scripts by shebang rather than by
-`*.sh`. That job runs `shellcheck -S error`, which the tree passes today;
-`build.yml` says why that level and not `warning`.
+Shell is POSIX-ish and runs under `set -eu`, and it does not live only in
+`build/` and `tests/` — `rpm/sources/xymonlaunch-run` is a shell script the
+packages ship, so a change there reaches users rather than CI. All of it is
+shellchecked by the `lint` job, described in
+[docs/build-pipeline.md](docs/build-pipeline.md).
 
 Test scripts run in Fedora and EL containers, so GNU tools are available — but
 a test that depends on one is pinning the container, not the packaging, and
