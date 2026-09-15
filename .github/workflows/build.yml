@@ -1,13 +1,22 @@
 name: build
 
 on:
+  # Documentation cannot change a package, and a build that produces
+  # nothing new is ten minutes of nine runners for no result. Both
+  # triggers carry the filter, because only push carried it at first and
+  # the asymmetry showed: a docs-only branch paid the whole matrix as a
+  # pull request, and the identical change cost nothing once pushed. The
+  # two lists have to stay the same. A change that touches documentation
+  # *and* anything else still builds -- the filter skips a run only when
+  # every changed path matches it.
   push:
-    # Documentation cannot change a package, and a build that produces
-    # nothing new is ten minutes of nine runners for no result.
     paths-ignore:
       - '**.md'
       - 'docs/**'
   pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
   # Nightly rebuild of main. This is the drift detector: if an upstream
   # change moves an install path or a configure flag, this goes red the
   # next day rather than at the next release.
