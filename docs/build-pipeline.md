@@ -86,12 +86,17 @@ The Pages source decides what is *served*: while it is the `gh-pages` branch, a
 deployment from `main` is accepted and recorded but the branch build is what
 answers a request.
 
-That split is useful rather than awkward. With the branch policy open and the
-source still the branch, the artifact path runs green end to end while users
-are served exactly as before — which is the only rehearsal this change can get,
-since `publish` never runs from a pull request. Switching the source to GitHub
-Actions is then the step that moves what is served, onto a path already known
-to work.
+That split gave the change the only rehearsal available to it, since `publish`
+never runs from a pull request: with the branch policy open and the source
+still the branch, the artifact path ran green end to end while users were
+served exactly as before. The source has since been switched to GitHub
+Actions, so the artifact is what answers a request now — checked by hashing
+`repomd.xml` off the live site against the blob in the branch, which matched,
+and by downloading a signed rpm from it.
+
+The branch is still written, so reverting is one setting: Pages built from
+`gh-pages` again. That is the whole point of stopping here rather than going
+on.
 
 The second half deletes the branch, once several nights have shown the artifact
 carries the same tree.
