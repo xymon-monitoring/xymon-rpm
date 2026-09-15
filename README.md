@@ -231,7 +231,8 @@ spec parse) and four suites over the built rpms:
 | `install.sh` | installs the client alone, proves `dnf install xymon` fails on the conflict, promotes and demotes, then serves the URLs — static content through its symlinks, a 404 for a missing file, the secure CGI answering 401 |
 | `publish.sh` | publishes into a temporary tree with a throwaway key: the stable channel usable before its first release, a NEVRA never overwritten, retention dropping whole builds, a reset sparing stable |
 
-Three more run on one EL and one Fedora target, and publishing waits on all:
+Three more run on one EL and one Fedora target. Publishing waits on all of
+them, and on the `lint` job:
 
 | | |
 | --- | --- |

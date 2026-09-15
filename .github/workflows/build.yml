@@ -61,7 +61,8 @@ jobs:
   # Cheapest job in the file, and first because it reads that way: no
   # container, no rpm, a few seconds. It is a regression guard rather than a
   # cleanup -- the tree reports nothing at this level today, which is the
-  # cheapest moment to adopt one.
+  # cheapest moment to adopt one. publish waits on it; the reason is on that
+  # job.
   lint:
     name: lint
     runs-on: ubuntu-latest
@@ -475,7 +476,17 @@ jobs:
     # The lifecycle test gates publishing as much as the build does:
     # broken swap semantics are exactly the kind of defect that is
     # invisible in a package and painful on a running host.
-    needs: [rpm, systemd-lifecycle, upgrade, monitoring]
+    #
+    # lint gates it for a different reason, and not for the packages'
+    # sake -- the matrix has tested those. It is for publish.sh itself.
+    # bash executes a file as it reads it, so a syntax error half way
+    # down does not stop the script starting: it signs and copies part of
+    # a tree, then exits 2, leaving the published repository in a state no
+    # test covers. Seconds of waiting against that is a cheap trade. The
+    # cost is accepted knowingly -- a new error-level check in some future
+    # shellcheck could stop a publish -- because a release held by a lint
+    # is recoverable in a way a half-published repository is not.
+    needs: [lint, rpm, systemd-lifecycle, upgrade, monitoring]
     # Publish only genuine builds of xymon's main branch or of a release
     # tag.
     #

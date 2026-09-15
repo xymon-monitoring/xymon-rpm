@@ -8,20 +8,28 @@ pull request*).
 ## The job graph
 
 ```
-lint                                    (shellcheck; gates nothing)
+lint                               (no container; publish waits on it too)
 
 rpm (matrix: el8/9/10, fc43/44, stream9/10*, rawhide*, selinux)
  ├─ systemd-lifecycle ┐
- ├─ upgrade           ├─ publish   (needs all four; main / rel-* only)
+ ├─ upgrade           ├─ publish   (needs all five; main / rel-* only)
  └─ monitoring        ┘
    (* = canary: allowed to fail, never published)
 ```
 
-`lint` is outside the graph on purpose: it runs `shellcheck -S error` over
-every shell script in the tree in a few seconds, and `publish` does not wait
-on it. Gating a signed release on it would tie the release to the shellcheck
-version on a hosted runner, and a syntax error in `build/publish.sh` aborts
-that script at runtime under `set -eu` anyway.
+`lint` runs `shellcheck -S error` over every shell script this repository
+owns, found by shebang — so `rpm/sources/xymonlaunch-run` is one of them and
+the archived `rpm/terabithia/` is not. No container, a few seconds. The level
+is `-S error` deliberately; `build.yml` says why, at the job.
+
+`publish` waits on it, and not for the packages' sake — the matrix has tested
+those. It is for `build/publish.sh` itself, the one script whose failure a user
+meets. bash executes a file as it reads it, so a syntax error half way down
+does not stop the script starting: it signs and copies part of a tree, then
+exits 2, leaving the published repository in a state no test covers. The cost
+is accepted knowingly — a new error-level check in some future shellcheck could
+stop a publish — because a release held by a lint is recoverable in a way a
+half-published repository is not.
 
 `systemd-lifecycle`, `upgrade` and `monitoring` need PID 1 or a non-empty
 root, so they run as their own jobs on one EL + one Fedora target rather than
