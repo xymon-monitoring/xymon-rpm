@@ -586,11 +586,24 @@ jobs:
           printf '%s\n' 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' \
             > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/known_hosts"
+          # A config file rather than GIT_SSH_COMMAND, and absolute paths
+          # rather than ~. A tilde is expanded by the shell only at the start
+          # of a word, so `-o UserKnownHostsFile=~/.ssh/known_hosts` reached
+          # ssh literally, no host key was found, and the clone died with
+          # "Host key verification failed" -- while `-i ~/.ssh/archive`, where
+          # the tilde does begin the word, had worked. ssh expands ~ correctly
+          # for its own defaults, so letting it find both files is simpler
+          # than passing either.
+          cat > "$HOME/.ssh/config" <<EOF
+          Host github.com
+            IdentityFile $HOME/.ssh/archive
+            IdentitiesOnly yes
+            UserKnownHostsFile $HOME/.ssh/known_hosts
+          EOF
+          chmod 600 "$HOME/.ssh/config"
 
       - name: Check out the published tree
         if: steps.key.outputs.ok == 'true'
-        env:
-          GIT_SSH_COMMAND: ssh -i ~/.ssh/archive -o IdentitiesOnly=yes -o UserKnownHostsFile=~/.ssh/known_hosts
         run: |
           set -eu
           git config --global --add safe.directory '*'
