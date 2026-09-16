@@ -98,6 +98,42 @@ to a GitHub issue.
   repo as the publish target. Part of that is deciding the fate of upstream's
   own stale `rpm/` (2014, SysV) and `debian/` (2019) packagings.
 
+- **The client's drop-in directories, with or without xymon#411.**
+  `clientlaunch.cfg` and `xymonclient.cfg` each end in `optional directory
+  @XYMONHOME@/etc/<name>`, and the packages ship neither `clientlaunch.d` nor
+  `xymonclient.d`. `optional` means nothing fails: a drop-in file is silently
+  never read, which is how it surfaced as xymon#522 rather than as a crash.
+
+  It is not theoretical. xymon#522 asks for `clientlaunch.d` to be created and
+  packaged, from someone who met the gap on an installed system — and it
+  patches `rpm/xymon.spec` inside `xymon-monitoring/xymon`, the unmaintained
+  2014 spec that [CONTRIBUTING](../CONTRIBUTING.md) *Which repository* says is
+  reviewed by nobody and shipped to nobody. So the report is real, the fix sits
+  where no user installs from, and this packaging still has the gap it
+  describes — the reason that rule exists, in one example. It covers
+  `clientlaunch.d` only, not `xymonclient.d`.
+
+  **Either way, `%files` has to change.** It names `/etc/xymon-client`'s
+  contents one by one; the server half uses a glob, which is why upstream's
+  nine server drop-in directories have always been packaged and the client's
+  would not be. A glob works before and after, so it is not a race with
+  upstream and can land at any time.
+
+  What is left to decide is whether to ship them *before* xymon#411 merges:
+
+  - **Compensate now** — `install -d` the two in `%install`, naming xymon#411
+    in the comment beside it and in [upstream.md](upstream.md). Users get a
+    working extension point at the next snapshot, at the price of an interim
+    override to delete later.
+  - **Wait** — the gap stays until xymon#411 lands, and then only the glob is
+    needed. Cheaper, and it leaves users with a documented feature that does
+    nothing in the meantime.
+
+  Note the quiet failure if neither is done: `check-files` lists `-type f -o
+  -type l`, so an unpackaged *directory* is never reported. When xymon#411
+  merges, the build stays green and the package still ships without them —
+  upstream's fix would not reach a single RPM user, and nothing would say so.
+
 ## Packaging work (no upstream PR)
 
 - **Reconcile the SELinux `.te` with `%post`.** The modules still reference
