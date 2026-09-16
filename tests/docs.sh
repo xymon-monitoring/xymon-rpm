@@ -129,20 +129,14 @@ else
 			"test -z '$named'"
 	fi
 
-	# Order-independence rests on each of these being a no-op for an existing
-	# build, which upstream.md says above the table. A no-op is not something
-	# a machine can decide, so this pins the symptom that usually arrives with
-	# breaking it: a build PR that starts carrying a test change. It is a
-	# proxy, and it says so rather than claiming to check the premise.
-	#
-	# It quoted a sentence about xymon#421 -- "it is the only one of these PRs
-	# touching tests/" -- until that sentence was removed from the document
-	# in 5ab3f3b, leaving a check whose stated reason could not be found.
-	while read -r n _; do
-		[ -n "$n" ] || continue
-		check "#$n touches no files under tests/" \
-			"! gh pr diff $n --repo $upstream --name-only 2>/dev/null | grep -q '^tests/'"
-	done < "/tmp/docs-prs-$$"
+	# There was a check here that no row touched tests/. It guarded one
+	# claim -- that xymon#421 needed no ordering check, being the only one of
+	# these that touched tests/ -- and xymon#421 merged on 2026-08-22, so
+	# there is no ordering left to protect. What remains of the premise, that
+	# each row is a no-op for an existing build, is about what "make install"
+	# produces, which a test change neither shows nor hides: xymon#411 proved
+	# both halves at once, growing a test and, separately, an unconditional
+	# mkdir. Read the diff; no proxy stands in for that.
 	rm -f "/tmp/docs-prs-$$"
 fi
 

@@ -69,6 +69,9 @@ rather than what the spec compensates for — are in README *Known gaps*.
 Each is opt-in behind a variable or an unused target, so it is a no-op for
 an existing build, which is why
 xymon#409, xymon#410, xymon#411, xymon#414 and xymon#443 merge in any order.
+Whether that stays true is read off each diff rather than checked: being a
+no-op is a claim about what `make install` produces, and nothing in `tests/`
+decides it.
 
 The spec adopts each feature as it lands, via its own consuming PRs — e.g.
 [xymon-rpm #4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) swaps the
