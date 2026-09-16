@@ -29,22 +29,57 @@ rule for the tools it builds.
 
 ## Installing
 
+**There has been no release yet**, so the stable channel the repo file enables
+is empty — it answers, and holds no package. Everything goes to the snapshot
+channel, which ships disabled, so enabling it is what makes `dnf install` find
+anything today. The release procedure is the same without that step and is
+below.
+
+### Snapshots, on EL 9 and 10
+
 ```sh
-# EL only, and not where Xymon comes from -- these packages are not in EPEL,
-# and not in Fedora either. It is for fping, which the server pulls and which
-# no RHEL repository carries, neither base nor CRB. Fedora has fping in base,
-# and the client package needs it on neither.
-dnf install epel-release   # a dependency of the server, not this repository
+# config-manager lives in dnf-plugins-core, which EL does not install by
+# default. On a server this arrives anyway with epel-release; name it so a
+# client-only host works too.
+dnf install dnf-plugins-core
+
+# Server only, and not where Xymon comes from -- these packages are in
+# neither EPEL nor Fedora. It is for fping, which the server pulls and which
+# no RHEL repository carries, neither base nor CRB.
+dnf install epel-release
 
 curl -o /etc/yum.repos.d/xymon.repo \
   https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
-
-# There has been no release yet, so the stable channel the repo file enables
-# is empty -- it answers, and holds no package. Every build goes to the
-# snapshot channel, which ships disabled. Until the first rel-* tag, this
-# line is what makes the two below find anything. (EL provides
-# config-manager in dnf-plugins-core.)
 dnf config-manager --set-enabled xymon-snapshot
+
+dnf install xymon          # server
+dnf install xymon-client   # client only
+```
+
+### Snapshots, on Fedora
+
+`config-manager` is built into dnf5 and takes a different argument. fping is in
+Fedora's base, so there is no EPEL step at all.
+
+```sh
+curl -o /etc/yum.repos.d/xymon.repo \
+  https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
+dnf config-manager setopt xymon-snapshot.enabled=1
+
+dnf install xymon          # server
+dnf install xymon-client   # client only
+```
+
+### Releases, once there is one
+
+The repo file enables the stable channel itself, so the `config-manager` line
+goes — and with it the reason a client-only EL host needed `dnf-plugins-core`:
+
+```sh
+dnf install epel-release   # EL, server only
+
+curl -o /etc/yum.repos.d/xymon.repo \
+  https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
 
 dnf install xymon          # server
 dnf install xymon-client   # client only
@@ -80,7 +115,8 @@ BD24 FB87 154D 561B 66F6  66DF 639D E923 AA08 904A
 Snapshots built from `main` are in the same repo file, and ship disabled on
 purpose: they are pre-releases of the next version, so a machine that follows
 them runs code no release has tested. Enabling one is a per-host decision,
-which is why the command is in the block above rather than in the repo file.
+which is why the command is in the procedures above rather than in the repo
+file.
 
 ## Targets
 
