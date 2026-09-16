@@ -105,6 +105,8 @@ Source13:       xymon.sysusers
 # directories clientlaunch.cfg and xymonclient.cfg each declare are coming,
 # and an unpackaged directory is never reported -- check-files lists
 # -type f -o -type l -- so a list would ship without them and say nothing.
+# clientlaunch.d is the exception: the glob would ship it in both, and
+# %%files xymon excludes it. Only the client package reads clientlaunch.cfg.
 #
 # Deliberately no xymon#NNN here: nothing upstream deletes this glob, and a
 # citation in a spec comment names what would -- to a reader, and to
@@ -532,6 +534,13 @@ mv %{buildroot}%{xymonhome}/client/etc/* %{buildroot}%{_sysconfdir}/xymon-client
 # shipped config keeps upgrading. The `optional` in the declaration means a
 # missing directory is skipped silently (lib/stackio.c, dbgprintf rather than
 # errprintf), so nothing says why a drop-in was never read.
+#
+# Both are mkdir'd here because there is one buildroot. xymonclient.d ships
+# in both packages -- the server's embedded client still reads
+# xymonclient.cfg. clientlaunch.d ships only in the client package: the
+# server never reads clientlaunch.cfg (it launches the embedded client from
+# tasks.cfg), so a drop-in there would be silently unused; extra server
+# tasks belong in tasks.d. The %%files split is next to each listing.
 install -d %{buildroot}%{_sysconfdir}/xymon-client/clientlaunch.d \
            %{buildroot}%{_sysconfdir}/xymon-client/xymonclient.d
 rmdir %{buildroot}%{xymonhome}/client/etc
@@ -684,6 +693,10 @@ fi
 # through tasks.cfg. One shared definition with %%files client (see the
 # %%global at the top), so the two roles cannot drift.
 %client_tree_filelist
+# The glob would otherwise ship clientlaunch.d here too. The server never
+# reads clientlaunch.cfg -- extra tasks belong in tasks.d -- so owning
+# the directory would invite drop-ins that are silently never loaded.
+%exclude %{_sysconfdir}/xymon-client/clientlaunch.d
 %attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
 %attr(-,xymon,xymon) %{_sharedstatedir}/xymon
 %attr(0775,xymon,apache) %dir %{_sharedstatedir}/xymon/www/rep
@@ -768,6 +781,10 @@ exit 0
 %config(noreplace) %{_sysconfdir}/sysconfig/xymon-client
 %dir %{xymonhome}
 %client_tree_filelist
+# Packaged here only: see the matching %%exclude in %%files. Named
+# explicitly so a glob-behaviour change cannot drop it from the one
+# package that needs it.
+%dir %{_sysconfdir}/xymon-client/clientlaunch.d
 %attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
 %if %{with selinux}
 %{_datadir}/selinux/*/xymon-client.pp
