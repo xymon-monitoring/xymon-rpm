@@ -98,12 +98,17 @@ Source13:       xymon.sysusers
 # ever installs it twice). Defined once and expanded into both %%files
 # sections so they cannot drift: an entry added here gets identical
 # config/attr handling in either role.
+#
+# The config directory is globbed, as the server's is below: whatever
+# upstream's client/etc holds gets packaged, rather than a list that silently
+# drops what is added to it. It holds three files today. xymon#411 adds the
+# two drop-in directories clientlaunch.cfg and xymonclient.cfg each declare,
+# and an unpackaged directory is never reported -- check-files lists
+# -type f -o -type l -- so a list would ship without them and say nothing.
 %global client_tree_filelist %{expand:
 %{xymonhome}/client
 %dir %{_sysconfdir}/xymon-client
-%config(noreplace) %{_sysconfdir}/xymon-client/xymonclient.cfg
-%config(noreplace) %{_sysconfdir}/xymon-client/clientlaunch.cfg
-%config(noreplace) %{_sysconfdir}/xymon-client/localclient.cfg
+%config(noreplace) %{_sysconfdir}/xymon-client/*
 %attr(0750,root,xymon) %{xymonhome}/client/bin/logfetch
 %attr(0750,root,xymon) %{xymonhome}/client/bin/clientupdate
 %config(noreplace) %{_sysconfdir}/logrotate.d/xymon
