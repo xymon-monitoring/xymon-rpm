@@ -41,6 +41,8 @@ A **client host** (`xymon-client`) has only the client half:
 
 ```
 /etc/xymon-client/              xymonclient.cfg (XYMSRV), clientlaunch.cfg, localclient.cfg
+├── clientlaunch.d/             drop-ins: extra tasks
+└── xymonclient.d/              drop-ins: extra client settings
 /etc/sysconfig/xymon-client     MACHINEDOTS, SERVEROSTYPE
 /etc/logrotate.d/xymon          (both roles ship this)
 /usr/lib/xymon/client/bin/      xymonclient.sh, logfetch, clientupdate, xymonlaunch …
@@ -95,7 +97,11 @@ systemctl show -p MainPID --value xymonlaunch | xargs -I{} tr '\0' ' ' < /proc/{
   `SERVEROSTYPE` overrides the OS collector. Both default from `uname` when
   unset.
 - **Add a check.** A script in `/usr/lib/xymon/client/ext/` plus a `[name]`
-  stanza in `clientlaunch.cfg`.
+  stanza in a file of your own under `/etc/xymon-client/clientlaunch.d/` —
+  not in `clientlaunch.cfg`. That file is `%config(noreplace)`: edit it and rpm
+  keeps your copy from then on, so nothing upstream changes in it ever reaches
+  the host, and the day it does change you get a `.rpmnew` to merge by hand. A
+  drop-in belongs to you, and the shipped file keeps upgrading.
 - **Analyse locally.** Install `xymon-client-local`, put rules in
   `localclient.cfg`, add `--local` to the client's entry in `clientlaunch.cfg`.
 
