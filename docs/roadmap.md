@@ -28,6 +28,23 @@ to a GitHub issue.
   rather than what they wrote. Against that, the repository now has an outside
   contributor, so a reviewer exists where none did.
 
+  **What "upstream's required review" is, exactly.**
+  `xymon-monitoring/xymon` carries an active `protected-branches` ruleset on
+  `main`, `devel` and `release/*`: one approving review, approval of the last
+  push, stale reviews dismissed when a branch moves, review threads resolved
+  before merge. The default there is that a change is reviewed. The
+  `maintainers` team — nine people — carries `bypass_mode: always`, which is
+  the whole ruleset and not the review alone: a maintainer can also push
+  straight to `main`, or force it. Of the twenty most recently merged pull
+  requests there, eight carry no review.
+
+  So adopting it here means adopting *reviewed by default, bypassable by
+  whoever maintains the repository*. With one maintainer pushing, that is the
+  state this repository is in already, minus the written default. Whether the
+  written default earns its keep on its own — as something a first outside
+  contributor reads, and as the thing a bypass is measured against — is the
+  question, rather than whether it would stop anything today.
+
   **The disclosure rule waits on this.** CONTRIBUTING *Pull requests* asks an
   author to say in the pull request if they merged their own — a social rule
   standing in for the protection that does not exist. An audit of the twenty-nine
