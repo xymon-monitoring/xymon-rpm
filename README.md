@@ -30,10 +30,11 @@ rule for the tools it builds.
 ## Installing
 
 ```sh
-# EL only: the server pulls fping, which is in EPEL and in no RHEL
-# repository -- not base, not CRB. Fedora carries fping in base, and the
-# client package needs it on neither.
-dnf install epel-release
+# EL only, and not where Xymon comes from -- these packages are not in EPEL,
+# and not in Fedora either. It is for fping, which the server pulls and which
+# no RHEL repository carries, neither base nor CRB. Fedora has fping in base,
+# and the client package needs it on neither.
+dnf install epel-release   # a dependency of the server, not this repository
 
 curl -o /etc/yum.repos.d/xymon.repo \
   https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
