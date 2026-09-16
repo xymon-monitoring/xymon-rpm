@@ -109,11 +109,12 @@ to a GitHub issue.
   The directories are empty and stay empty, so *Wait* read as leaving a
   documented feature doing nothing. It is worse than that: with no directory,
   the only way to add a client task is to edit `clientlaunch.cfg`, which ships
-  `%config(noreplace)`. Once edited it is frozen, and every snapshot after —
-  several a week — leaves a `.rpmnew` beside it that someone has to merge.
-  Customising a client and keeping it current become incompatible. With the
-  directory, a customisation is a file of the admin's own and the shipped
-  config keeps upgrading.
+  `%config(noreplace)`. An edited copy stops following upstream: rpm keeps it
+  and, on the day the shipped file changes, leaves the new one beside it as a
+  `.rpmnew` to merge by hand. Not every snapshot — only when that file moves,
+  which is rare — but from the first edit onward the host is on its own copy
+  and no upgrade reaches it. With the directory, a customisation is a file of
+  the admin's own and the shipped config keeps upgrading.
 
   It is not theoretical. xymon#522 asks for `clientlaunch.d` to be created and
   packaged, from someone who met the gap on an installed system — and it

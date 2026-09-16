@@ -526,8 +526,9 @@ mv %{buildroot}%{xymonhome}/client/etc/* %{buildroot}%{_sysconfdir}/xymon-client
 # client/Makefile makes neither of these, until xymon#411. They are empty --
 # the point is the directory, not its contents. Without it the only way to
 # add a client task is to edit clientlaunch.cfg, which is %%config(noreplace):
-# once edited it is frozen, and every snapshot after leaves a .rpmnew nobody
-# merges. With it, a customisation is a file of the admin's own and the
+# an edited copy stops following upstream, and the day the shipped file does
+# change it arrives as a .rpmnew to merge by hand rather than as an upgrade.
+# With the directory, a customisation is a file of the admin's own and the
 # shipped config keeps upgrading. The `optional` in the declaration means a
 # missing directory is skipped silently (lib/stackio.c, dbgprintf rather than
 # errprintf), so nothing says why a drop-in was never read.
