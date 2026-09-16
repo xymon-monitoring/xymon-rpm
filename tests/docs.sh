@@ -129,8 +129,15 @@ else
 			"test -z '$named'"
 	fi
 
-	# "it is the only one of these PRs touching tests/": if a build PR grows
-	# a test change, the two are no longer independent.
+	# Order-independence rests on each of these being a no-op for an existing
+	# build, which upstream.md says above the table. A no-op is not something
+	# a machine can decide, so this pins the symptom that usually arrives with
+	# breaking it: a build PR that starts carrying a test change. It is a
+	# proxy, and it says so rather than claiming to check the premise.
+	#
+	# It quoted a sentence about xymon#421 -- "it is the only one of these PRs
+	# touching tests/" -- until that sentence was removed from the document
+	# in 5ab3f3b, leaving a check whose stated reason could not be found.
 	while read -r n _; do
 		[ -n "$n" ] || continue
 		check "#$n touches no files under tests/" \
