@@ -69,9 +69,6 @@ rather than what the spec compensates for — are in README *Known gaps*.
 Each is opt-in behind a variable or an unused target, so it is a no-op for
 an existing build, which is why
 xymon#409, xymon#410, xymon#411, xymon#414 and xymon#443 merge in any order.
-[xymon#421](https://github.com/xymon-monitoring/xymon/pull/421) is separate: it
-fixes flaky upstream server tests that drew xymond's port from the
-ephemeral range, and changes no shipped code.
 
 The spec adopts each feature as it lands, via its own consuming PRs — e.g.
 [xymon-rpm #4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) swaps the
