@@ -520,6 +520,19 @@ ln -sf %{_localstatedir}/log/xymon %{buildroot}%{xymonhome}/client/logs
 # $XYMONCLIENTHOME/etc/... and resolves through the symlink.
 install -d %{buildroot}%{_sysconfdir}/xymon-client
 mv %{buildroot}%{xymonhome}/client/etc/* %{buildroot}%{_sysconfdir}/xymon-client/
+
+# The drop-in directories clientlaunch.cfg and xymonclient.cfg each declare,
+# which nothing creates: xymond/Makefile makes all nine of the server's, and
+# client/Makefile makes neither of these, until xymon#411. They are empty --
+# the point is the directory, not its contents. Without it the only way to
+# add a client task is to edit clientlaunch.cfg, which is %%config(noreplace):
+# once edited it is frozen, and every snapshot after leaves a .rpmnew nobody
+# merges. With it, a customisation is a file of the admin's own and the
+# shipped config keeps upgrading. The `optional` in the declaration means a
+# missing directory is skipped silently (lib/stackio.c, dbgprintf rather than
+# errprintf), so nothing says why a drop-in was never read.
+install -d %{buildroot}%{_sysconfdir}/xymon-client/clientlaunch.d \
+           %{buildroot}%{_sysconfdir}/xymon-client/xymonclient.d
 rmdir %{buildroot}%{xymonhome}/client/etc
 ln -sf %{_sysconfdir}/xymon-client %{buildroot}%{xymonhome}/client/etc
 

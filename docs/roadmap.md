@@ -98,11 +98,22 @@ to a GitHub issue.
   repo as the publish target. Part of that is deciding the fate of upstream's
   own stale `rpm/` (2014, SysV) and `debian/` (2019) packagings.
 
-- **The client's drop-in directories, with or without xymon#411.**
-  `clientlaunch.cfg` and `xymonclient.cfg` each end in `optional directory
-  @XYMONHOME@/etc/<name>`, and the packages ship neither `clientlaunch.d` nor
-  `xymonclient.d`. `optional` means nothing fails: a drop-in file is silently
-  never read, which is how it surfaced as xymon#522 rather than as a crash.
+- **The client's drop-in directories.** *Decided:* the spec creates them, as
+  an interim override xymon#411 will delete. `clientlaunch.cfg` and
+  `xymonclient.cfg` each end in `optional directory @XYMONHOME@/etc/<name>`,
+  and nothing created either. `optional` means nothing fails: a drop-in file is
+  silently never read, which is how it surfaced as xymon#522 rather than as a
+  crash.
+
+  What decided it was the cost of waiting, which is not what it looked like.
+  The directories are empty and stay empty, so *Wait* read as leaving a
+  documented feature doing nothing. It is worse than that: with no directory,
+  the only way to add a client task is to edit `clientlaunch.cfg`, which ships
+  `%config(noreplace)`. Once edited it is frozen, and every snapshot after —
+  several a week — leaves a `.rpmnew` beside it that someone has to merge.
+  Customising a client and keeping it current become incompatible. With the
+  directory, a customisation is a file of the admin's own and the shipped
+  config keeps upgrading.
 
   It is not theoretical. xymon#522 asks for `clientlaunch.d` to be created and
   packaged, from someone who met the gap on an installed system — and it
@@ -120,21 +131,12 @@ to a GitHub issue.
   packaged — which is right whether or not xymon#411 ever lands, and is why it
   did not have to be timed against it.
 
-  What is left is one trade: whether to ship the directories *before*
-  xymon#411 merges:
-
-  - **Compensate now** — `install -d` the two in `%install`, naming xymon#411
-    in the comment beside it and in [upstream.md](upstream.md). Users get a
-    working extension point at the next snapshot, at the price of an interim
-    override to delete later.
-  - **Wait** — the gap stays until xymon#411 lands, and then only the glob is
-    needed. Cheaper, and it leaves users with a documented feature that does
-    nothing in the meantime.
-
-  The glob is what makes *Wait* safe. `check-files` lists `-type f -o -type l`,
-  so an unpackaged *directory* is never reported: with the old list, xymon#411
-  would have merged, the build would have stayed green, and the package would
-  still have shipped without them, with nothing saying so.
+  The glob is what makes the override cheap to remove. `check-files` lists
+  `-type f -o -type l`, so an unpackaged *directory* is never reported: with the
+  old list, xymon#411 would have merged, the build would have stayed green, and
+  the package would still have shipped without them, with nothing saying so.
+  Now the `install -d` goes and the glob keeps packaging whatever upstream
+  makes.
 
 ## Packaging work (no upstream PR)
 
