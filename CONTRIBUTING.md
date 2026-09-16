@@ -123,6 +123,25 @@ the previous revision.
 The cost of ignoring this is not length, it is drift: when one fact sits in two
 places, one copy goes stale and nothing says which.
 
+### Facts that age
+
+A number copied out of the tree into prose is a promise to keep it current, and
+nobody keeps it. *~740 lines* was 779 before anyone read it. *64 further
+headers* was 62, and had been since 2015 — wrong the day it was written. A
+`.rpmnew` was said to arrive with *every snapshot*; it arrives when the shipped
+file changes, which is rare. No check caught any of them, because no check
+reads prose.
+
+**Prefer the command to its output.** *What `dnf list --showduplicates xymon`
+shows* does not age; the version it printed this morning aged by lunchtime. A
+rounded figure ages slower than an exact one, and a range slower still. Where
+the number is the point — it is the evidence, or the reason a decision went one
+way — it belongs in the pull request and the commit message, which are dated by
+construction and read as history rather than as instructions.
+
+A version, a NEVRA, a build id, a file count, a package size: none of these is
+a fact about this tree. Each is a fact about one day.
+
 ## Pull requests
 
 Every change goes through a pull request. `main` here is **not** protected —
