@@ -101,10 +101,16 @@ Source13:       xymon.sysusers
 #
 # The config directory is globbed, as the server's is below: whatever
 # upstream's client/etc holds gets packaged, rather than a list that silently
-# drops what is added to it. It holds three files today. xymon#411 adds the
-# two drop-in directories clientlaunch.cfg and xymonclient.cfg each declare,
+# drops what is added to it. It holds three files today; the drop-in
+# directories clientlaunch.cfg and xymonclient.cfg each declare are coming,
 # and an unpackaged directory is never reported -- check-files lists
 # -type f -o -type l -- so a list would ship without them and say nothing.
+#
+# Deliberately no xymon#NNN here: nothing upstream deletes this glob, and a
+# citation in a spec comment names what would -- to a reader, and to
+# tests/compensations.sh, which would ask for the glob to be deleted the day
+# that pull request merged. docs/roadmap.md *The client's drop-in directories*
+# carries the upstream pull request and the decision still open.
 %global client_tree_filelist %{expand:
 %{xymonhome}/client
 %dir %{_sysconfdir}/xymon-client
