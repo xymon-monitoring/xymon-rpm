@@ -38,6 +38,14 @@ dnf install epel-release   # a dependency of the server, not this repository
 
 curl -o /etc/yum.repos.d/xymon.repo \
   https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
+
+# There has been no release yet, so the stable channel the repo file enables
+# is empty -- it answers, and holds no package. Every build goes to the
+# snapshot channel, which ships disabled. Until the first rel-* tag, this
+# line is what makes the two below find anything. (EL provides
+# config-manager in dnf-plugins-core.)
+dnf config-manager --set-enabled xymon-snapshot
+
 dnf install xymon          # server
 dnf install xymon-client   # client only
 ```
@@ -69,11 +77,10 @@ Xymon Project (RPM signing key)
 BD24 FB87 154D 561B 66F6  66DF 639D E923 AA08 904A
 ```
 
-Snapshots built from `main` are in the same repo file but disabled; enable
-per host with `dnf config-manager --set-enabled xymon-snapshot`.
-**There has been no release yet**, so the stable channel is empty and
-`dnf install xymon` finds nothing there — until the first `rel-*` tag, enable
-the snapshot channel and install from it.
+Snapshots built from `main` are in the same repo file, and ship disabled on
+purpose: they are pre-releases of the next version, so a machine that follows
+them runs code no release has tested. Enabling one is a per-host decision,
+which is why the command is in the block above rather than in the repo file.
 
 ## Targets
 
