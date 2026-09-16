@@ -113,13 +113,15 @@ to a GitHub issue.
   describes — the reason that rule exists, in one example. It covers
   `clientlaunch.d` only, not `xymonclient.d`.
 
-  **Either way, `%files` has to change.** It names `/etc/xymon-client`'s
-  contents one by one; the server half uses a glob, which is why upstream's
-  nine server drop-in directories have always been packaged and the client's
-  would not be. A glob works before and after, so it is not a race with
-  upstream and can land at any time.
+  **The packaging half is done.** `%files` named `/etc/xymon-client`'s
+  contents one by one where the server half globs, which is why upstream's nine
+  server drop-in directories have always been packaged and the client's two
+  would not be. It globs now, so whatever upstream's `client/etc` holds is
+  packaged — which is right whether or not xymon#411 ever lands, and is why it
+  did not have to be timed against it.
 
-  What is left to decide is whether to ship them *before* xymon#411 merges:
+  What is left is one trade: whether to ship the directories *before*
+  xymon#411 merges:
 
   - **Compensate now** — `install -d` the two in `%install`, naming xymon#411
     in the comment beside it and in [upstream.md](upstream.md). Users get a
@@ -129,10 +131,10 @@ to a GitHub issue.
     needed. Cheaper, and it leaves users with a documented feature that does
     nothing in the meantime.
 
-  Note the quiet failure if neither is done: `check-files` lists `-type f -o
-  -type l`, so an unpackaged *directory* is never reported. When xymon#411
-  merges, the build stays green and the package still ships without them —
-  upstream's fix would not reach a single RPM user, and nothing would say so.
+  The glob is what makes *Wait* safe. `check-files` lists `-type f -o -type l`,
+  so an unpackaged *directory* is never reported: with the old list, xymon#411
+  would have merged, the build would have stayed green, and the package would
+  still have shipped without them, with nothing saying so.
 
 ## Packaging work (no upstream PR)
 
