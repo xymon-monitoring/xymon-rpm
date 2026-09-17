@@ -48,7 +48,7 @@ dnf install dnf-plugins-core
 # no RHEL repository carries, neither base nor CRB.
 dnf install epel-release
 
-curl -o /etc/yum.repos.d/xymon.repo \
+curl -fsSLo /etc/yum.repos.d/xymon.repo \
   https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
 dnf config-manager --set-enabled xymon-snapshot
 
@@ -62,7 +62,7 @@ dnf install xymon-client   # client only
 Fedora's base, so there is no EPEL step at all.
 
 ```sh
-curl -o /etc/yum.repos.d/xymon.repo \
+curl -fsSLo /etc/yum.repos.d/xymon.repo \
   https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
 dnf config-manager setopt xymon-snapshot.enabled=1
 
@@ -78,7 +78,7 @@ goes — and with it the reason a client-only EL host needed `dnf-plugins-core`:
 ```sh
 dnf install epel-release   # EL, server only
 
-curl -o /etc/yum.repos.d/xymon.repo \
+curl -fsSLo /etc/yum.repos.d/xymon.repo \
   https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
 
 dnf install xymon          # server
