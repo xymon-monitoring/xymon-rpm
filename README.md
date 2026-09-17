@@ -114,9 +114,9 @@ BD24 FB87 154D 561B 66F6  66DF 639D E923 AA08 904A
 
 Snapshots built from `main` are in the same repo file, and ship disabled on
 purpose: they are pre-releases of the next version, so a machine that follows
-them runs code no release has tested. Enabling one is a per-host decision,
-which is why the command is in the procedures above rather than in the repo
-file.
+them runs code no release has tested. Enabling one is a per-host decision, so
+the repo file states it rather than making it: the stanza is there with
+`enabled=0`, and the command sits in a comment beside it.
 
 ## Targets
 
