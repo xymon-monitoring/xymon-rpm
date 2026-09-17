@@ -35,7 +35,7 @@ channel, which ships disabled, so enabling it is what makes `dnf install` find
 anything today. The release procedure is the same without that step and is
 below.
 
-### Snapshots, on EL 9 and 10
+### Snapshots, on EL 8, 9 and 10
 
 ```sh
 # config-manager lives in dnf-plugins-core, which EL does not install by
