@@ -23,13 +23,18 @@ remote) gpgkey="$base/RPM-GPG-KEY-xymon" ;;
 *)      echo "usage: mkrepofile.sh [remote|local]" >&2; exit 2 ;;
 esac
 
-# A host pinned to a RHEL minor release (subscription-manager release
-# --set=9.4) expands $releasever to "9.4" and will not find the tree. Such
-# hosts should set releasever=9 in this file.
+# The minor-release caveat below is inside the heredoc, not above it: it is
+# for whoever is looking at the installed file when dnf says it found
+# nothing, and a comment in this generator never reaches them.
 cat <<EOF
 # HIGHLY EXPERIMENTAL: this packaging is new and has seen no production
 # use. Layout, versioning and repository structure may still change
 # without notice -- do not point production machines at it yet.
+#
+# A host pinned to a RHEL minor release (subscription-manager release
+# --set=9.4) expands \$releasever to "9.4", where there is no tree, and
+# every transaction fails on the 404. Set releasever=9 in both stanzas
+# below on such a host.
 #
 [xymon]
 name=Xymon
