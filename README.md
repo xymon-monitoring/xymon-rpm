@@ -32,8 +32,8 @@ rule for the tools it builds.
 **There has been no release yet**, so the stable channel the repo file enables
 is empty — it answers, and holds no package. Everything goes to the snapshot
 channel, which ships disabled, so enabling it is what makes `dnf install` find
-anything today. The release procedure is the same without that step and is
-below.
+anything today. The release procedures below are the same without the steps
+that enable it.
 
 Published for **x86_64 only**. The repo file enables the stable channel on
 every host that installs it, and no tree exists for another architecture, so
@@ -84,12 +84,27 @@ dnf install xymon-client   # client only
 ### Releases, once there is one
 
 The repo file enables the stable channel itself, so the `config-manager` line
-goes — and with it the reason a client-only EL host needed `dnf-plugins-core`:
+goes — and on EL, with it, the reason a client-only host needed
+`dnf-plugins-core`. Split by family for the same reason the snapshot
+procedures are: neither block runs whole on the other family.
+
+#### On EL 8, 9 and 10
 
 ```sh
-dnf install epel-release   # EL, server only
+# Server only, for fping -- see the snapshot block above.
+dnf install epel-release
 
 curl -fsSLo /etc/yum.repos.d/xymon.repo \
+  https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
+
+dnf install xymon          # server
+dnf install xymon-client   # client only
+```
+
+#### On Fedora
+
+```sh
+curl -o /etc/yum.repos.d/xymon.repo \
   https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
 
 dnf install xymon          # server
