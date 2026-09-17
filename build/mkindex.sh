@@ -95,9 +95,15 @@ relrpm=${relrpm:-xymon-release-1-1.noarch.rpm}
 	fetch <a href="xymon.repo">xymon.repo</a> into
 	<code>/etc/yum.repos.d/</code> instead.</p>
 
+	<p><strong>There has been no release yet.</strong> The stable channel
+	the release package enables answers, but holds no package &mdash; so the
+	second command finds nothing until the snapshot channel is enabled too,
+	as <a href="#channels">Channels</a> below describes. That step goes once
+	the first release is out.</p>
+
 	<p>Supported: EL8, EL9, EL10 and Fedora 43, 44 on x86_64.</p>
 
-	<h2>Channels</h2>
+	<h2 id="channels">Channels</h2>
 	<table>
 	  <tr><td><a href="xymon/">xymon/</a></td>
 	      <td>tagged releases &mdash; enabled by default</td></tr>
