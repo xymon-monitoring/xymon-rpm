@@ -63,10 +63,16 @@ dnf install xymon-client   # client only
 
 ### Snapshots, on Fedora
 
-`config-manager` is built into dnf5 and takes a different argument. fping is in
-Fedora's base, so there is no EPEL step at all.
+`config-manager` takes a different argument under dnf5, and ships in
+`dnf5-plugins` rather than in dnf5 itself. fping is in Fedora's base, so there
+is no EPEL step at all.
 
 ```sh
+# config-manager is a dnf5 plugin, recommended by dnf5 rather than required:
+# present on a full Fedora install, absent on fedora-minimal and wherever
+# install_weak_deps=false. Named the way dnf5 names it when it is missing.
+dnf install 'dnf5-command(config-manager)'
+
 curl -fsSLo /etc/yum.repos.d/xymon.repo \
   https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
 dnf config-manager setopt xymon-snapshot.enabled=1
