@@ -35,6 +35,11 @@ channel, which ships disabled, so enabling it is what makes `dnf install` find
 anything today. The release procedure is the same without that step and is
 below.
 
+Published for **x86_64 only**. The repo file enables the stable channel on
+every host that installs it, and no tree exists for another architecture, so
+on aarch64 the 404 fails every `dnf` transaction on that machine — including
+ones that have nothing to do with Xymon. Do not install the repo file there.
+
 ### Snapshots, on EL 8, 9 and 10
 
 ```sh
