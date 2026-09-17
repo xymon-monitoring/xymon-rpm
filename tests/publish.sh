@@ -166,6 +166,27 @@ check "the reset is announced" \
 check "the stable channel survived the reset" \
 	"find $repo/xymon -name repomd.xml | grep -q ."
 
+echo "== the enable instruction users receive works on dnf5, not only dnf4 =="
+
+# dnf4 and dnf5 take different config-manager arguments and neither accepts
+# the other's: dnf5 answers `--set-enabled` with "Unknown argument", dnf4
+# answers `setopt` with "one of the following arguments is required". EL 8,
+# 9 and 10 are all dnf4; Fedora 43 and 44 are dnf5. So one form alone is
+# wrong for half the matrix wherever it is published, and these are the
+# three places a user reads it -- the repo file they install, the package
+# description, and the landing page. The README is prose and drifted from
+# them once already, which is how this check came to exist.
+for f in build/mkrepofile.sh build/mkindex.sh rpm/xymon-release.spec; do
+	check "$f gives the dnf5 form beside the dnf4 one" \
+		"! grep -q -- '--set-enabled' $f ||
+		 grep -q 'setopt xymon-snapshot.enabled=1' $f"
+done
+
+./build/mkrepofile.sh remote > "$work/xymon.repo"
+check "the shipped repo file names both forms" \
+	"grep -q -- '--set-enabled xymon-snapshot' $work/xymon.repo &&
+	 grep -q 'setopt xymon-snapshot.enabled=1' $work/xymon.repo"
+
 export HOME=$HOME_ORIG
 [ "$fail" = 0 ] && echo "publish tests passed" || echo "publish tests FAILED"
 exit "$fail"

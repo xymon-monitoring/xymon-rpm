@@ -10,7 +10,7 @@
 Name:           xymon-release
 # A published NEVRA is immutable: bump Version whenever the repo file or
 # the key changes, or the publish step will refuse to ship the new copy.
-Version:        2
+Version:        3
 Release:        1
 Summary:        Xymon repository configuration and signing key
 License:        GPL-2.0-only
@@ -36,9 +36,12 @@ without notice.
 
 Two repositories are configured. The stable one, built from tagged
 releases, is enabled. Development snapshots built from the tip of the
-development branch are configured but disabled; enable them per host with
+development branch are configured but disabled; enable them per host by
+setting enabled=1 in /etc/yum.repos.d/xymon.repo, or with the command your
+dnf understands:
 
-    dnf config-manager --set-enabled xymon-snapshot
+    dnf config-manager --set-enabled xymon-snapshot      (dnf4, EL)
+    dnf config-manager setopt xymon-snapshot.enabled=1   (dnf5, Fedora)
 
 %prep
 %autosetup -c -T

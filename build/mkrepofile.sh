@@ -47,9 +47,11 @@ gpgkey=$gpgkey
 # Built from the tip of the development branch, several times a week.
 # Disabled by default: these are pre-releases of the next version, and a
 # machine that follows them is running code that has had no release
-# testing. Enable deliberately, per host:
+# testing. Enable deliberately, per host -- set enabled=1 below, which
+# works anywhere, or run the command your dnf understands:
 #
-#     dnf config-manager --set-enabled xymon-snapshot
+#     dnf config-manager --set-enabled xymon-snapshot      # dnf4, EL
+#     dnf config-manager setopt xymon-snapshot.enabled=1   # dnf5, Fedora
 #
 [xymon-snapshot]
 name=Xymon (development snapshots)
