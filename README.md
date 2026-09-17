@@ -104,7 +104,7 @@ dnf install xymon-client   # client only
 #### On Fedora
 
 ```sh
-curl -o /etc/yum.repos.d/xymon.repo \
+curl -fsSLo /etc/yum.repos.d/xymon.repo \
   https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
 
 dnf install xymon          # server
