@@ -176,43 +176,52 @@ to a GitHub issue.
   `dnf swap` — the package conflict makes `dnf upgrade` stop otherwise. A stable
   release needs a `%triggerun` migration or a transitional package
   ([admin-guide.md](admin-guide.md) *Migrating from the old layout*).
-- **A container image would need an entrypoint, and does not have one.**
-  *Not being fixed, deliberately.* Installing the packages inside a running
-  container is correct and is what README *Trying a snapshot without a host*
-  documents. Installing them from a `Dockerfile` is not: `%post` writes
-  `XYMONSERVERHOSTNAME` from the hostname it sees, which during an image build
-  is the builder's, frozen into the layer. Observed — a server built that way
-  came up as `buildkitsandbox`, logged `MACHINE='xy-snap' not listed in
-  hosts.cfg, dropping xymond status`, and wrote its RRDs under the builder's
-  name.
+- **The server's identity is pinned too early, and every packaging works
+  around it.** *Not ours to fix; worth sending upstream.* `configure.server`
+  asks for `XYMONHOSTNAME` and bakes it into `xymonserver.cfg` at **configure**
+  time, so a source install carries the build machine's name. Each packaging
+  compensates differently: `debian/rules:28` passes `XYMONHOSTNAME=localhost`
+  rather than bake a wrong answer, and this spec's `%post` rewrites it at
+  install time, which is later and closer to right.
 
-  Detecting a container in `%post` would not help, which is the reason this
-  is a note rather than a change: at build time there is no correct value to
-  write, because the runtime hostname does not exist yet. The pinning is also
-  deliberate — [admin-guide.md](admin-guide.md) *Server tasks* says `%post`
-  sets it on first install and to edit it if the host is renamed, because an
-  identity that moves fragments the RRD history.
+  The client has no such problem: `client/runclient.sh:19` resolves
+  `MACHINEDOTS` from `uname -n` at every start. And the fallback the server
+  would need already exists — `common/xymoncmd.c:47-64` derives the name from
+  `HOSTNAME`, then `uname()`, then `uname -n` — but it fires only when
+  `MACHINEDOTS` is unset, and `xymonserver.cfg.DIST:79` always sets it from
+  `XYMONSERVERHOSTNAME`, which always has a value. The config pre-empts it
+  every time.
 
-  So the fix belongs in an image's entrypoint, which is the first code that
-  runs when the answer exists, and is three lines:
+  **Where it bites here:** an image. `%post` in a `Dockerfile` runs in the
+  builder, so the value frozen into the layer is the build sandbox's. Observed:
+  a server built that way came up as `buildkitsandbox`, logged
+  `MACHINE='xy-snap' not listed in hosts.cfg, dropping xymond status`, and
+  wrote its RRDs under the builder's name. Installed inside a *running*
+  container instead, `%post` reads the real hostname and everything is
+  correct — which is what README *Trying a snapshot without a host*
+  documents.
 
-  ```sh
-  sed -i "s/^XYMONSERVERHOSTNAME=.*/XYMONSERVERHOSTNAME=\"$(hostname)\"/" \
-      /etc/xymon/xymonserver.cfg
-  exec /usr/lib/xymon/client/bin/xymonlaunch-run "$@"
-  ```
+  **Why not fixed here.** Detecting a container in `%post` cannot work: at
+  build time there is no correct value to write, because the runtime hostname
+  does not exist yet. And the pinning itself is deliberate —
+  [admin-guide.md](admin-guide.md) *Server tasks* says `%post` sets it on
+  first install and to edit it if the host is renamed, because an identity
+  that moves fragments the RRD history. Two of the three install paths, a
+  host and a running container, get the right answer from it.
 
-  **When it becomes work:** the day something publishes a container image.
-  That is a product decision, and it is not this one. Until then the fix has
-  nowhere to live — an entrypoint exists only inside an image, and this
-  repository builds rpms. Shipping the script in the package would put a file
-  on every host where it means nothing, and an example nothing runs is an
-  example that rots. So this is written down rather than carried, because
-  whoever builds an image meets the problem in the first five minutes and the
-  useful thing to hand them is the reason, not a guess made on their behalf.
-  `xymonlaunch-run` is already usable as an entrypoint — it `exec`s and stays
-  in the foreground for `Type=simple`, which is what a container wants too,
-  and as PID 1 it reaped its children correctly over a six-minute run.
+  **Upstream, and not as a patch from here.** No upstream pull request or
+  issue addresses it (open and closed, searched by title and body). The change
+  would be to stop the config pre-empting the existing fallback, which is a
+  semantic change to what a server calls itself, and history is keyed on that.
+  The evidence is worth sending — three packagings, three workarounds, a
+  fallback already written and never reached — and the decision is the
+  maintainers'. An issue, not a pull request.
+
+  An image would meanwhile need an entrypoint that redoes the host-specific
+  configuration at start, which is three lines and is where the answer first
+  exists. Nothing here builds an image, so nothing here carries it: shipping
+  that script in the package would put a file on every host where it means
+  nothing, and an example nothing runs is an example that rots.
 
 - **Watch the signing key expiry** ([signing.md](signing.md) *Renewing before
   expiry*).
