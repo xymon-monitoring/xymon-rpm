@@ -139,6 +139,27 @@ to a GitHub issue.
   Now the `install -d` goes and the glob keeps packaging whatever upstream
   makes.
 
+  **Three sentences here stop being true when
+  [#66](https://github.com/xymon-monitoring/xymon-rpm/pull/66) lands**, and
+  should change with it or straight after. That pull request packages
+  `clientlaunch.d` with the client alone: a server reads its task list from
+  `tasks.cfg` and never opens `clientlaunch.cfg`, so a drop-in beside the
+  server's copy would be silently unused. What each becomes:
+
+  - *Decided: the spec creates them, as an interim override xymon#411 will
+    delete* — only the `install -d` is interim. The `%exclude` is permanent,
+    because which of two packages owns a path is not something upstream's
+    build can express, so nothing upstream retires it.
+  - *It globs now, so whatever upstream's `client/etc` holds is packaged* —
+    with one exception carved out of the server's half.
+  - *Now the `install -d` goes and the glob keeps packaging whatever upstream
+    makes* — the `%exclude` stays behind when it does.
+
+  Written down because nothing would catch it: `docs-drift.yml` runs
+  `compensations.sh` and `docs.sh`, and neither reads prose against the spec.
+  Until #66 merges all three are correct, which is why they are not being
+  edited now.
+
 ## Packaging work (no upstream PR)
 
 - **Reconcile the SELinux `.te` with `%post`.** The modules still reference
