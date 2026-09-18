@@ -527,8 +527,22 @@ jobs:
       - name: Install tooling
         run: dnf -y install createrepo_c rpm-sign rpm-build rpmdevtools gnupg2 git-core findutils openssh-clients
 
+      # main's tip, not this run's sha. The packages come from artifacts/
+      # and belong to the run that built them, but everything this job reads
+      # out of the tree -- both generators, the key, xymon-release.spec --
+      # describes the repository as it stands now, not as it stood when some
+      # queued run started.
+      #
+      # Publish jobs serialize on publish-archive, so a run can reach this
+      # step after a newer one has already pushed. With its own checkout it
+      # then regenerates xymon.repo and index.html from a tree that predates
+      # the newer one and force-pushes them over it. Packages survive that --
+      # they are only ever added, never overwritten -- and generated files do
+      # not, which is the asymmetry that makes this look fine in the log.
       - name: Checkout packaging
         uses: actions/checkout@v6
+        with:
+          ref: main
 
       # The secrets context is not available to a job-level `if`, so the
       # job always starts and stops here until a key is configured. That
