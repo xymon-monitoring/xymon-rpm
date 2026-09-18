@@ -202,9 +202,14 @@ to a GitHub issue.
   exec /usr/lib/xymon/client/bin/xymonlaunch-run "$@"
   ```
 
-  Nothing here builds an image, so nothing here carries that script. Written
-  down because whoever builds one meets this in the first five minutes, and
-  the useful thing to hand them is why, not a guess made on their behalf.
+  **When it becomes work:** the day something publishes a container image.
+  That is a product decision, and it is not this one. Until then the fix has
+  nowhere to live — an entrypoint exists only inside an image, and this
+  repository builds rpms. Shipping the script in the package would put a file
+  on every host where it means nothing, and an example nothing runs is an
+  example that rots. So this is written down rather than carried, because
+  whoever builds an image meets the problem in the first five minutes and the
+  useful thing to hand them is the reason, not a guess made on their behalf.
   `xymonlaunch-run` is already usable as an entrypoint — it `exec`s and stays
   in the foreground for `Type=simple`, which is what a container wants too,
   and as PID 1 it reaped its children correctly over a six-minute run.
