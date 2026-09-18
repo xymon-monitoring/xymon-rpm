@@ -119,6 +119,29 @@ dnf install xymon          # server
 dnf install xymon-client   # client only
 ```
 
+### Trying a snapshot without a host
+
+There has been no release, so trying one means installing a pre-release
+somewhere. A container is enough, and it has to be one running systemd —
+the packages install a unit, and the scriptlets that enable and reload
+services are guarded on `/run/systemd/system`, so in a container without an
+init they are skipped and the thing you wanted to try never runs:
+
+```sh
+docker run -d --name snap --hostname xy-snap --privileged --cgroupns=host \
+  -v /sys/fs/cgroup:/sys/fs/cgroup:rw fedora:44 /usr/lib/systemd/systemd
+docker exec -it snap bash
+# then the Fedora procedure above, unchanged, inside the container
+```
+
+**Install inside the running container, not in a `Dockerfile`.** `%post`
+writes `XYMONSERVERHOSTNAME` from the hostname it sees, and in an image build
+that is the builder's, frozen into the layer — the server then monitors a
+machine that does not exist. Installed in a running container it reads the
+real one. An image is the right shape for deploying rather than trying, and
+wants an entrypoint that redoes the host-specific configuration at start;
+[roadmap.md](docs/roadmap.md) has the detail.
+
 Every host runs the same unit, `xymonlaunch.service`, which picks the server
 or client role by which package is installed. A client-only host sets the
 server address (`XYMSRV`) in `/etc/xymon-client/xymonclient.cfg`, then runs
