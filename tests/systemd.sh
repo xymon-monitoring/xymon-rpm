@@ -172,4 +172,31 @@ check "removing the last package stopped the unit" \
 check "removing the last package left no enablement behind" \
 	"! systemctl is-enabled $unit 2>/dev/null | grep -q enabled"
 
+echo "== a running httpd picks up the web config on install =="
+# The %post reload is guarded on /run/systemd/system, so install.sh
+# cannot reach it: without PID 1 the guard is false and the scriptlet
+# passes by doing nothing -- the vacuous pass this file's header exists
+# to refuse. This suite is the only place it executes, which is why the
+# assertion is here rather than beside the other apache checks in
+# packages.sh and install.sh.
+#
+# 404 both sides would mean the Alias never arrived; a served page means
+# httpd re-read conf.d. Asserted as "not 404" rather than 200 because
+# xymongen has not run, so the docroot is empty and httpd answers 403.
+dnf -y install httpd curl >/dev/null
+systemctl start httpd
+
+code() { curl -s -o /dev/null -w '%{http_code}' http://localhost/xymon/ 2>/dev/null || echo 000; }
+
+before=$(code)
+check "/xymon is unserved before the server package is installed (got $before)" \
+	"test '$before' = 404"
+
+dnf -y install "$server" >/dev/null
+after=$(code)
+check "installing the server reloaded httpd, so /xymon is served (got $after)" \
+	"test '$after' != 404"
+check "httpd is still up -- reloaded, not restarted into failure" \
+	"systemctl is-active --quiet httpd"
+
 exit "$fail"
