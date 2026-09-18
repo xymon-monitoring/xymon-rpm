@@ -40,6 +40,14 @@ every host that installs it, and no tree exists for another architecture, so
 on aarch64 the 404 fails every `dnf` transaction on that machine — including
 ones that have nothing to do with Xymon. Do not install the repo file there.
 
+The procedures below fetch the repository file directly, which needs no
+package and no URL you have to look up. The landing page offers the other
+route: `xymon-release`, a small package carrying the same file and the signing
+key, where rpm verifies the key against the package's own signature instead of
+your trusting it on first fetch. It is linked there rather than named here,
+because its filename carries a version and that ages. Either way the snapshot
+channel still has to be enabled until there is a release.
+
 ### Snapshots, on EL 8, 9 and 10
 
 ```sh
