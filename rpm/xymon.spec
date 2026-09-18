@@ -603,6 +603,18 @@ for v in %{selinux_variants}; do
     semodule -s "$v" -i %{_datadir}/selinux/"$v"/xymon.pp >/dev/null 2>&1 || :
 done
 %endif
+# A running httpd does not pick up a new conf.d drop-in until it reloads,
+# so without this the /xymon UI stays unreachable until the next restart.
+# Policy, not an upstream gap: the service name and the init system are
+# distribution business. Best-effort because this package requires
+# httpd-filesystem, not httpd -- a host without a web server, or a
+# container with no PID 1, is fine. try-reload-or-restart reloads if
+# httpd is up and does not start it if it is not; a failed reload must
+# not abort the install. After the labeling above, so httpd can reach
+# the trees it has just been pointed at.
+if [ -d /run/systemd/system ]; then
+    systemctl try-reload-or-restart httpd.service >/dev/null 2>&1 || :
+fi
 
 %preun
 # Swap-aware: in a demotion (dnf swap xymon xymon-client) the client
