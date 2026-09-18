@@ -176,6 +176,39 @@ to a GitHub issue.
   `dnf swap` — the package conflict makes `dnf upgrade` stop otherwise. A stable
   release needs a `%triggerun` migration or a transitional package
   ([admin-guide.md](admin-guide.md) *Migrating from the old layout*).
+- **A container image would need an entrypoint, and does not have one.**
+  *Not being fixed, deliberately.* Installing the packages inside a running
+  container is correct and is what README *Trying a snapshot without a host*
+  documents. Installing them from a `Dockerfile` is not: `%post` writes
+  `XYMONSERVERHOSTNAME` from the hostname it sees, which during an image build
+  is the builder's, frozen into the layer. Observed — a server built that way
+  came up as `buildkitsandbox`, logged `MACHINE='xy-snap' not listed in
+  hosts.cfg, dropping xymond status`, and wrote its RRDs under the builder's
+  name.
+
+  Detecting a container in `%post` would not help, which is the reason this
+  is a note rather than a change: at build time there is no correct value to
+  write, because the runtime hostname does not exist yet. The pinning is also
+  deliberate — [admin-guide.md](admin-guide.md) *Server tasks* says `%post`
+  sets it on first install and to edit it if the host is renamed, because an
+  identity that moves fragments the RRD history.
+
+  So the fix belongs in an image's entrypoint, which is the first code that
+  runs when the answer exists, and is three lines:
+
+  ```sh
+  sed -i "s/^XYMONSERVERHOSTNAME=.*/XYMONSERVERHOSTNAME=\"$(hostname)\"/" \
+      /etc/xymon/xymonserver.cfg
+  exec /usr/lib/xymon/client/bin/xymonlaunch-run "$@"
+  ```
+
+  Nothing here builds an image, so nothing here carries that script. Written
+  down because whoever builds one meets this in the first five minutes, and
+  the useful thing to hand them is why, not a guess made on their behalf.
+  `xymonlaunch-run` is already usable as an entrypoint — it `exec`s and stays
+  in the foreground for `Type=simple`, which is what a container wants too,
+  and as PID 1 it reaped its children correctly over a six-minute run.
+
 - **Watch the signing key expiry** ([signing.md](signing.md) *Renewing before
   expiry*).
 
