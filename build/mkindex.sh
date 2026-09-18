@@ -112,8 +112,13 @@ relrpm=${relrpm:-xymon-release-1-1.noarch.rpm}
 	</table>
 
 	<p>Snapshots are pre-releases of the next version and have had no release
-	testing. Enable them deliberately, per host:</p>
-	<pre>dnf config-manager --set-enabled xymon-snapshot      # dnf4: EL
+	testing. Enable them deliberately, per host. <code>config-manager</code>
+	is a plugin rather than part of dnf, and a minimal install of either
+	family lacks it:</p>
+	<pre>dnf install dnf-plugins-core                          # EL
+	dnf install 'dnf5-command(config-manager)'           # Fedora
+
+	dnf config-manager --set-enabled xymon-snapshot      # dnf4: EL
 	dnf config-manager setopt xymon-snapshot.enabled=1   # dnf5: Fedora</pre>
 
 	<h2>Signing</h2>
