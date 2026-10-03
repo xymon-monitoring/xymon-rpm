@@ -90,10 +90,11 @@ not say is which document answers which question:
   *Versioning* has the three prohibitions and what each costs. It is worth
   naming here at all only because a generator reaches for a `%changelog` entry
   by default, the way it reaches for an attribution trailer.
-- **Do not edit `rpm/terabithia/`.** It archives the reference spec and README
-  from <https://repo.terabithia.org/rpms/xymon/> for provenance only. Nothing
-  there is built. Bringing one of its ideas across means writing it into
-  `rpm/xymon.spec`, and saying in the pull request that is where it came from.
+- **Do not edit `rpm/terabithia/`.** It archives the reference spec and its
+  documentation from <https://repo.terabithia.org/rpms/xymon/> for provenance
+  only. Nothing there is built. Bringing one of its ideas across means writing
+  it into `rpm/xymon.spec`, and saying in the pull request that is where it
+  came from.
 
 ## What a change here has to survive
 

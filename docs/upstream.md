@@ -77,9 +77,12 @@ The spec adopts each feature as it lands, via its own consuming PRs — e.g.
 hand-rolled static `mv`+`ln` loop for `INSTALLSTATICWWWDIR` once xymon#414
 merges.
 
-`rpm/terabithia/` archives the reference spec and README from
-<https://repo.terabithia.org/rpms/xymon/> for provenance only; it is
-never built.
+`rpm/terabithia/` archives the reference spec and the documentation published
+beside it at <https://repo.terabithia.org/rpms/xymon/>, for provenance only;
+it is never built. The source RPM they describe, `xymon-4.3.30-1.el8.src.rpm`,
+is too large for the tree and is attached to the
+[`terabithia-4.3.30-1-reference`](https://github.com/xymon-monitoring/xymon-rpm/releases/tag/terabithia-4.3.30-1-reference)
+release instead.
 
 ## Drift detection
 
