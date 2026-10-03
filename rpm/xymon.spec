@@ -93,6 +93,10 @@ Source12:       bb.xml
 #   Fedora's rpm generates Requires: user(xymon) for any package owning
 #   files with a non-root owner; only sysusers.d generates the Provides.
 Source13:       xymon.sysusers
+#   replaces upstream's clientupdate: a packaged client is updated by the
+#   package manager, never by a tarball its server pushes. Policy, so no
+#   upstream PR retires it; the script says why it is not simply deleted.
+Source16:       clientupdate
 
 # The client tree, shipped by BOTH packages (they conflict, so no host
 # ever installs it twice). Defined once and expanded into both %%files
@@ -428,6 +432,12 @@ install -Dpm 0644 %{SOURCE11} %{buildroot}%{_sysctldir}/70-xymon.conf
 %if %{defined _sysusersdir}
 install -Dpm 0644 %{SOURCE13} %{buildroot}%{_sysusersdir}/xymon.conf
 %endif
+
+# Over the built clientupdate, in the one client tree both packages
+# ship. Its manual pages stay: the web help's index and xymon(7) link the
+# HTML copy, so removing it leaves dead links, and the program says for
+# itself why it declines when an update is asked for.
+install -pm 0755 %{SOURCE16} %{buildroot}%{xymonhome}/client/bin/clientupdate
 
 # Admin conveniences on $PATH, not used by the unit: xymonlaunch-run
 # execs the server tree's binaries directly, so these are for people

@@ -224,6 +224,17 @@ check "both packages own xymonclient.d" \
 	"rpm -qlp $server | grep -qx /etc/xymon-client/xymonclient.d &&
 	 rpm -qlp $client | grep -qx /etc/xymon-client/xymonclient.d"
 
+# Upstream's clientupdate tries to unpack a tarball the server pushes over
+# a tree rpm owns. Both packages ship this packaging's stand-in instead
+# (rpm/sources/clientupdate), the same file in each. Read from the
+# payload rather than compared with rpm/sources, so the suite still runs
+# on the rpms alone.
+check "both packages ship the packaged clientupdate, not upstream's" \
+	"for r in server client; do
+	   grep -q 'update it with the package manager' $work/\$r/usr/lib/xymon/client/bin/clientupdate || exit 1
+	 done &&
+	 cmp $work/server/usr/lib/xymon/client/bin/clientupdate $work/client/usr/lib/xymon/client/bin/clientupdate"
+
 check "the client tree has identical modes and ownership in both" \
 	"rpm -qp --qf '[%{FILENAMES} %{FILEMODES:octal} %{FILEUSERNAME} %{FILEGROUPNAME}\n]' $server |
 	   grep '^/usr/lib/xymon/client/' | sort > $work/s.attr &&
