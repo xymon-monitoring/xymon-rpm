@@ -646,6 +646,14 @@ fi
 
 %postun
 %systemd_postun_with_restart xymonlaunch.service
+# The removal half of the %post reload. The conf.d drop-in is gone, but a
+# running httpd keeps serving /xymon from the config it last read, aliased
+# to trees just deleted, until something reloads it. Erase only: on an
+# upgrade the new package's %post has already reloaded against the new
+# file. Same guard and same best effort as %post.
+if [ $1 -eq 0 ] && [ -d /run/systemd/system ]; then
+    systemctl try-reload-or-restart httpd.service >/dev/null 2>&1 || :
+fi
 if [ $1 -eq 0 ] && command -v semanage >/dev/null 2>&1; then
     semanage fcontext -d '%{xymonhome}/cgi-bin(/.*)?'    2>/dev/null || :
     semanage fcontext -d '%{xymonhome}/cgi-secure(/.*)?' 2>/dev/null || :

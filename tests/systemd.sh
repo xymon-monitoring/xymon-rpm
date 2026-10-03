@@ -172,7 +172,7 @@ check "removing the last package stopped the unit" \
 check "removing the last package left no enablement behind" \
 	"! systemctl is-enabled $unit 2>/dev/null | grep -q enabled"
 
-echo "== a running httpd picks up the web config on install =="
+echo "== a running httpd follows the web config on install and removal =="
 # The %post reload is guarded on /run/systemd/system, so install.sh
 # cannot reach it: without PID 1 the guard is false and the scriptlet
 # passes by doing nothing -- the vacuous pass this file's header exists
@@ -197,6 +197,16 @@ after=$(code)
 check "installing the server reloaded httpd, so /xymon is served (got $after)" \
 	"test '$after' != 404"
 check "httpd is still up -- reloaded, not restarted into failure" \
+	"systemctl is-active --quiet httpd"
+
+# And the reverse: the %postun reload is what makes httpd forget the
+# Alias. Without it /xymon keeps answering, from the config httpd read at
+# install, pointing at trees that are gone.
+dnf -y remove xymon >/dev/null
+gone=$(code)
+check "removing the server reloaded httpd, so /xymon is unserved again (got $gone)" \
+	"test '$gone' = 404"
+check "httpd is still up after the removal reload" \
 	"systemctl is-active --quiet httpd"
 
 exit "$fail"
