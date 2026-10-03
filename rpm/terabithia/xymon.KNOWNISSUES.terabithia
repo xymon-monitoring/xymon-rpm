@@ -1,0 +1,6 @@
+4.3.30
+
+The trimhistory command does not trim old files created with the --epochtimestamps flag enabled in xymond_history
+See https://lists.xymon.com/pipermail/xymon/2023-August/048105.html
+
+

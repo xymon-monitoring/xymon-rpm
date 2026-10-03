@@ -1,0 +1,2591 @@
+================================================================================
+   TERABITHIA-SPECIFIC PACKAGE CHANGES (See RELEASENOTES for Project Changes)
+================================================================================
+
+*** 4.3.30
+
+- Fix a crash caused by a double-free in a Terabithia patch now that
+  buffer allocs are handled more safely already
+
+- Allow systemd to issue reload via -HUP to xymonlaunch and restart if dies (rare)
+
+*** 4.3.29
+
+- Upstream xymond default max memory size now 64MB
+
+- Updated c-ares bundled version to 1.15.0 and xxHash to 0.7.1
+
+*** 4.3.28
+
+- XYMONNETWORKCOUNT can be passed as an environment variable if you need
+  more than 63 XYMONNETWORKS specified (Note: this is 4.3 only - it's 
+  dynamic in 4.x-master)
+
+- Updated c-ares bundled version to 1.12.0 and xxHash to 0.6.2
+
+*** 4.3.27
+
+- SELinux policy bug fixes. Always make sure you're running the latest
+  selinux policy packages for best results.
+
+*** 4.3.26
+
+- Discard BFQ messages that are E2BIG rather than try to determine size with a
+  larger buffer, since we don't know what the system MAXMSG actually is.
+
+*** 4.3.25
+
+- Fix buffer overflow crash with overized client/data messags
+
+*** 4.3.24-3
+
+- multiple clienthttp checks for a single host should now be sent into a single
+  client message, instead of separate ones overwriting each other (since they all
+  have the 'xymonnet' collector ID).
+
+*** 4.3.24
+
+- Fixes improper parsing of HTTP status codes where *everything* not special-cased
+  was considered a Critical alert instead of OK/Yellow as intended by ranges.
+
+- Fixes an issue where were weren't linking to -llzo2 on some systems.
+
+*** 4.3.23
+
+- In the RPM versions of the init scripts, xymoncmd is called to populate the
+  environment before XYMONCLIENTHOME is set. This led to a spurious warning on
+  client systems. This doesn't affect the 4.3.22 source release because the upstream
+  init script is quite different.
+
+*** 4.3.22
+
+- See RELEASENOTES for important changes in what HTTP status codes xymonnet
+  treats as OK, Warning, or Critical.
+
+- Many non-bugfix features have been upstreamed.
+
+*** 4.3.21-6
+
+- Fix occasional crash in purple processing
+
+*** 4.3.21-4
+
+- Fixes constantly-refreshing 'modify' status messages
+
+- Fixes a bug in binary message size recalculation that would prevent HTTP submission 
+  to xymonmsgcgi (Terabithia only)
+ 
+- KNOWN ISSUE (not new):
+  Compressed messages cannot be sent via the HTTP proxy
+
+
+*** 4.3.20
+
+- Automatic adding of FollowSymLinks to apache config on update no longer performed
+  since we're now hard linking cgiwrap
+
+- SELinux fixes
+
+- summaries should show up again
+
+- column documentation lookups should work again
+
+- httphead= support added
+
+- LZ4 support added (use lz4-static RPM if building static RPM)
+
+- new "clientlog" column displayed (similar to info/trends) on pages
+
+- xymondboard commands by default will be faster, as should xymongen load times
+
+- GRAPHS_xxx to allow multiple types of graphs on a single page to be shown
+
+- "Actual" memory usage on Linux 3.4+ Kernels (F21 and RHEL7) is now calculated
+  from the "Available" amount of memory reported by the kernel. Physical memory in
+  the Memory test no longer includes buffered/cached RAM (which will be swapped out)
+
+- Changes to "modify" behavior:
+  - an addition or removal of a modify sourcename will cause a stachg and page update
+  - syntax now supports duration values ("60m") or status-message-validty ("+3v") or both
+  - "modifyup" and "modifydown" messages will only increase or decrease the severity of
+    a message, never the opposite. In other words "modifyup host.test yellow source cause"
+    will NEVER lower a red status down to yellow.
+
+
+*** 4.3.19
+
+- LOGFETCH_SCROLLBACK has been deprecated; use LOGFETCHSCROLLBACK instead.
+	Default is 6
+
+- LOGFETCHSKIPTEXT and LOGFETCHCURRENTTEXT can be specified. Defaults are:
+	LOGFETCHSKIPTEXT="<...SKIPPED...>"
+	LOGFETCHCURRENTTEXT="<...CURRENT...>"
+
+- xymonproxy in --bfq mode and with --extcombine will now deconstruct legacy
+  combo messages and re-piece the component messages together as extcombos.
+
+- For long running processes, set XYMON_SENDBFQ to a negative number to
+  rotate through BFQ's on successive extcombo submissions.
+
+- xymond_channel has had some performance tweaks to prevent semaphore slowdowns
+  when the local peer(s) is/are busy. We only flush queues once every 5s, and 
+  we limit the number of consecutive writes attempted when xymond had sent us 
+  something on over the SysV IPC channel
+
+
+*** 4.3.18 (RELEASED)
+
+->> It is now recommended to install the xymon-client package on your main xymon
+  server. The RPMs no longer conflict and the client files may be removed from
+  the server package in a (far) future update. <<-
+
+- LOGFETCH_SCROLLBACK can be set in the client environment to alter how far
+  back logfetch will begin searching for data (in # of runs, up to 6). Setting
+  to 0 means it will begin only where it left off at the last run.
+
+- you may prepend the tag "optional" to include or directory lines to suppress
+  error messages if/when the file or directory doesn't exist.
+
+- logfetch properly handles situations where multiple triggers are found but there's
+  too much log data to send back without skipping multiple times. (Thanks, Franco
+  Gasperino
+
+- --modify-msgs can be passed to xymond_client to have it send supplemental "modify"
+  messages in addition to the normal 'msgs' status test
+
+- xymongrep now supports the comma-separated XYMONNETWORK and XYMONEXNETWORK 
+  values that xymonnet does
+
+- logfetch and xymongrep both support the --debug flag, and logfetch now outputs 
+  error messages when low level issues occur or a regex is invalid
+
+- cgioptions.cfg is no longer parsed by the shell, but is instead run via another
+  C wrapper. See http://lists.xymon.com/pipermail/xymon/2014-September/040351.html
+
+- on upgrade, /etc/httpd/conf.d/xymon.conf is munged to allow symlinks in xymon*cgi
+
+- rrdefinitions and client-local both have directories included in /etc/xymon/ now
+
+- environment lines beginning with "export " will still be parsed
+
+- 'headermatch' in xymonnet for HTTP content checking will match headers even if
+  there was no body output
+
+- the "version" returned by xymon components now contains the full RPM release 
+  set, along with the string ".terabithia" to aid in tracking deployments.
+
+
+
+			*** experimental features ***
+
+- an experimental backport of the compression libraries from xymon 5 is available.
+  Set XYMON_COMPRESS=1 in the environment when sending a xymon message, or pass 
+  the --compress option to the xymon binary itself to use.
+
+  - Messages requiring a response will not be compressed
+  - Xymonproxy also accepts the --compress option. Interoperability with --bfq 
+    and --extcombo modes has not been thoroughly tested and should be used with caution.
+  - Be wary of setting up pipelines where already-compressed messages are 
+    wrapped and re-compressed.
+  - compress=zlib, lzo, and "none" are supported
+
+
+- Multiple BFQ channels can be read by xymond in a round robin fashion. Specify
+  --bfq=2 (up to 9) to enable BFQ "channels" 0, 1, and 2. (0 is the default)
+
+  - The xymon client, as well as xymonnet, xymonproxy, xymond_client, and xymond_rrd
+    can all be told to send using a specific bfq using the --bfq=# option, or 
+    by setting the XYMON_SENDBFQ environment variable.
+
+
+
+
+*** 4.3.18 (branch) - 7464 - 36
+
+- CACHESZ has been increased from 23 to 64 (up originally from 12). This better
+  reflects the original intent of 1 hour of caching, given that the default (in
+  this RPM) is for xymonnet running every minute and clients running 3x/5 mins.
+  This will significantly increase RAM requirements for the xymond_processes
+  when in caching mode.
+
+- xymond: a "histsync" command has been added (same semantics/filters as the 
+  xymondboard command) which causes xymond to send the next status message 
+  (regardless of color) on the stachg channel to xymond_history. Useful if your
+  history files seem to have gotten out of sync.
+
+- The $EPOCHHIST environment variable has been deprecated in favor of an
+  --epochtimestamps option to xymond_history
+
+- xymondboard now accepts an "ip=" filter. This is a PCRE.
+
+*** 4.3.18 (branch) - 7464 - 35
+
+- xymond_rrd now accepts a --cachemultiplier option to alter the auto-flushing of the
+  internal cache over time. (Default is 1x the CACHESZ, which is now 23 entries.)
+
+
+*** 4.3.18 (branch) - 7464 - 33.1
+
+- xymond now has an undocumented --reload-interval option that controls how often
+  it will scan hosts.cfg for changes. (This process can be heavy in large installations.)
+  Default is 300s. As a result of this change, we no longer automatically tie this
+  to the checkpoint interval value.
+
+- xymond_alert will now regularly reload the hosts.cfg file for changes; this is
+  mostly useful for SCRIPT directives that might otherwise be getting stale
+  XMH_RAW data. --loadhostsfromxymond is also provided
+
+- Lots of additional debugging has been added in xymonproxy
+
+
+- FAILDELAY can be set (in seconds) in tasks.cfg or clientlaunch.cfg to alter
+  the penalty xymonlaunch applies to a task that exits non-zero more than 5x in
+  a row. Default is 600 (10m), set to 0 to disable.
+
+- xymond_rrd no longer creates rrdctl socket files if it's not cacheing or not
+  writing out to disk. RRDCACHED_ADDRESS can be set in xymonserver.cfg to affect
+  xymond_rrd, while cgioptions.cfg can (optionally) override this for showgraph.cgi
+  Thanks to Martin Sperl for inspiration
+
+- xymond_capture can be used against most channels now
+
+- heavily loaded xymond_rrd processes should see a performance improvement
+
+- buffering for external RRD processor streams has been changed from per-xymon-msg to
+  standard libc buffering. To restore previous behavior, set
+  env RRD_EXTPROC_DOFLUSH=1. The buffer size is BUFSIZ (system default), but can bet
+  overridden with RRD_EXTPROC_BUFSIZ
+
+- process listings in client report are now in "ASCII art forest" mode (f).
+  Matching with "^" regexes in analysis.cfg PROC sections works as expected.
+
+- 'proxyping' command now available for determining if a xymonproxy is up w/o 
+  sending it through to the upstream server
+
+- xymonproxy in BFQ mode will retry to post a message to the BFQ on failure
+
+- /etc/xymon/xymonserver.cfg.d/ and /etc/xymon-client/xymonclient.cfg.d/ now exist
+
+
+- on RHEL5/EL6, now built to use shared vendor c-ares library instead of static copy
+  included. (I recommend using updated EL6 c-ares packages to bring in performance
+  improvements and other bug fixes.)
+
+- 4.3.18 branch is now built by default (instead of 4.3.17)
+
+- with xymon-devel installed, you should be able to include:
+	#include <xymon/libxymon.h>
+  in source files and build using the headers installed on the system,
+
+- EXPERIMENTAL: shared libxymon.* library can be built now (xymon-libs)
+
+
+*** 4.3.18 (branch) - 7464
+- xymonping is no longer included with the package (really). fping has been a 
+  Requirement for a while now
+
+- new xymondboard filters with timestamps (< <= > >= = !=)
+	lastchange
+	logtime
+	validtime
+	acktime
+	disabletime
+  All of these accept unix epoch timestamps, which can be pulled easily
+  by using GNU's `date` via shell ticks:
+  ex: 	xymon localhost "xymondboard color=red lastchange>`date +%s -d '-1 day'`"
+	xymon localhost "xymondboard logtime>`date +%s -d '-20 sec'`"
+
+- new PCRE matching:
+	ackmsg
+	dismsg
+
+- xymond_nanomsg can read from xymond_channel (well, stdin) and post to a nanomsg queue
+  direct xymond_channel support (a la '--locator') is coming!
+
+
+*** 4.3.18 (branch) - 7463 - 8
+- XYMONNETWORK can now accept a comma separated list of networks which will be
+  searched for by xymonnet when deciding what to poll. XYMONEXNETWORKS has been 
+  renamed to XYMONEXNETWORK (to match above)
+
+- xymongrep utility has not yet been modified for above
+
+- maximum number of networks is 63 (up from 31)
+
+- Experimental clienthttp directives are present to allow HTTP payloads to be
+  transmitted by xymonnet as "client" sections
+
+- The default timeout for communication has been increased from 15 to 50 seconds
+
+- Stale alerts (alerts no longer alerting once xymond_alert has been renabled or
+  relaunched) will now send a final recovery message to any known previous recipients.
+  Maybe. (There still seem to be cases when this does not happen properly.)
+
+- The number of processors available on the linux server is now in the client msg
+
+- LDAP tests no longer "short circuit" if the hostname (or IP, if testip is indicated)
+  is not pingable (eg, due to a firewall rule).
+
+- tmpfs partitions are no longer excluded from disk/inode monitoring
+
+
+*** 4.3.18 (branch) - 7463
+- All utilities will attempt to retry connections to xymond more often if the 
+  connection was dropped part-way through or was in a half-open state.
+
+- On new server installs, $XYMONSERVERHOSTNAME will be set to the MACHINEDOTS value
+  given by xymoncmd (which derives it from $HOSTNAME or `uname -n`). 
+  $XYMONSERVERWWWNAME will be set to the XYMONSERVERHOSTNAME value.
+
+- CLIENTHOSTNAME and CLIENTOS overrides should work again on systemd systems for
+  the default client. MACHINE and SERVEROSTYPE are still set to defaults by xymoncmd
+  however.
+
+- xymond_channel should be more efficient in picking up messages from xymond, and
+  a few memory leaks have been fixed.
+
+- Failed CGI requests to xymond should print with more friendly error messages.
+
+
+*** 4.3.17-7
+- A RHEL7 package is now available. This is built against the Beta images and
+  things could change for the release version, beware. Unlike RHEL6, dietlibc
+  and dash (the altshell) are not available, and the default build now accounts
+  for this. In addition, the net-tools RPM containing /bin/netstat and /bin/ifconfig
+  is now explicitly pulled in, since it's not installed by default with initscripts.
+
+- The package now provides an /etc/xymon/hosts.d/ directory, with is auto-included
+  in new (only) hosts.cfg files. Copy the relevant line from the hosts.cfg.rpmnew
+  file to include it.
+
+- xymond_channel provides its children with a XYMOND_CHANNELNAME environment 
+  variable containing the name of the channel being listened to.
+
+*** 4.3.17-6
+- xymonlaunch will pause a few moments before exiting to allow children time to
+  clean up or safely exit (such as for a restart). It 
+  still does NOT follow up a TERM with a KILL for "stuck" jobs when in shutdown mode
+  (since some processes may take a while flushing caches or in similar clewanup).
+
+- On service shutdown, xymond_channel workers will receive any remaining buffered
+  messages before exiting, even though further messages from the channel itself 
+  are no longer being added.
+
+- Two additional options to xymond_channel are now available. One, --filterlater,
+  will cause it to apply PCRE filters *after* it's released the semaphore for
+  xymond's use. This may assist with concurrency on high-volume systems.
+
+- The other is --multilocal, which treats all non-option arguments to xymond_channel
+  as *separate* processes to launch simultaneously.
+
+  Example: xymoncmd xymond_channel --channel=status --multilocal xymond_sample cat
+
+  Any command with arguments of its own (eg, xymond_filestore) will need to be 
+  launched via a separate shell script or other shim file, and the arguments
+  located there.
+
+
+*** 4.3.17-1
+->> XYMONHOME on the server is now /usr/share/xymon/ . The change should be 
+    transparent, but if you had hard-coded /usr/share/xymon/server/ into your
+    scripts you'll want to upgrade them. You should also verify that 
+    xymonserver.cfg changes have been carried over. Replacing a directory with a 
+    symlink is actually rather difficult to do in RPM. On a live system that's 
+    being upgraded, verify symlink installation right away.
+    
+
+- xymonproxy's experimental --bfq option should now be working properly. extcombo
+  messages are passed straight through, while non-extcombo messages are extcombo'd
+  and then placed onto the backfeed queue. xymond will log an error if it sees
+  a message requireing a response in the middle of an extcombo or on the backfeed
+  queue, but continue on.
+
+  The best way to think of this is as a one-way pipe. If you have a remote xymonnet
+  install that's sending a large amount of traffic to a xymond, you can have it
+  send its results to a xymonproxy instance running in --bfq mode to effectively
+  offload heavy TCP load from the main xymond.
+
+  Note that this kind of layout is really only needed if you have a LOT of tests.
+  Think 30000 hosts being polled every minute.
+
+- After being experimented with, GIFs and CSS files in /usr/share/xymon/static/ are
+  NOT marked as %config files, as this violates several packaging guidelines about
+  the use of /usr/. Serving files directly out of /etc/ is also usually considered
+  not a great idea.
+
+  The best way to save customizations to these files (or icon sets) is to copy the
+  /statc/{gifs,menu}/ to another location and edit the Alias lines in /etc/httpd/
+
+- When logging xymond via LOGFILE in tasks.cfg instead of the command line (the 
+  default config layout in this package), stdout was not being properly rotated
+  on HUP. This has been fixed.
+
+- Some really old (Hobbit-era) RPM scriptlet upgrade hacks have been removed to
+  help trim down the spec file. Very old installs should probably carry over new
+  config files by hand instead.
+
+- A new xymon-client-local package is available. If you want to run the xymon-client
+  in --local mode, you'll need to install this. It's done as a separate package
+  so that xymond_client (the local configurator) doesn't pull in a PCRE package
+  on systems that don't need it (which is the usual case).
+
+- Users rebuilding this package should pay special note to the various --with/without
+  build options. Although they should work on any version of RHEL or Fedora, other
+  RPM-based systems might need their own appropriate settings. Spec-file patches to
+  do this automatically are welcome.
+
+
+*** 4.3.13
+- The startup scripts have received some major changes to help streamline both the
+  SysV and systemd runtime paths. Both xymonlaunch runtime settings (typically 
+  just the --log destination) are set in /etc/sysconfig/xymonlaunch. The launch
+  settings in /etc/sysconfig/xymon-client can be removed, and the file at 
+  /etc/sysconfig/xymon can be removed entirely.
+
+  The /etc/sysconfig/xymonlaunch file is read in for both SysV and systemd systems.
+
+- On recent Fedora systems using Apache 2.4, the config file in /etc/httpd/conf.d/ 
+  should now be working properly out of the box.
+
+- A XYMONEXNETWORKS setting is listed in xymonserver.cfg; its effects do NOT 
+  extend to 'xymongrep' yet, however.
+
+- Multiple DS lines in analysis.cfg for xymond_rrd to modify the same status should
+  now stack appropriately.
+
+- On x86_64 systems, acknowledgement cookies may be up to 20 digits long.
+
+- Newly-created rrd files will have a 4-week HWPREDICT function included.
+
+
+*** 4.3.13-0.7314-16
+- XYMOM_TIMEOUT and XYMON_RETRIES can be specified in the xymon environment
+
+- 'modify', 'hostinfo', and bogus messages, as well as timeouts, are all tracked 
+  separately in xymond's regular status report.
+
+- A "statusmode" option is available which leverages an expanded version of
+  the legacy Big Brother "client report as status message" feature in the normal
+  client install. (This won't work against older xymond packages, so if you're
+  using it be sure to upgrade the server first.)
+
+  In this mode (add a STATUSMODE=yes line in /etc/sysconfig/xymon-client), the
+  clients will send "status" messages upstream instead of "client" messages, 
+  will send the messages *simultaneously* to all upstream servers, and will 
+  only update their settins from client-local.cfg once every half hour.
+
+  This mode can be used when you have a large number of systems reporting in
+  and want to reduce two-way traffic against xymond.
+
+  To have the two-way traffic (for the client-local.cfg data) gathered from
+  a different server entirely, add a XYMCONFIGSRV line in /etc/sysconfig/xymon-client
+
+
+->> Lots of support for fine-tuning BFQ-related features
+
+  --bfq and --no-bfq options can be passed to xymond_client and xymond_rrd to
+  force automatic behavior. Additionally, a "--flushtimeout" option will force
+  pending extcombo messages to be periodically flushed (sent) after that long 
+  with no activity.
+
+  XYMONDTCPINTERVAL can be set to modify how many seconds xymond will spend on
+  the backfeedqueue before it stops and handles pending tcp traffic. (default: 1)
+
+  XYMONDBFQCHUNK will modify the number of bfq messages parsed before even 
+  checking for an expired tcp interval. (If you receive a lot of large extcombo 
+  messages, those are only counted as a single message.)
+
+
+*** 4.3.12
+->> HTTPRRDCOLNAME
+  -- set HTTPRRDCOLNAME in xymonserver.cfg to instruct xymonnet to return 
+  http test results with a column name specified (eg, cont=) in such a way 
+  that xymond_rrd will save the metrics to a .rrd named for that column 
+  instead of the URL.
+
+  To migrate your existing data, you'll need to manually rename files in your 
+  $XYMONVAR/rrd/ directory from tcp.http.http:,,www,example,net,some.test.rrd 
+  to the new one /tcp.http.colname.rrd. HTTP tests without specified column 
+  names are unaffected
+
+->> EPOCHHIST
+  -- set the EPOCHHIST environment variable in xymonserver.cfg to force 
+  xymond_history to save historical data files under epoch timestamp names
+  instead of the old Big Brother compatibility format.
+
+- on Fedora 18 (or apache 2.4 systems) examine /etc/http/conf.d/xymon.conf 
+  for access changes to the /usr/share/xymon/static directory.
+
+- The "local" version of the client that runs on the xymond server is now 
+  configured in the /etc/xymon-client/clientlaunch.cfg file, which is included
+  from the /etc/xymon/tasks.cfg file. On upgrades, you'll probably want to carry
+  this change over by hand.
+
+- DELAY (in seconds, after NEEDS) and SENDHUP (pass it along when xymonlaunch 
+  receives one) options were added to tasks.cfg. Use the former for xymonproxy 
+  and other services that may need to rotate logs independently from any 
+  specific channel, or are running remotely via the xymond_locator function.
+
+- Updates from clients are sent every 100 seconds instead of 5 minutes. This 
+  used to be the default in the package, but broke at some point. You can edit
+  this INTERVAL in /etc/xymon-client/clientlaunch.cfg, of course.
+
+- The output of /proc/meminfo and 'vmstat -s' have been added to the Linux 
+  client reports via /usr/share/xymon-client/sections/ files. See README.sections
+  for more details.
+
+- A --delay option is available in xymond_channel to wait between initial forking
+  of the channel processor and actually hooking up to the semaphore. This should
+  prevent really heavy processes that take a long time to start up from spitting
+  error messages out about lost messages.
+
+- --no-cookies and --no-save-cookies are options to xymonnet
+  to bypass all cookies logic. Useful if you don't care about cookies but
+  have a ton of HTTP checks, or if you're running multiple copies of xymonnet
+  simultaneously
+
+*** 4.3.9
+- SELinux should work successfully on EL5+ and FC17+
+
+- fping is a requirement, but no specific version is required by RPM
+
+- You can install "local" scripts to be run on a client by placing an 
+  executable file in either $XYMONHOME/local or /usr/local/share/xymon-client/
+
+  See README-local for details (and README-sections for a packagable method)
+
+
+============================================================================
+
+%changelog
+* Tue Jan 17 2017 Japheth Cleaver <cleaver@terabithia.org> 4.3.28-1    
+- update to 4.3.28    
+
+* Thu Jan 05 2017 Japheth Cleaver <cleaver@terabithia.org> 4.3.28-0.6.1
+- update to 4.3.28-rc2
+
+* Wed Dec 28 2016 Japheth Cleaver <cleaver@terabithia.org> 4.3.28-0.5.1
+- update to 4.3.28-rc1
+- fix misparsed PCRE regex's in client-local.cfg (Reported by Erik D. Schminke)
+- don't warn when XYMONNETWORKCOUNT not present
+- add maxnetworks patch (XYMONNETWORKCOUNT env passed to set max)
+  Thanks, Franco Gasperino
+- update c-ares bundle to 1.12.0 when used
+
+* Fri Oct 14 2016 Japheth Cleaver <cleaver@terabithia.org> 4.3.27-4
+- xymond_rrd: fix memory leak in do_netapp
+- update xxHash bundle to r0.6.2
+- Merge experimental relocation bits. This won't work very well
+  until all FHS work is unrolled and wrapped in conditionals.
+
+* Fri Sep 9 2016 Japheth Cleaver <cleaver@terabithia.org> 4.3.27-3
+- xymonnet: Fix timelimit and --huge arg processing
+
+* Thu Jun 9 2016 Japheth Cleaver <cleaver@terabithia.org> 4.3.27-2
+- TCP error after connection opened reporting fix (Rep by Mike Burger)
+
+* Thu Mar 24 2016 Japheth Cleaver <cleaver@terabithia.org> 4.3.27-1
+- Update to 4.3.27
+
+* Thu Mar 17 2016 Japheth Cleaver <cleaver@terabithia.org> 4.3.26-3
+- Change SELinux labels for run directory from unconfied_execmem_t
+  to initrc_var_run_t as the former is missing in EL7 and later F.
+
+* Thu Mar 3 2016 Japheth Cleaver <cleaver@terabithia.org> 4.3.26-2
+- Fix improper redirecting on CGI pages
+- Fix empty (0 byte) directories flagged as error
+
+* Fri Feb 19 2016 Japheth Cleaver <cleaver@terabithia.org> 4.3.26-1
+- Xymon 4.3.26
+- Try to recover better from BFQ errors, or exit cleanly if unable
+- Simply discard BFQ message if E2BIG received, since MAXMSG system
+  size is unknown
+
+* Mon Feb 08 2016 Japheth Cleaver <cleaver@terabithia.org> 4.3.25-1    
+- Xymon 4.3.25
+- Fix crash with oversized client/data msgs under max buffer size
+  (Thanks, Matt Vander Werf)
+
+* Wed Feb 03 2016 Japheth Cleaver <cleaver@terabithia.org> 4.3.25-0.9.2
+- Xymon 4.3.25-rc2
+- update xxHash bundle to r0.5.0
+- remove upstreamed xymond_alert patches
+- Restore SELinux context on upgrades as well as installs, except
+  the recursive /var/lib/xymon/ directory, which can take a
+  significant length of time on large installations.
+  (/var/lib/xymon/configs/ is still applied)
+
+* Sat Jan 09 2016 Japheth Cleaver <cleaver@terabithia.org> 4.3.25-0.1
+- Add logrotate to client RPM requires; add psmisc to client and server
+  as it's not included in some minimal installs (Thanks, Thomas Leavitt)
+
+* Tue Dec 29 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.25-0.0.4
+- Testing 4.3.25
+- Don't force environment loading when setting up signal handler
+- Adjust default report for xymon crash on an unknown system to "localhost"
+- Fix crash on bogus SSL expiration dates
+
+* Wed Dec 02 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.24-3
+- Only match trends segments on full RRD names
+
+* Sun Nov 29 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.24-2
+- Ensure all non-empty clienthttp sections make it into a unified 
+  client message from xymonnet's http polls
+- Document clienthttp[,svc,only] tags in hosts.cfg
+
+* Mon Nov 23 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.24-1    
+- Release 4.3.24 (fixes HTTP status code mis-processing)  
+- liblzo should be liblzo2 on most modern systems.
+
+* Thu Nov 12 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.23-1
+- Release 4.3.23
+
+* Wed Nov 11 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.22-5
+- Fix broken TRACK / OPTIONAL configs in analysis.cfg
+
+* Tue Nov 10 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.22-3
+- fix netstat (ports) output missing on EL6 clients
+
+* Sun Nov 8 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.22-2
+- fix loadalerts.c compile warning
+- xymoncmd: don't assume XYMONCLIENTHOME is present when searching
+  for xymonclient.cfg (Thanks, Matt Vander Werf)
+
+* Fri Nov 6 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.22-1  
+- Update to 4.3.22 release
+
+* Thu Nov 5 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.22-0.8 
+- back out ACCEPTONLY changes
+- logfetch: fix deltacount segfault when checked file is missing
+
+* Wed Nov 4 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.22-0.7
+- sanitize group names
+- RC3
+
+* Mon Nov 2 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.22-0.5
+- update to 4.3.22-rc1 
+
+* Thu Oct 29 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.22-0.1
+- update to 4.3.22-beta
+- update sqlite to 3090100
+
+* Mon Oct 19 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.22-0.0.11
+- update sqlite to 3090000
+- 4.3.22 testing - r7707
+
+* Wed Sep 30 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.21-7
+- increase precision in xymonnet timing and allowed RRD NCV parsing
+- don't truncate netstat output in EL3+          
+
+* Wed Sep 30 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.21-6
+- xymond: fix purple tree crash (Thanks Franco Gasperino)
+- update xxHash bundle to r42
+
+* Sun Jun 7 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.21-5
+- xymongen: fix broken COMPACT lines / missing XMH_DATA
+  (Thanks Jacek Tomasiak)
+
+* Sun May 24 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.21-4
+- compression: lz4 returns fully negative ints instead of size/ssize_t
+
+* Sat May 23 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.21-3
+- Fix HTTP submission to xymoncgimsg script (Reported by k_vlado@hotmail.com)
+- cgi: pass content length data of POST blobs
+- strfunc: don't re-calc length when converting to strbuffer
+- xymoncgimsg: Match max message CGI size to xymond size
+- xymoncgimsg: Ensure binary/compressed data OK
+
+* Fri May 22 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.21-1
+- Update to 4.3.21
+
+* Wed May 20 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.20-3
+- Properly calculate "worst case scenario" for LZO/LZ4 when compressing
+- LZ4 returns <0 on decompression failure
+- Fix display of compressed message size when an error occurred
+- If BFQ message is too large, remove it from the queue rather than
+  trying again and wedging. xymond: exit on perm errors.
+
+* Tue May 19 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.20-2
+- Fix spurious flapping detection for non-color-changing modifies
+  (Reported by Mike Burger)
+
+* Fri May 15 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.20-1
+- Update to 4.3.20
+- Rebuild HTML man pages to incorporate man patches
+- Add BuildRequires: man2html
+
+* Thu May 14 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.20-0.2.2
+- reduce criteria non-match from error to debug
+
+* Wed May 13 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.20-0.2.1
+- update to 4.3.20-rc2
+- fix broken normal modify statements; document syntax in xymon(1)
+
+* Tue May 12 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.20-0.0.2
+- ugly hack to interpret constants in combo.cfg properly
+
+* Tue May 12 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.20-0.0.1
+- update to 4.3.20-rc1
+- remove upstreamed patches
+- add xymon.c-ares.noegrep.patch   
+
+* Tue May 12 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-35
+- modify vaildity support (duration specifiers) + modifyup/modifydown
+  to prevent modifies from accidentally moving status the wrong way
+- send status messages through when a new modify cause is inserted,
+  even if color has not changed
+
+* Thu May 07 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-33
+- don't crash in xymond_alert when testing against an undefined hostname
+  (Thanks, John Thurston)
+
+* Wed May 06 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-32
+- set Physical Used memory to previous calculations
+
+* Sun May 03 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-31
+- fix "actual" memory calculation on recent linux (rhel7/f21)
+  (Reported by Dominique Frise)
+- add dash to uptime report to match other client status messages
+- fix building on F20/21
+
+* Thu Apr 30 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-28
+- don't drop host records before dropping logs
+- wrap POSIX binary tree modifications for key drops with #ifdef's
+- fix small leak with result buffer on hosts reload
+
+* Wed Apr 29 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-26
+- wrap uname() availability if #ifdef's for very old systems
+- start using setenv instead of putenv if present 
+- fix leaks loading tcp services and checking purples
+- add GRAPHS_<test> specifier patch (from Werner Maier)
+
+* Tue Apr 28 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-22
+- add coverity flag to spec file
+- add acknowledgements patches from Andy Smith
+- fix leak in network hostinfo load
+- clichg buffer overrides (different value than client) should be handled properly
+- coverity: guard against some div-by-zeros in compression.c
+
+* Fri Apr 24 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-20
+- xymond_client: svcs crash debugging
+- hosts in downtime shouldn't go purple
+
+* Wed Apr 22 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-19
+- cache 'line1' field for status messages (perf4)
+- but don't even request them for xymongen (since it doesn't use them)
+
+* Tue Apr 21 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-18.5
+- exclude fake clientcolumn status from info page; add docs
+- pre-compute encoded modify strings (perf3)
+- fix a valgrind complaint
+- fix a divide-by-0 error in some cases (Reported by John Thurston)
+
+* Mon Apr 20 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-18.1
+- fix size args to lzo compression routines improperly case on EL3/4
+- fix an older GCC warning in xymond_rrd
+- performance tuning in posttochannel (perf1 / perf2)
+
+* Mon Apr 20 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-17
+- upstreamed patches
+- create host tree on first client receipt, not first status
+- add fake "client" test similar to info/trends, with link to clientlog
+- don't exceed buffer size when reading from msgp (long offset for msgp)
+
+* Fri Apr 17 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-15
+- really fix the RPM hardlinking issue
+- fix a missing table cell tag closure on pages
+- improve write buffering for page output in xymongen
+- pre-allocate channel master working memory for data/client messages
+- fix a memory leak in handling bbwin/winps svcs test results
+- fix a memory leak with zlib compression (oops)
+
+* Fri Apr 17 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-14
+- fix unterminated log sections in logfetch (Reported by Johan Sj�berg)
+- build: convert ZLIBLIBS/INCDIR to more generic COMPLIBS/INCDIR
+- experimental LZ4 support now available (if present during build)
+- fix column documentation link (Reported by Andy Smith)
+- httphead= syntax in hosts.cfg to support http HEAD method requests
+
+
+* Mon Apr 13 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-11
+- fix confreport.sh not displaying timespecs
+
+* Fri Apr 10 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-10
+- pulldata= specifiers now honored (Reported by John Thurston)
+
+* Thu Apr 09 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-9
+- SELinux: fix cache permissions for snapshots and availability reports
+  (Reported by Dirk Kastens)
+- SELinux: also, acknowledgements/notifications.log reading
+- remove auto-add of FollowSymLinks to pre-existing snippets on upgrade
+
+* Wed Apr 08 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-5
+- add deflateBound() for really old zlib (EL3 building works again woot)
+- fix spurious filtering out of summary reports
+- accept URLs for http/https (etc) regardless of protocol case
+- add URL recognition for "ftps"
+- fix URL recognition for "ldaps"
+- hardlink cgiwrap cgi copies instead of symlinking to obviate the need
+  for FollowSymLinks to be set in apache
+
+* Fri Apr 03 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-3
+- fix wrong system clock delta reported when xymon_client in --local mode
+- maxpeerwrites defaults to 1 (when message rcvd via channel)
+- compress:none is deprecated (confusing), use compress:plain instead
+- release
+
+
+* Wed Apr 01 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-2
+- update to 4.3.19 final release
+- remove all upstreamed patches
+- lower xymond_channel pause from 25us to 15us
+- limit consecutive writes to peers when something was received from xymond
+  (default=2; --maxpeerwrites to change)
+
+* Mon Mar 30 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7618.30
+- xymond_channel: only walk msgq for flushing every 5s
+- don't setup BFQ's we're not going to use
+- rotate BFQ's on each message posted, not just extcombos
+
+* Sat Mar 28 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7617.29
+- patch BFQ rotation semantics
+
+* Wed Mar 25 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7617.28
+- update to 4.3.19-rc1 (see Changelog for full details)
+- remove various upstreamed patches / specfile cleanup
+- proxy: recombine incoming combo messages into extcombos in bfq mode too
+- proxy: ensure we're not above MAX_OPEN_SOCKS when selecting
+- Terabithia-specific CHANGES documentation cleanup
+- fix "client" messages being sent only to final destination server
+- support SUBMITMODE as preferred variable for one-way client messages
+- LOGFETCHSKIPTEXT/LOGFETCHCURRENTTEXT supported via override env variables
+- LOGFETCHSCROLLBACK env variable now preferred over LOGFETCH_SCROLLBACK
+- fix logfetch not sending correct final snippet in low-maxbytes trigger situations
+- fix logfetch readline incorrect options on EL3/4
+- allow "--debug=stderr" to be specified to logfetch to prevent contents from going
+  into raw client message sent to xymon
+
+
+* Mon Mar 23 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7614.26
+- update to (latest branch version)
+- fix "client" messages being sent only to final destination server
+- support SUBMITMODE as preferred variable for one-way client messages
+- LOGFETCHSKIPTEXT/LOGFETCHCURRENTTEXT supported via override env variables
+- LOGFETCHSCROLLBACK env variable now preferred over LOGFETCH_SCROLLBACK
+- fix glibc free oddness in logfetch
+- fix logfetch not sending correct final snippet in low-maxbytes trigger situations
+- fix logfetch readline incorrect options on EL3/4
+- allow "--debug=stderr" to be specified to logfetch to prevent contents from going
+  into raw client message sent to xymon
+
+* Sun Mar 22 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7611.23
+- update to (latest branch version)
+- fix debug filename in logfetch.c
+
+* Fri Mar 20 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7601.20
+- add acknowledgements.sh report (Thanks, Andy Smith)
+
+* Sun Mar 15 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7601.19
+- update to (latest branch version)
+  (fixes pre-tag oddness in msgs/procs tests)
+- only run restorecon on initial installs to prevent huge /var/lib/xymon/
+  directories from getting forceably rescanned on package updates
+
+* Fri Mar 13 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7597.17
+- update to 7597
+
+* Fri Feb 27 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7591.15
+- add TCPCHUNKSIZE control over max number of accept()s per loop
+- when c-ares is compiled/bundled in, ensure MIT added to License field
+- rpmlint: no man page for xymoncombine yet
+- filter CDATA in xymondboard
+
+* Thu Feb 26 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7591.13
+- update to 7591
+- revert various find_xymon_rrd optimizations for debugging
+- ensure decompression buffers are properly null terminated
+
+* Tue Feb 24 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7585.9
+- update to 7585
+- calloc mismatch and leak fix in xymonrrd.c
+- no point reloading protocols if we're not also reloading rrddefs
+- fix msglen_t missing in dietlibc build
+- add EXTIME= patch
+
+* Mon Feb 23 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7583.8
+- really fix the apache 2.4 stuff
+- add 'clientsubmit' support; like clientconfig, but the opposite
+- add 'xymondclientlog' alias for 'clientlog' query
+- minor changes to help text for xymoncombine
+- properly check for system lzo header files in test-lzo.c
+
+* Thu Feb 19 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7582.7
+- upstream apache 2.4 modifications as needed (Thanks, Jean-Pierre Pitout)
+- server-side support for "deltacount" line counting (xymond_client/rrd)
+- fix SELinux policy for rrdcached socket file writing
+- fix non-working rrdcached directory walking
+- reduce debugging verbosity in loadhosts
+- logfetch: fix unterminated string in curpos assembly
+- xymoncombine: add error output if given bogus initial args
+- xymonproxy: add 'arrival' time for incoming client messages
+- xymond_client: use xymomd/xymonproxy receipt time instead of current
+  when calculating message clock drift
+- update to 7582
+
+* Wed Feb 18 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.19-0.0.7575.3
+- update to 7575 / branch packages (see upstream change notes)
+- package work removing upstreamed patches
+- update bundled minilzo to 2.09
+- xymongrep: don't load from xymond unless asked
+- properly clean up when we cannot give a response to a message
+- add xymoncombine utility
+
+* Thu Feb 05 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-1
+- updated to xymon 4.3.18 (final) - now the fun part begins
+- fix dietlibc building option on Fedora (will require zlib-static)
+- add generic shims to compression routines, enabling "none" and "lzo"
+- compression is still experimental
+- fix spurious trailing byte being posted to bfq
+- revert multipeer for locator services patch
+
+* Tue Feb 03 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.8.1
+- fix building on <EL5 with old PCRE
+
+* Mon Feb 02 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.8
+- compression.o should be in comm libs, not standard xymon libs
+- fix client building in local mode, also experimental shared lib builds
+- add multibfq syntax support to xymond_client/rrd, xymonnet and xymonproxy
+- wrap lz4 and (full) lzo in #ifdef and remove hard BuildRequires
+- patch refactoring and cleanup
+- updated to 7492
+
+* Sun Feb 01 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.8.5.8
+- proxy: only send "clientlog" and "hobbitd" messages to final server
+- updated README to note dual xymon/xymon-client package installs now recommended
+- don't double-restart xymonlaunch on upgrade if both packages are installed
+
+* Fri Jan 30 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.8.5.7
+- xymond and client support for multiple backfeed queues
+- xymon: add --bfq support and --bfq=# to specify BFQ number on submission
+- xymond: --bfq=# to specify BFQ numbers (0->#)
+- enable XYMON_SENDBFQ override for various tools
+- local clientlaunch.cfg optional in server package
+
+* Thu Jan 29 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.8.5.5
+- F18: don't bail in test-rrd.c due to -Wunused-variables
+
+* Wed Jan 28 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.8.5.4
+- performance improvements in channel posting
+- make "optional" include keyword actually work
+
+* Tue Jan 27 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.8.5.3
+- don't recompress any compressed messages at transport time
+- don't post to peers when we've filtered the message out
+- filterlater bug fix and other xymond_channel tuning
+- fix xymond_client --local mode seeing our submission as a dup message
+  (Thanks, Guillaume Chane)
+
+* Mon Jan 26 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.8.5
+- fix --local client path (Thanks, Guillaume Chane)
+- fix dumb --multirun bug
+
+* Sat Jan 24 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.8.4
+- logfetch: fix off-by-one on CURRENT posting on otherwise-ignored line
+- logfetch: logs-were-rotated note should not be on stdout
+- xymond_alert: fix stale alerts not being purged from checkpoint file
+- xymond_channel: add metafilter, exfilter, and metaexfilter options
+- xymond_channel: fix improper case logic on "standard filter" (oops)
+- xymond_channel: add --multrun option for primitive load balancing
+- xymond_channel: (multilocal) multiple copies of same cmd can be run
+- sendmsg: fix memory leak with compression buffer
+
+* Thu Jan 22 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.8  
+- logfetch/client-local: client support for "deltacount" syntax
+- logfetch: accept --debug=<debugfn> syntax            
+- xymon: accept --compress=<encoder> syntax (only zlib supported)
+- xymondigest: enable use of SHA-256/512/224/384 as digest formats
+- xymond_client: reduce overly-verbose debugging in client message handling
+- xymond_client: prepend flagged log lines with "TEXT=" string if any
+- xymond_client: send modify messages subsequent to 'msgs' generation
+
+* Tue Jan 20 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.7
+- zlib, lzo, and lz4-devel packages now BuildRequires (EPEL for lz4)
+- various compression fixes, and add xxhash hashing bits
+- performance optimizations
+- slight refactor of comboflush trunk/branch patches
+- increase max buffer to 64MB, max message to 32MB, and begin to distinguish the two
+- logfetch: add "current line" marker in msgs output (Thanks, Franco Gasperino)
+- LOGFETCH_SCROLLBACK can be set to configure how many runs back logfetch should
+  begin parsing data (max/default = 6)
+- update sqlite to 3080801
+- flag version to match full RPM release string + 'terabithia' for tracking
+
+* Mon Jan 19 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.5
+- more compression support (experimental!)
+- xymon: add --compress option (other binaries use XYMON_COMPRESS from env)
+- added various routines for buffer/binary safe message transport
+- add minilzo object
+- prevent prematurely Terminated vmstat processes from giving invalid RRD data
+- initscript: rely on rh_status when determining if we're already running
+  and ignore lock files if "subsys is dead"
+- update sqlite to 3080800
+- btree fixes
+
+* Mon Jan 12 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.4.1
+- backport compression routines from trunk 7491
+- modify compression library routines for 64bit (int -> size_t)
+- disable dietlibc building on Fedora
+
+* Fri Jan 09 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.3
+- revert posix btree usage on 4.x
+- logfetch: properly count valid ignore/trigger regex's only
+- fix an F21 warning
+
+* Thu Jan 08 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7.1
+- logfetch: deal with nulls in log files (Thanks, Franco Gasperino)
+- logfetch: handle multiple triggers in low maxbytes situations properly (Thanks, Franco Gasperino)
+
+* Mon Jan 05 2015 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.7
+- fix crash with AAAA records in xymonnet (Thanks, Mark Felder)
+
+* Mon Dec 22 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.6.2
+- additional debugging in logfetch
+
+* Wed Dec 10 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.6.1
+- minor fixes for f20 builds
+
+* Tue Dec 09 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.6
+- use maxbfqsize as the default buffer size when building extcombo msgs
+- xymon 4.x: include backport compression.c/.h from trunk
+- allow >4MB extcombo offsets
+- add xxHash/minilzo tarballs to SRPM
+- update sqlite to 3080704
+
+* Thu Nov 06 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9.4
+- xymonnet: when 'headermatch' specified, match even when HTTP body is null
+- posix: perform manual tree deletions for hostlist
+- remove various debug lines
+- rrd tree leak
+
+* Fri Oct 17 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.9
+- hostlist / btree / posix leaks and null checks
+- type fixes to posix btree tdestroy patch
+- build on RHEL6.6
+- patch tweaks for trunk builds
+
+* Wed Oct 08 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.8
+- add debug option to logfetch, xymongrep
+- add comma-separated XYMON(EX)NETWORK support to xymongrep
+- fix flipped logic in envexport.patch
+- fix memory leak with POSIX btrees enabled (glibc req.)
+
+* Thu Oct 02 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.5
+- ensure cgiwrap receives the proper SELinux context
+- try to re-attach if BFQ goes away when sending
+
+* Mon Sep 29 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.2
+- add new STRBUFSZ macro
+- add new copytobuffer() routine, safer strbuffergrow()
+- xymond_rrd: wait 10m before starting automatic/on-demand cache flushes
+- xymond_history: flush allevents file on idle
+- skip over "export " in environment files that are no longer processed
+  via shell includes
+
+* Sun Sep 28 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.1
+- update to 4.3.18 (7491)
+- remove upstreamed patches
+- add rrddefinitions.d and client-local.d directories
+- on upgrade add appropriate apache config option for cgiwrap
+
+* Fri Sep 26 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7471.1
+- update to 7471
+- remove upstreamed patches
+- xymond_history: proper compilation options for pread(); add strings.h
+
+* Thu Sep 25 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.36
+- xymond: add "ip=" filter to xymond (XMH_IP internally)
+- xymond: add "histsync" command to force resync through stchg channel
+  (uses xymondboard-style filters to select affected tests)
+- xymond_rrd: CACHESZ increased to 64 (= ~1 hr cache with default RPM params)
+- xymonlaunch: log to stderr when a task reaches max number of failures
+- xymond_history: --epochtimestamps option preferred over $EPOCHHIST to enable
+- xymond_history: rewrite save_statusevents handler for POSIX compliance
+- xymond_history: various other performance improvements
+
+* Mon Sep 22 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.35
+- xymonlaunch: reduce failure delay output to debug level
+- xymond/xymonproxy: leave IP:port command arguments as we found them
+- xymond_rrd: increase default CACHESZ from 12 to 23
+- xymond_rrd: add --cachemultiplier option to decrease global flushing interval
+- xymond_rrd: properly wrap rrd_flushcached for rrdtool-1.4+
+
+* Thu Sep 18 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.33.1
+- don't use POSIX btrees under dietlibc (not supported)
+- reduce bfq verbosity when debug enabled
+- xymonproxy: improve error checking with all TCP connection errors
+- xymonproxy: don't dump the full combo message when debugging enabled
+- xymonproxy: add conn id when --log-details enabled
+- xymonproxy: separate initial and incremental buffer size tunables
+- xymonproxy: handle SIGPIPE
+
+* Tue Sep 16 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.31
+- xymonlaunch: additional verbosity when starting and stopping changed tasks
+- xymonlaunch: fix FAILDELAY not working, and accept m/h/d
+- increase speed of channel posting
+
+* Mon Sep 15 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.30
+- xymond: add --reload-interval option (default: 300s)
+- xymond_alert: reload hosts regularly to pick up XMH_RAW and other modifications
+  for alert scripts
+- xymond_alert: add --reload-interval option (default: 300s)
+- xymond_alert: add --loadhostsfromxymond option
+- xymond_alert: exit immediately if xymondboard unavailable to prevent false
+- check SENDHUP and DELAY for tasks.cfg alterations
+- xymonproxy: additional error checking around connection issues; more debugging
+
+* Wed Sep 10 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.28
+- add FAILDELAY option to xymonlaunch
+- use POSIX btree routines
+- xymonproxy: log error on EPIPE, but don't exit
+- fix wrong vmstat call on AIX (reported by Stef Coene)
+- xymond_rrd: do the right thing when rrdcached in use (inspired by Martin Sperl)
+- showgraph.cgi: respect rrdcached and try to flush any files seen
+
+* Wed Sep 03 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.27
+- xymond_alert: fix mis-parsing of (EX)DISPLAYGROUP= entries
+- don't create rrd sockets unless caching and writing to disk
+- add random splay to proxy bfq retries to prevent flooding
+- add debugging
+
+* Thu Aug 28 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.25
+- xymond: fix possible corrupted log record on droptest
+- xymond: separate scheduled tasks report with newlines
+- xymond_alert: send final recovery when dropping a host or service
+- xymoncmd: revert login shell patch - make shell only interactive
+- remove unneeded comparison in cronmin patch
+- more patch consolidation
+
+* Mon Aug 18 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.23
+- patch cleanups and refactoring
+- ensure updated versions of included libs always present in SRPM
+- client-local: Requires main client package in Pre
+- xymond_rrd: bail out sooner if --bfq given and not yet ready
+- xymoncmd: respect the SHELL environment variable (if set)
+- xymoncmd: when no cmd given, print note and make resulting shell a login sh
+- xymond_capture: determine channel from environment if possible
+- xymond_filestore: no default XYMOND_CHANNELNAME
+- xymond: fix FTBFS on rh7/ancient gcc
+
+* Fri Aug 15 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.20
+- xymonproxy: --extcombine and --no-extcombine opts available in --bfq mode
+- xymond_channel: fix completely broken safechannelexit patch
+- xymond_alert: on recovery set ACKCODE to "0" instead of empty string
+  (restore previous behavior)
+- xymond_rrd: don't re-stat() or utimes() RRD files unless needed
+- xymond_rrd: move cacheflush and zombie wait() check out of critical loop
+- xymond_rrd: fix not re-executing external processor on SIGPIPE
+- xymond_rrd: ensure external processor stream is fully buffered
+  (to force proc flush after each xymond message, set RRD_EXTPROC_DOFLUSH)
+- xymonnet: leave services db open for lookups
+
+* Mon Aug 11 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.18.1
+- track # of bfq recovered (retried successfully) messages in xymonproxy status
+- xymonclient (linux only): add 'f' option to ps list (ASCII art forest)
+- xymond_client: skip initial spaces/ascii when PCRE matching process names
+
+* Mon Aug 11 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.18
+- add parsing support for AAAA records in xymonnet (reported by Anthony Letchet)
+- xymon binary should expect a response to the 'proxyping' command
+- fix flipped logic on 'oldgcc' build conditional
+- fix sockets leaving garbage servers list on cleanup in xymonproxy
+- increase max sockets in xymonproxy to 4K, retry times from 4x10s to 5x12s      
+
+* Sun Aug 10 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.16
+- fix missing xymonclient.cfg.d on server package
+- fix off-by-one error in logfetch poscount patch
+- xymoncmd: try uname() syscall before forking uname command
+- xymonproxy: fix bufp clearing and nextconntime not being set in P_CLEANUP
+- xymonproxy: add 'proxyping' command
+- svcstatus.cgi: set INFOQUICKLOAD to prevent full hosts.cfg load on info pages
+
+* Sat Aug 09 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.15
+- 4.3.18 branch now default
+- add xymonserver.cfg.d and xymonclient.cfg.d directories as config includes
+- exclude README and .rpmorig files from directory config scans
+- fix memory segfault in acknowledge.c (reported by Martin Lenko)
+- fix spurious warnings when xymond_filestore writing empty files
+- logfetch: increase max allowed buffer size from 100K to 10M
+- logfetch: (branch) de-hardcode position count
+- xymonproxy: retry posting to bfq when fails
+- handle cookies throughout as strings instead of numbers
+- reduce c-ares version requirement to 1.5.1 (SONAME.2)
+- EL5/6: use system c-ares-devel library instead of bundled one
+
+* Thu Jul 31 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.12.1
+- use client-built binaries in xymon-client packages to remove unneeded
+  shared library requirements (non-trunk)
+- remove unused pthread linkage
+
+* Wed Jul 30 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.11
+- use more accurate cpu info from 'top' on Linux
+- add new xymon-static, xymon-devel, and xymon-libs packages
+- use build conditionals for a shared library
+
+* Tue Jul 29 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.9.2
+- only include xymon-snmpcollect when snmp is enabled
+- improve error message when building without selinux-policy RPM
+
+* Thu Jul 24 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.9
+- spec cleanup
+
+* Wed Jul 23 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.8
+- actually close the channel in client_channel to allow clients to
+  stick around for a bit (eg, flushing caches) w/o still being attached
+- xymond_alert: fix 64bit cookie buffer overflow
+- xymond: don't try to pass down drops for null hostname records
+
+* Mon Jul 21 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.6
+- really don't build xymonping anymore
+- be a little more strict about checking return values
+- server RPM now explicitly lists libexec files to avoid bringing in
+  xymon-tools utilities
+
+* Thu Jul 17 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.4
+- add documentation for xymondboard filter patches
+- add xymond-xboard-v2.1.diff
+
+* Thu Jul 17 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7464.3
+- update to 7464 (--uptime-status support)
+- add timestamp filters to xymondboard (lastchange,logtime,validtime,acktime,disabletime)
+- genericize the xymondboard msg filter to other include fields (ackmsg and dismsg)
+- fix the xymongen fix
+
+* Mon Jul 14 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7463.8.1
+- check for corrupted lines when xymongen is downloading the board
+- spec: optional nanomsg build requires libnanomsg
+
+* Thu Jul 10 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7463.7
+- add new xymon-tools RPM with standalone binaries generated at compile time
+- configure script cleanly exits if given unrecognized arguments (Ken Dreyer)
+- strfunc.c: check for memory allocation failures (Sean Clark)
+
+* Wed Jul 09 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7463.6
+- ensure rpmbuild-specified compile options are passed in to GCC
+- add -Werror=format-security to meet future Fedora requirements
+- xymond: ensure buffer sizes are size_t instead of unsigned ints
+
+* Fri Jun 27 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7463.4
+- XYMONNETWORK can now accept a list of networks (comma separated)
+- $XYMONEXNETWORKS -> $XYMONEXNETWORK to match above (rpm upgrade will handle)
+- max number of networks/excluded networks increased from 31 to 63
+- note: xymongrep still not yet modified
+
+* Thu Jun 26 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7463.3
+- fix small memory leak when dropping host tests
+- update httpd legacy patch to remove unneeded escaping
+- xymond_rrd/EL6: built with 1.4.8-13 but should remain ABI compatible        
+
+* Tue Jun 24 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7463.2
+- rebuilt on rhel7 (final)
+- add error check for bfq buffer size malloc fail
+- fix garbage modifiers left in the list
+- increase debugging around modifier calculations
+- xymonclient: only don't-exclude tmpfs, not devtmpfs
+
+* Fri Jun 20 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7463.1.75
+- xymonlaunch: don't run crondate tasks more than once the same minute
+  (reported by Andy Smith)
+- update sqlite to 3080500
+- xymond_alert: send recovery messages for stale alerts (again?)
+- xymond_alert: separate modifiers from the base status message for clarity
+- xymonnet: don't shortcircuit "ldap://" tests by assuming the test address has
+  the same IP of the host itself
+
+* Tue Jun 10 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7463.1.60
+- xymonclient: don't exclude tmpfs partitions from disk space scanning
+
+* Fri Jun 06 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7463.1.51
+- xymonclient: return number of installed processing units (cores)
+- xymonlaunch: don't run crondate tasks more than once the same minute
+  (reported by Andy Smith)
+- increase default xymon command timeout from 15s to 50s
+- xymond: bugfix hostfilter
+
+* Fri May 30 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7463.1.5
+- xymonnet: add httpclient(,only,svc) and dataonly= tests
+
+* Sun May 04 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.18-0.0.7463.1
+- logfetch: fix ignorecount/triggercount mismatch
+- logfetch: fix wrong bytesread variable with small bufsz
+
+* Mon Apr 14 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-13.1
+- update sqlite to 3080403
+- fix errbuf not being printed in daemon status messages
+- add unconfined_execmem_t unix_dgram_socket sendto in SElinux for
+  multigraphing
+
+* Thu Mar 27 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-12
+- fix building on ancient PCRE; convert new functions to macros
+- xymonclient: fix hostname/ostype overrides in sysconfig
+- xymonclient: fix 'ps' line for old procps and ostype on EL3
+- update sqlite to 3080402
+
+* Mon Mar 24 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-11  
+- xymond_rrd: ensure templates are properly cached
+- xymonlaunch: small logging chances
+
+* Sun Mar 23 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-10
+- valgrind: pedantic buffer freeing in xymond_channel
+- xymond: don't unlink an unconfigured pid file
+
+* Sat Mar 22 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-9
+- xymond_rrd: when in --no-rrd mode don't try to create directories;
+  send DS modifies before doing any file operations
+- fix some valgrind/compile warnings in 7461; resolve two leaks
+- add bundled() provides per Fedora guidelines for included sha2 lib
+  from Olivier Gay
+- update Source URL for branch/trunk versions to actual SF tarball
+- on new installs, assume MACHINEDOTS set by xymoncmd environment
+
+* Fri Mar 21 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-8
+- update to branch 7461
+- even more documentation for patches
+- xymond_filestore: add auto-reading of channel if type not specified
+- sendmsg: try to re-sent messages in more cases of connection failure
+- svcstatus: print human readable connection error messages
+- xymond_channel: don't try to close the channel over and over
+
+* Sat Mar 15 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-7.1
+- more documentation for patches
+- add XYMOND_CHANNELNAME env variable to xymond_channel's children
+
+* Thu Mar 13 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-7
+- update sqlite to 3080401
+- update clienthome patch
+- add documentation to several patches
+- xymond_channel: decrease usec wait timer from 50 to 25
+- add /hobbit -> /xymon apache line as patch
+
+* Tue Mar 11 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-6.3
+- update sqlite to 3080400
+- add bundled() provides per Fedora guidelines for included libs
+  and update License to include BSD-like (librmd, md5.c)
+- package a hosts.d breakout directory
+
+* Fri Mar 07 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-6.2
+- modify package build defaults for rhel7 (beta)
+  (+systemcares, -dietlibc, -altshell)
+- explicitly require net-tools package (netstat, ifconfig, etc) since
+  it's no longer pulled in by initscripts         
+
+* Thu Mar 06 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-6
+- xymonlaunch: don't kill ourself while cleaning up
+- debug output speed optimizations
+- error/debug output now timestamped with microseconds
+
+* Mon Mar 03 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-5
+- fix filter sending duplicate messages
+- clean up xymond_sample debug output; fix log rotation on startup
+
+* Sun Mar 02 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-4.5
+- xymonlaunch: wait a few seconds before exiting when given TERM
+- xymond_channel: continue sending buffered messages to peers when
+  given a TERM (though disconnecting from the channel asap)
+
+* Sun Mar 02 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-4.4
+- xymond_channel: abort when the semaphore set goes away on us
+- dietlibc: only replace msglen_t in dietlibc build - not regular
+- try to organize/recombine myriad patch files
+- more spec file cleanup
+
+* Sat Mar 01 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-4.2 
+- xymond_channel: match special messages more quickly
+- xymond_channel: actually filter on the right persistent buffer
+- March is not April 
+
+* Fri Feb 28 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-3
+- sprintf->snprintf in 64bitcookie patch
+- xymond_channel: int -> size_t conversion
+- xymond_channel: add --filterlater option (speed up semops at the
+  expense of memory allocation/deallocation)
+- xymond_channel: reduce timeout in write attempts to channel reader
+- xymond_channel: keep a constant message buffer size
+- xymond_channel: add multilocal patch
+- man page / documentation added for certain patches
+- spec file cleanup
+
+* Mon Feb 24 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-2.1
+- fix wrong combo calculation in combo_addchar
+- increase compiled hard limit on xymonproxy sockets from 256 to 1024
+- increase MAX_XYMON_INBUFSZ from 10MB to 16MB
+- XYMONPROXY_NOEXTCOMBINE environment variable, if set, causes msgs to
+  be passed straight through when in --bfq mode
+
+* Sun Feb 23 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-1
+- update to release 4.3.17
+- move XYMONHOME/server symlink upgrade logic to RPM %%posttrans
+- consolidate important entries in the CHANGES.terabithia file
+- minor fixes for building on ancient gcc (2.96) with ancient sed
+
+* Fri Feb 21 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-0.0.7440.15
+- don't expect a response when sending an actual schedule command
+- add one-way xymond checks for clientconfig and 'config hosts.cfg' commands
+- xymonproxy: use sendmessage_local when in bfq mode
+- xymonproxy: die if we get EPIPE writing to a socket
+- xymonproxy: log entire first line when logging
+- xymonproxy: bfq logic implemented for real
+
+* Fri Feb 21 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.17-0.0.7440.10
+- client-static: (rpmlint) copy man pages, don't symlink
+- xymon: (rpmlint) un-config-mark the /static/ directory.               
+  (Note: to save customizations, copy /static/ and point the web root
+  to an appropriate location)
+- do not use altshell (if configured) in non-linux xymonclient-*.sh scripts
+- ensure facl/logreader logic runs on server rpm        
+- check in xymond whether we're in a one-way environment before
+  attempting to respond (based on patch from Franco Gasperino)
+
+* Wed Feb 19 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.16-8
+- updated to branch 7440
+- change server root from /usr/share/xymon/server to /usr/share/xymon
+- removed some pre-2012 legacy upgrade code (mostly symlink moves)
+- update dietlibc build in EL5/6 to 0.33-0.1904.20120825
+- warn when using --local mode and xymon-client-local not installed
+- fix compile warning about uninitialized variable in xymonproxy
+- fix xymond (stdout) logs not rotating when using LOGFILE in tasks.cfg
+  instead of passing in a --log filename (thanks Franco Gasperino)
+
+* Thu Feb 13 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.16-4
+- gcc: fix some compiler warnings on EL4
+
+* Thu Feb 13 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.16-3
+- updated to branch 7436
+- upstreamed safexargs patch removed in branch builds
+- auto-disable SELinux/snmp before EL5
+
+* Mon Feb 10 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.16-2
+- updated to branch 7430
+- add xymon-client-local subpackage, including xymond_client and
+  localclient.cfg, to allow the --local option in xymon-client
+- localclient.cfg itself removed from the xymon-client package
+- use $SHELL when passing to nohup in client
+
+* Mon Feb 10 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.16-1.5
+- updated to branch 7430
+- Static CSS and GIF content marked config(noreplace) to preserve edits
+- dietlibc+facl enabled (by default) only RHEL6+/Fedora
+- update sqlite to 3080301 + only include in trunk builds
+- GIF docs moved to docdir, fix file typo
+- exclude patch debris from static web directories
+- remove upstreamed trunk patches
+- remove initscript munge-ing during Makefile
+- update installstaticwww patch
+- update c-ares patch for trunk
+- add raw msg= filter option
+
+* Sun Feb 09 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.16-1.1
+- fix systemcares logic on Fedora
+
+* Sun Feb 09 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.16-1
+- update to release 4.3.16
+- dietlibc build (static client RPMs) fixed and re-enabled
+- client-static RPM no longer requires client-core
+
+* Fri Feb 07 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.16-0.0.7391
+- update sqlite to 3080300
+- update branch
+- debugging code
+- spec cleanups
+
+* Mon Feb 03 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.15-3
+- bump package version
+- RPM Requires: fix cares-devel -> c-ares-devel
+- fix headermatch crash
+- always label /var/run/xymon/ for selinux even when actually /run/xymon/
+
+* Sun Feb 02 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.15-0.1
+- update to 4.3.15 release
+
+* Mon Jan 27 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.14-0.1
+- update to 4.3.14 release (branch)
+- use system c-ares-devel library on F19 and newer (>1.10.0)
+
+* Tue Jan 21 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-4
+- update to trunk/branch 7361
+
+* Mon Jan 20 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-3
+- update to trunk/branch 7358
+
+* Fri Jan 17 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-2
+- add tmpfiles.d configs on systemd builds for /var/run/
+- xymonproxy: add debug lines
+- xymonproxy: bfq experimental fixes
+
+* Mon Jan 13 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-1.1
+- rpmlint warning on client init script
+- fix incorrect _selinux_policy_version Require
+- client: client.d now marked as config(noreplace)
+- remove some legacy upgrade logic
+
+* Thu Jan 09 2014 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-1
+- update to release 4.3.13
+- rpmlint: remove .orig file from /docs/
+- selinux: fix RPM macros for F20
+- systemd: add 'preset' file so service aliases work
+- initscript: client now matches server script
+- add makefile xargs patch
+- remove upstreamed patches:
+  xymon.rrd_pipe.patch
+  xymon.4313-tlsv1.patch
+
+* Tue Dec 17 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7316.27.1
+- eliminate one compiler warning in gcc 4.8
+
+* Mon Dec 16 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7316.27
+- xymonproxy.c: --bfq fixes
+- xymon.c: print warning when assuming localhost recipient
+- systemd: xymon.service -> xymonlaunch.service
+- systemd/sysv: configure xymonlaunch log file dest in /etc/sysconfig/xymonlaunch
+- sysv: use xymoncmd here too
+- rpmlint: re-ghost xymonpasswd file on new install
+- logreader group: if enabled, append supplementary group (don't replace)
+- less verbose hostinfo debugging
+
+* Tue Dec 10 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7316.25
+- enable SENDHUP for xymond/xymonproxy in tasks.cfg for logrotation (F18+)
+- use apache 2.4-compatible snippets in 2.4 systems (F18+)
+- experimental --bfq option to xymonproxy
+- add docs for various patches: modify-valid, SENDHUP
+- bump sqlite to 3.8.2
+- fix the 'stale' alert patch (maybe?)
+- add TLSv1 patch
+
+* Thu Dec 05 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7316.24
+- add XYMONEXNETWORKS support to exclude NET: tags from xymonnet
+- xymond_rrd: don't die from SIGPIPE when an external processor goes away
+
+* Wed Nov 27 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7316.21.1
+- really fix the systemd service unit file
+
+* Wed Nov 27 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7316.21
+- xymonlaunch: log file now set in /etc/sysconfig/xymon* instead of
+  the init script itself. SysV systems have default set in init.d,
+  systemd systems have no default and will go to syslog.
+- support proper systemd install/upgrade scriptlets
+- fix some f19 compile warnings
+
+* Wed Nov 27 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7316.19.8
+- xymond_alert: send "recovery" message out for stale alerts before dropping
+- tag error messages from xymonlaunch/xymond_channel in worker logs
+- reduce debug verbosity in hostinfo
+- include sample xymoncgimsg apache config snippet
+- include xymon.service file for systemd (F18+)
+- remove "ghost" from xymonpasswd file to ensure httpd works on install
+
+* Tue Nov 26 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7316.19.6
+- update to trunk 7316 (image type)
+- fix to xymonrrd.c in 7316 preventing compile
+- fix multiple modifiers from xymond_rrd overwriting each other
+- increase STATUSMODE sleep to 4s
+
+* Thu Nov 21 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7314.19.5
+- rebuild on RHEL 6.5 (rebased openssl pkg)
+
+* Wed Nov 20 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7314.19.4
+- can specify number of subsequent status messages a modify state can override
+- accept large cookies on 64bit systems
+- xymond: log when closing connection due to timeout
+
+* Mon Nov 18 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7314.19.3
+- xymond_alert: bail out if can't connect to xymond to compare checkpoint
+- xymonproxy: increase max number of servers to 5
+- xymonnet: add debug output to dependency processing
+- add 1s sleep when STATUSMODE set to prevent submission race condition
+- restore some ancient RPM changelog history
+- update sqlite to 3080100
+
+* Mon Oct 14 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7314.19
+- log, but not a xymonnet err, when host lookup failures occur
+
+* Wed Oct 09 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7314.18
+- change content-type of HTTP response to text/plain
+- prevent HTTP 500 errors when given blank submission
+- add feature docs to sysconfig/xymon-client
+- minor tuning in clientconfig retrieval
+
+* Wed Oct 02 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7314.17
+- add HWPREDICT to default rrddefinitions.cfg
+- xymond_rrd: bail if rrddefinitions.cfg has no default stanza
+- client: when STATUSMODE enabled, fork individual xymon commands to
+  each destination in $XYMSERVERS
+
+* Thu Sep 26 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7314.16
+- modify internal timeout flag value to allow for timeouts of 0
+- $XYMON_RETRIES environment variable used (default: 2)
+- client: $XYMCONFIGSRV support when STATUSMODE is on
+
+* Wed Sep 25 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.13-0.7314.15
+- add systemd support to .spec file (F18+)
+- fix wrong result in sendmsg for halfway open connections
+- NOTE: if using bfq submission, use /usr/libexec/xymon/xymon on server
+
+* Thu Sep 19 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-14
+- honor maxmsgspercombo even when using bfq
+- banner bug fixes in xymonnet
+
+* Wed Sep 18 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-13.4.5
+- ensure 64bit safe strbuffers now that we're using larger extcombos
+
+* Wed Sep 18 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-13.4.3
+- fix: check for allocation failure in dupstrbuffer
+- debug extcombo size flushing
+
+* Wed Sep 18 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-13.3
+- fix some compile warnings on F19
+- init: we don't actually need xymonlaunch to make a pid file
+- add --bfq/--no-bfq support to xymond_client / xymond_rrd / xymonnet
+
+* Wed Sep 11 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-13
+- shm msg queue key can be 0
+
+* Sat Sep 07 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-12.4
+- faster debug print short circuit
+- add ipcs info to client report
+- report errors in bfq id generation
+- bfq size/allocation debugging
+- xymond.c: increase bf_bufsz to a size_t here too
+
+* Wed Sep 04 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-12.1
+- update trunk to 7312
+- use memmove instead of memcpy now that we're actually using large
+  buffers in combo_add
+
+* Tue Sep 03 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-12
+- update trunk to 7310
+- update sqlite to 3080002
+
+* Sat Aug 31 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-11.2
+- 4.3.x: add missing modify and hostinfo to xymond_stats
+- distinguish message timeouts from bogus/unknown commands in xymond_stats
+- specify relevant channel id on certain xymond errors
+
+* Thu Aug 29 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-11
+- trunk: update sqlite ver to 3080001
+
+* Wed Aug 28 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-10.2
+- add XYMONRUNDIR to environ.c
+- fix moarextcombo bug in rrd
+- trunk: bump included sqlite ver to 3080000
+
+* Mon Aug 26 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-10
+- bump to 7306
+- upstream bfq patches / split moarcombo for rrd
+
+* Sat Aug 24 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-9
+- bump to 7301
+- remove 2 upstreamed patches
+- reduce default bfqchunk size to 50; make environment tuneable
+- don't include /etc/sysconfig/xymon-client in xymonserver.cfg
+
+* Tue Aug 20 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-8.1
+- use proper max_backfeedsz
+- reduce default tcpcheckinterval to 1s
+
+* Tue Aug 20 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-8
+- bump trunk/branch release number
+- fixes in clientparse / combo_addchar / tcpcheckinterval patches
+- query XYMONDTCPINTERVAL env variable for tcpcheckinterval
+- propagate errors from xymon back to xymonlaunch in logfetchupdate
+
+* Mon Aug 19 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-7
+- try to cope with malformed status/client messages more
+- re-add client sempahore proceed anyway patch
+- increase bf_bufsz to size_t (msglen_t fix)
+
+* Mon Aug 19 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-6
+- update trunk to 7295
+- extend client "status" message syntax to include ostype/class
+- add STATUSMODE to xymonclient.sh and add logfetchupdate scripts
+- make location of modify override line display consistent
+
+* Sat Aug 17 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-3.9.1
+- fix do_rrd reporting
+
+* Fri Aug 16 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-3.9
+- update trunk to 7283
+- use bfq in xymonnet's report column
+- use bfg and extcombo messages in do_rrd.c
+- respect XYMON_TIMEOUT across the board in sendmsg.c for reals
+- fix double-init of hostinfo in xymond_rrd.c
+
+* Wed Aug 14 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-3.7
+- update trunk to 7280
+- update trunk combodata and clientconfig patches to match
+- don't use msglen_t in 4.3.13+, since it doesn't exist in dietlibc
+
+* Tue Aug 06 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-3.5
+- trunk/branch update to 7255
+- fix "client " pseudo-status client messages creating fake test recs
+
+* Sun Aug 04 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-3.1
+- shorten semaphore alarms to 1s on both channels and workers
+- branch fixes to xymond_client combo calls
+
+* Wed Jul 31 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-3
+- trunk update to 7250
+- branch rpm update to 4.3.13 (7250)
+- fix: dual log rotation when HUP given
+- xymond: don't attempt to continue if shm already taken
+- split xymonproxytune, xymondlogging into two patches
+- major .spec file work
+
+* Fri Jul 26 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-2
+- cleaned up RPM readme and changes files slightly
+- xymond_client.c: don't wait forever to flush combo when timeout not given
+- fix segfault in malformed client messages masq. as status messages
+- add clientconfig support to xymon.c
+
+* Fri Jul 26 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-1
+- properly count combodata messages
+- clientconfig command
+
+* Thu Jul 25 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-0.5
+- properly count combodata messages
+
+* Thu Jul 25 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.12-0.2
+- updated to version 4.3.12
+- heavier debugging in loadhosts.c:hostinfo and xymond_client.c
+- sendmsg: combodata support
+- sendmsg: honor $XYMON_TIMEOUT if in environment
+- xymond: fix combodata patch
+- xymond_client: combine data messages together as "combodata"
+- remove the following upstreamed/mooted patches:
+  - xymon.msgtimeout.patch
+  - xymon.nokilllocchildren.patch
+  - xymon.sco_sv.patch
+  - xymon.loadhosts_vpage.patch
+  - xymon.missingdropchns.patch
+  - xymon.linux-ifconfig-stderr.patch
+  - xymon.freebsd-clockstr.patch
+  - xymon.psalign.patch
+  - xymon.ipad.patch
+  - xymon.lqueue.patch
+  - xymon.rrdclearok.patch
+  - xymon.contest_errors.patch
+  - xymon.croninterval.patch
+  - xymon.rrdnospace_take2.patch
+  - xymon.sendmsgdbg.patch
+  - xymongen-4311.diff
+  - xymon_trunk.reportline.patch
+  - xymon_trunk.eolchar.patch
+  - xymon.snmp-compile-warns.patch
+  - xymon.norrd.patch
+  - xymon.shell.patch
+  - xymon.generic_client.patch
+  - xymon.cmdnl.patch
+  - xymon.loadhosts-lgbuf.patch
+  - xymon.includetabsok.patch
+  - xymon.cmdhostname.patch
+  - xymon.channelfilterenv.patch
+
+* Tue Jul 23 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-12
+- xymon.c: honor $XYMON_TIMEOUT if in environment and timeout not specified
+- even more debugging code in xymond_client
+- experimental combodata, hostsnap, senderstats commands
+- Fedora: re-enable hardened build
+
+* Sat Jul 20 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-11
+- run local client on server by including clientlaunch.cfg on new installs
+- split xymon.resetfails.patch into two patches
+- add DELAY (after NEEDS launched) and SENDHUP options to tasks.cfg syntax
+- add (existing) vmstat1-5 graphs into the trends page
+
+* Sat Jul 20 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-10.4.5
+- check for attempts to drop dirs up a path
+- xymond_client: add --flushtimeout option to delay combo msg sends
+- xymond_client: load hostinfo (if needed) before getting the next message
+- client/linux.c: more debug lines
+- weekly logrotate.conf snippet
+- remove getenv from xymonproxy which can segfault under high load when
+  multithreaded and stack enforcement is on
+- disable hardened build (performance)
+
+* Wed Jul 17 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-10.4.1
+- actually apply the psalign patch
+- fix CSS to work with iPad hover tags
+- add --lqueue option to xymond
+- xymond_rrd: swap blue and clear logic; parse clear, ignore blue
+- xymond_rrd: load host config prior to connecting socket
+- Remove netstat pid patch (unprivileged users don't get useful info)
+
+* Mon Jul 08 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-10.2
+- Fix broken clock test in freebsd (reported by Eddie Stassen)
+- Fix some incorrect DoWs in the changelog
+- Fix gcc 4.8 and dietlibc warnings
+- Fix rcsid warning in xymon-snmpcollect.c
+- Fix warning in filtering patch
+- Move some stuff around in the .spec file
+- trunk: Forward port timefunc.null
+
+* Fri Jun 14 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-10.1
+- fix 5m -> 100s update in clientlaunch.cfg, which broke at some point
+
+* Tue Jun 11 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-10
+- fix generic client patch to not leave 0-byte file in src
+- send ifconfig stderr to /dev/null on linux (need to move stats to ip)
+- add vmstat -s section on Linux client
+- fix missing cast in epoch_hist patch
+- minor patch cleanup
+
+* Mon Jun 10 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-9.1
+- add /proc/meminfo section on Linux client
+- fix improper var init in msgtimeout.patch
+
+* Sat Jun 08 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-9
+- send drop/rename commands to clichg/user channels
+- add noprefer hosts.cfg directive
+
+* Tue May 28 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-8.1
+- add xymon.psalign.patch (orig by Christoph Schug, pointed out by
+  Jeremy Laidman)
+
+* Thu May 23 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-8
+- update sqlite in trunk to 3.7.17
+
+* Mon May 20 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-7.1
+- fix availabiity logs link in uptime reports when using epochhist
+
+* Sat May 18 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-7
+- backport xymon.downtimecolor.patch
+- update c-ares version to 1.10.0 (trunk and release) and 
+  deal with the CFLAGS/CPPFLAGS mess
+- add xymon.loaddatanull.patch
+- back out stachg histsync patch
+- restore localclient.cfg and xymongrep into client package
+
+* Thu May 09 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-6   
+- don't flood xymond_history on restart unless a status is different        
+- check for debug status before calling dbgprintf in a few more places
+- increase the length of time xymond will keep around "stale" client
+  sub-messages to match the default purple expire time
+- add debug code in find_cookie
+- add missing newline in clientcountwarn patch
+- increase xymond starting and incremental buffer size from 128/32
+  to 256/256
+
+* Mon May 06 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-5.1
+- really fix the vpage/vsubpage/vsubparent parsing
+
+* Fri May 03 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-5
+- backport memory size overflow on SCO OS with large amounts of ram
+- fix vertical page/parent/subparent path and title storage
+- refer to msgs test as "Log files" rather than "System logs"
+- fix xymond_channel filter flag not being set
+- add --delay option for xymond_channel between initial fork
+  of child process and registering via IPC with xymond
+- restore xymoncfg to client rpms
+
+* Mon Apr 29 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-4
+- start xymond_channel worker process before registering with IPC
+- fix bug where running daemons in --locator mode could accidentally
+  take down xymonlaunch
+- add --unknownclientosok option to xymond_client
+- add --msgtimeout option to xymond_channel
+- actually include the static www apache snippet change
+- init files now use xymonlaunch as the name for subsys locking
+- revert to file when the HOSTSCFG variable actually matches
+- background the final cache flush when xymond_rrd is closing out
+- don't complain about message sequence gaps when xymond_channel is
+  known to be filtering messages before we get them
+
+* Mon Apr 22 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-1
+- ensure static www directory is set readable in apache snippet
+- fully support reading hist files regardless of EPOCHHIST
+- selinux fixes for fedora 18
+- remove patches upstreamed in trunk 7194
+- add xymongen-4311.diff
+
+* Sun Apr 21 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.11-0.2
+- update to 4.3.11
+- remove various backported patches
+- fix dietlibc warning in build/test-endianness
+- spec file cleanups
+
+
+* Sat Apr 20 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-9.4.1
+- hide stderr in upgrade scriptlet
+- use upstream loadhosts-prefer-speedup.diff
+
+* Thu Apr 18 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-9.4
+- backport 5 fixes from 4.3.11
+- tab whitespace accepted after include and directory lines in configs
+- xymoncmd checks and uses HOSTNAME if set before forking uname -n
+- fix some dietlibc warnings (mainly spurious fflushes)
+- add strncasecmp to functs checked for strings.h add in dietlibc
+- move checkpoint files to the proper location during upgrades
+- wrap epoch history filenames in EPOCHHIST var
+
+* Tue Apr 16 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-9.3
+- move checkpoint files to non-rundir storage (thanks Tom Diehl)
+- move client logfetch .status files to logfile storage
+- add pids to netstat output on linux clients
+- set PREFEREARLIER env var to ignore 'prefer' tags reading hosts.cfg
+- set HTTPRRDCOLNAME to force xymonnet to write http URLs with custom column
+  names to rrd files under those names instead (use if you suspect you'll
+  be changing URLs but want to keep the data sets the same)
+
+* Mon Apr 15 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-9.2.4
+- fix improper initscript 'status' exit code when xymonlaunch not running
+  (thanks Scott Stone)
+- update sqlite in trunk to 3.7.16.2
+- xymongen: ignore 'prefer' tag in hosts.cfg -- assume earlier lines are
+  more preferred -- to prevent linear scans of host tree
+- increase status report ttl for xymond/xymonproxy from 6 to 11m
+
+* Sat Mar 23 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-9.2.1
+- strip trailing newlines from SERVEROSTYPE/CONFIGCLASS if not set
+- add timing code to loadhosts.c for debugging
+- xymongen: don't go yellow if runtime was longer than a
+  non-existant interval (eg, via crondate)
+- don't make flap detection trigger a yellow color for the xymond test
+
+* Tue Feb 19 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-9
+- add generic client tester for files/logs/msgs monitoring
+
+* Thu Feb 14 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-8.5
+- rotate logs via xymonlaunch HUP
+- change logrotate from weekly to daily
+- fix the do_rrd.c fix
+- xymond: don't send @@logrotate on HUP
+
+* Fri Feb 01 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-8
+- updated fix for tree crash
+- fix segfault in do_rrd.c (reported by Nicolas LOYAU)
+- fix missing rundir definition in xymonclient.cfg
+- fix warnings in timefunc.c on F18
+- pay attention to xymonlaunch log file env variable in xymond_sample
+- wait longer after starting a dependency before starting tasks that
+  list them as 'needs' in tasks.cfg
+- xymonproxy line1 format now matches xymond
+- add 6m ttl for xymonproxy/xymond status tests
+- client init script now runs xymonlaunch from /usr/sbin
+- slightly more efficient shell/forking in lib/run.c
+- remove Provides: xymon-client from xymon, to prevent server-side being
+  pulled in accidentally by client-requesting packages
+- don't fall back to loading from the local hosts.cfg
+  if told to get it from xymond and xymond fails -- just quit
+- abort xymonnet if hostlist is empty
+
+* Tue Jan 29 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-6.5.2
+- fix off-by-1s error when performing checks for expired tests
+- fix typo in sendmsg.c (non-trunk)
+- xymond: more verbose logging
+- dbgprintf optimization
+
+* Mon Jan 28 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-6.5
+- xymond: if shm already found, warn instead of dying
+- logprintf function (+timestamp to stdout) added to errprint.c
+- clarify that ghosts/multi-src reports are only of those within
+  the last 10m
+- more verbose xymond logging when in non-debug mode
+- xymond_channel: pass HUP to children on receipt
+- xymond_channel: pass logfn to children from xymonlaunch
+
+* Fri Jan 25 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-6.3
+- attempt at null key fix in lib/tree.c
+- get default port for 'bb' in /etc/services also (non trunk)
+
+* Tue Jan 22 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-6.2
+- more systemd logic prep in spec file
+- move symlnks for xymonlaunch and xymond to /usr/sbin/
+- respect SHELL when launching external programs
+
+* Thu Jan 17 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-6
+- fix incorrect log time epoch conv shown in historical status pages
+- xymond: send cached copies of hosts.cfg until our next reload
+  (should improve performance when using many procs loading
+  configs over net simultaneously)
+- add standard line1 header for xymond/xymonnet/xymongen reports
+- add missing space back to http column name statuses
+- add --no-cookies and --no-save-cookies options to xymonnet
+- http tests that have a given column name for (e.g.) content tests
+  now are named after that column at rrd time (instead of using the
+  full URL). YOU WILL NEED TO RENAME YOUR RRD FILES BY HAND FOR ANY
+  TEST USING THIS FEATURE AFTER UPGRADING TO KEEP/MERGE TCP HISTORY.
+
+* Fri Jan 11 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-5
+- revert defaultchk patch, more complex than thought
+- add strfunc_null patch from Tom Schmidt
+
+* Fri Jan 11 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-4
+- add runtime opt var for xymonlaunch to /etc/sysconfig/xymon-client
+- fix incorrect log time epoch conv shown in historical status pages
+- really fix the silly segfault in defaultchk patch
+
+* Thu Jan 10 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-3
+- dietlibc builds create a parallel client-static RPM
+- /usr/bin/xymonlaunch link was not included in client RPMs
+- zero-pad xymon2.rrd data output (already in trunk)
+
+* Thu Jan 03 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-2.1
+- add --no-rrd option for xymond_rrd
+
+* Thu Jan 03 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-2
+- don't leave patch debris in the /docs/ directory
+- check default locations for checkpoint files (xymond/xymond_alert)
+
+* Wed Jan 02 2013 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-1.71
+- daemons don't write pid files out on their own unless specified
+- set high timeout value when issuing a 'xymon crashed' alert to give
+  xymonlaunch a chance to start xymond back up to receive it.
+- updated README.terabithia and CHANGES.terabithia
+
+* Mon Dec 31 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-1.70
+- xymonlaunch: handle more logging directly in default config
+- xymonlaunch: search more locations for default config
+- xymonlaunch: support PIDFILE lines in tasks.cfg
+- xymonlaunch: after 10m, no longer delay by 10m if a proc has
+  exited non-zero > MAX_FAIL times since our launch
+- xymonnet: don't go yellow if runtime was longer than a
+  non-existant interval (eg, via crondate)
+- spec: add ghost entry for /etc/snmphosts.cfg
+- fix: some compiler warnings in xymon-snmpcollect
+- apply alertcount and rootfs fixes from 4.3.11
+- update non-trunk c-ares to 1.9.1
+
+* Tue Dec 23 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-1.5
+- more verbose xymonnet logs when weird connection test errors occur
+- accept (and write out) epoch TIMEBUFs when selecting history logs
+- append protocols.d lookup to correct protocols file
+
+* Fri Nov 16 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-1.1
+- binaries were still reporting as 4.3.9
+
+* Mon Aug 06 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.10-1
+- update to 4.3.10 release
+- removed eight upstreamed patches, updated rundir patch
+- note: trunk builds for EL4/EL5 are likely to be unstable due to sqlite
+  error handling
+
+* Tue Jul 31 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.9-4
+- fix: gcc warning in xymond_filestore mkdir patch
+- fix: ifstat not working for F17 (ifstat patch for F17 from John Horne)
+- use /sbin/service in logrotate script and redirect output to null
+  (thanks Mike Grozak)
+
+* Mon Jul 30 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.9-3.1
+- final EL5 SELinux fixes (hopefully!)
+
+* Mon Jul 30 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.9-3
+- use upstreamed version of showgraph null tmpdir patch
+- SEL: EL5 fix: use httpd_cache_t type for /var/cache/xymon/
+- SEL: add var_lib_t to allowed fping output files type
+- SEL: fix tmp_t permission on /var/lib/xymon/tmp not being removed
+- EL5 x86_64 built on RHEL
+
+* Fri Jul 27 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.9-2
+- fix: don't segfault when tmpdir (rundir) is not accessible 
+  by showgraph.cgi
+- fix: allow compile trunk w/ ssl disabled
+- fix: blank XYMONSERVERHOSTNAME value on new server installs
+- fix: use list_dir_perms in SELinux for EL5
+- fix: don't build EL4 with SELinux
+- roll back scope of lber-redux patch
+- add contest_oldopenssl, osslinc, notshellscript, and xymoncfg
+  from 4.3.10 branch
+- require the httpd path rather than the package name (for 7.3)
+
+* Wed Jul 25 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.9-1
+- update to 4.3.9
+- fix wrong client homedir set on new installs (thanks Colin Coe)
+- fix semanage not listed as a Require, leading to files with
+  incorrect SELinux contexts if policyutils-python wasn't installed
+- don't pre-package client's $XYMONHOME/local directory as 
+  /usr/local/share/xymon-client (cf: RHBA-2012:0843-1, BZ#732799)
+- remove version >= 3 requirement for fping
+- add x509_name patch for building on ancient openssl
+- add lber-redux and usrlibs patches for building on el3
+- fix pre scriptlet failing with empty if statement
+- extraordinarily old versions of sed can't in-place edit, and we're
+  already using perl elsewhere, so just use perl...
+- remove upstreamed patches:
+- .xymsrvoops
+- .combostatus
+- now rpmlint error free!
+
+* Tue Jul 17 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.8-0.56
+- add xymon.combostatus.patch
+- upstreamed FPING xymonserver.cfg build patch
+- move usr-ldap patch from trunk to 4.3.x
+
+* Mon Jul 16 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.8-0.5
+- TEST update release version to 4.3.8, trunk to 7090
+- don't chgrp /var/log/messages if --without logreader
+- rhel3 support: add --with facl build conditional
+- remove largemem patch (only affects new installs)
+- remove the following upstreamed patches:
+- .sha2
+- .nl
+- .gcc296
+- .dispinclude
+- .xymservers
+- .crondate
+- .rrdnospace
+- .closefh
+- .string
+- .hostsvcinfolinks
+- .badhttpnl
+- .rrd-sprintf
+- .rrdprocessortabs
+- .enableinode
+- .inode
+- .maxmsg
+- .clearok
+- .normstatlines
+- .refreshonerr
+- .usermsg
+- .adminconfig
+- .stderrcgi
+- .workerlocatorseq
+- .clientbuild (trunk)
+
+* Mon Jul 09 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-26.85
+- update trunk to 7018
+
+* Thu Jun 21 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-26.81
+- add 'source' and '.' as aliases for 'include' in env config files
+  for increased shell compatibility (systemd unit files)
+
+* Mon Jun 11 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-26.1
+- fix buffer overflows in rrd processing
+- patch updates for trunk
+- add 'rotate' option to client init script (thanks Mike Grozak)
+  and more init script LSB compliance
+
+* Wed May 23 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-25
+- quiet install if xymonserver.cfg doesn't already exist
+- single source rpm now contains both trunk and non-trunk patch files
+- trunk: gcc 4.7 (F17) compatibility for DSO link changes
+- trunk: client now requires zlib and openssl for building
+- trunk: ensure configure.client build brings in zlib/ssl
+- trunk: dietlibc disabled (static build errors, see BZ 807050)
+- rpmlint: add bb and bbcmd man pages as symlinks
+
+* Mon May 14 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-24.2
+- print warnings from verify script properly
+- print to correct filehandle when CGI freopen() fails
+- pathname rewrite for FHS compat
+- fix: message seq numbers not incrementing when locator svc used
+- remove --no-cache from xymond_rrd
+
+* Sat May 12 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-24
+- selinux/rpmlint: loosen permissions on /var/cache/xymon
+- selinux/rpmlint: use rundir for rrdctl sockets
+- selinux: restrict httpd access to /var/lib/xymon/tmp
+- rpmlint: remove unneeded dangling /tmp symlinks
+- fix segfault when failing to open cgierror.err
+- unless XYMONCGILOGDIR set, send CGI errors to stderr
+- adminsenders allowed to download configs (xymond_client needs it)
+
+* Sat May 12 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-23.8
+- mark html man pages as documentation
+- remove duplicate specification of logdir in server package
+- create rundir in init scripts if missing
+
+* Mon May 07 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-23
+- CGI-generated files (/rep and /snap) moved to /var/cache/xymon
+  for better SELinux control and fewer rpmlint warnings
+- /web templates moved to /etc/xymon/web for the same reason
+- hosts.cfg man page updated
+- 'store' tag in hosts.cfg converted to 'data' and 'datasvc' tags
+- cannot be applied to trunk
+
+* Sun May 06 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-22
+- reworked recipient patch
+- fix duplicate messages sent to localhost by xymond_client
+- web templates now marked as config so local changes don't get overwritten
+- server package no longer modifies permissions on /var/log/messages
+  automatically. (client package is unchanged)
+
+* Wed May 02 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-21.1.1
+- strip '\r\n' from bad HTTP error messages instead of '\n'
+- update some patches for recent trunks
+- xymon can read a message from XYMMSG for use when Bernstein chaining
+
+* Mon Apr 30 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-21
+- facls aren't handled by logrotate properly thanks to BZ#666677,
+  683622, and 683626; use supplemental adm group for xymon client
+- restorecon was not being run on updates, leading to incorrect
+  selinux lables on some files
+- update xymon.1 manpage for norecip patch
+- updated README.redhat
+- spec file cleanup
+
+* Fri Apr 27 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-20
+- remove xymonping in favor of fping3
+- add fping to SELinux policy
+- use comprehensive staticwww patch
+- no pthreads for client with dietlibc
+- missing description for client-orca package
+
+* Fri Apr 27 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-19
+- fix missing user channel stats to xymond report
+- fix 'notes' messages mishandled in xymond_filestore
+- fix 'trends' svc refresh loop when using locator service
+- fix rpmlint/selinux: move apache-writable critical.cfg to xymonvar
+- tmpfs: move 'notes' and periodic html reports from www to xymonvar
+- tmpfs: recreate missing subdirs in www and xymonvar
+- tmpfs: specify location of 'help' for xymongen
+- add autorefresh to html error pages
+- add verifyscript to check xymon facl/read privs on /var/log/messages
+
+* Wed Apr 25 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-18
+- compile with -pthread (instead of D_REENTRANT)
+- trunk: require fping >= 3.0 and remove tarballed version
+- trunk: annotate patch sources
+- remove public domain xymon-rclient scripts
+- move ocraxymon to optional sub-package
+
+* Fri Apr 20 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-17.3
+- correct xymonlaunch.pid location on server
+- clear client reports (eg, when no defined procs tests) should be 'ok'
+- files/msgs test status lines made like others
+
+* Thu Apr 19 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-17.1
+- remove lsb from Requires
+- really fix client SELinux policy
+
+* Wed Apr 18 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-16
+- patch filename cleanup
+- respect all vendor/rpm cflags
+- all config files marked noreplace
+- dietlibc client binary building now works
+- server-side client can run when xymond is off in tasks
+
+* Mon Apr 09 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-15
+- on new server installs, configure client for reporting to localhost
+- include selinux policy files for client and server
+- add selinux context to histlogs directory
+- fix crash with blank storehttpdata col name
+- remove sgid logfetch in favor of facls
+
+* Thu Apr 05 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-14
+- add storehttpdata patch to allow http test data to be saved
+- tweak vmstat launch line in client to pipe commands to sh
+- merge some spec formating changes from trunk
+- add selinux policy from Viliam Pucik
+- use facls for syslog permissions instead of a sgid logfetch
+
+* Fri Feb 24 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-13
+- add httpheaders patch
+
+* Wed Jan 25 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-12.3
+- add xymond-download-closefilehandle.patch
+- fix crondate parsing
+- fix rrd spacing 
+- cleaner vmstat invocation
+- update patch references
+
+* Wed Jan 18 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-11.1
+- more missing newlines in errprintf statements caught
+- move automated reports from cron to xymonlaunch control
+- remove Requires for crontabs
+- inode 'section' client patched into client script
+- sar 'section' client removed
+- all configs now marked noreplace
+- note: crondate parsing appears broken
+
+* Sat Jan 14 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-9
+- include task file for xymon-rclient
+
+* Fri Jan 13 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-8
+- patch for two more compile errors on gcc-2.96-113 (RedHat 7.3)
+- assume recipients are in the env if not declared on command line
+- keep all xymonclient-*.sh scripts on server
+- package xymon-rclient on server
+
+* Thu Jan 12 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-7.1
+- remove unusued localclient.cfg from --local server invocations
+- xymongen was not following dispinclude lines properly
+- xymond wasn't following net/disp includes
+- disable rrd caching by default -- still not working
+- enable inode section checking on linux
+
+* Mon Jan 09 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-6.2
+- ensure client symlinks are handled properly during upgrades
+- add breakout directories for alerts.d and analysis.d
+- because the /var/run/ directory is removed tasks.cfg is NOT marked
+  config(noreplace) on servers during this upgrade
+- remove inode and mounts patches and replace with section scripts
+- sar script included as client extra
+
+* Fri Jan 06 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-5
+- logrotate script was looking at an incorrect directory
+- replace perl with %%{__perl} -p in scriptlets
+- fix lots of rpmlint warnings
+- move static HTML (gifs, help, menu) out of /var/www/xymon and
+  compress html-ized man pages
+- add Default-Start/Stop to init scripts
+- use tmpdir for runtime info (F15 compliance for tmpfs /var/run/)
+
+* Wed Jan 04 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-4
+- build requires net-snmp-devel for experimental snmp support
+- client now installs to /usr/share/xymon-client
+- remove all clientupdate and orcaxymon references
+- clients don't need xymoncfg installed
+- remove unusued client tmp directory
+- add 'sections' plugin directory for packaged client scripts
+
+* Tue Jan 03 2012 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-3
+- use build conditionals for extra clients, dietlibc, and alt shells
+- add /usr/local/share/xymon-client for local pre-fab client scripts
+- modify CGI scripts when using alternative shell (eg, /bin/dash)
+- rename dfinodes report (from patch) to match what xymond_rrd expects
+- fix dietlibc x86_64 builds with updated sha2 libs
+- include strings.h when needed
+- add upstart flags to init scripts
+- remove legacy runclient.sh and xymon.sh startup scripts
+- remove unused xymonclient-$os scripts
+
+* Thu Dec 29 2011 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-1
+- patch xymond_rrd to delimit stdout streams with tabs
+- create combos.d and protocols.d directories for server
+- add PIE compilation for security
+- add rrd_rec patch for RH7's gcc
+- update license to GPLv2
+- clean up misc rpmlint warnings
+
+* Tue Dec 13 2011 Japheth Cleaver <cleaver@terabithia.org> 4.3.7-0
+- upgrade to 4.3.7
+
+* Mon Nov 07 2011 Japheth Cleaver <cleaver@terabithia.org> 4.3.5-2
+- 2 patches were failing due to fuzz being stricter in RHEL6
+
+* Tue Oct 11 2011 Japheth Cleaver <cleaver@terabithia.org> 4.3.5-1
+- upgrade to 4.3.5
+- bug: xymonrun left trailing DIR in replacement
+
+* Tue Aug 03 2011 Japheth Cleaver <cleaver@terabithia.org> 4.3.4-0
+- upgrade to 4.3.4
+- remove minor rrd patch until can be re-tested on old rh7.3 box
+
+* Sun May 08 2011 Japheth Cleaver <cleaver@terabithia.org> 4.3.3-0
+- upgrade to 4.3.3
+
+* Thu Apr 14 2011 Japheth Cleaver <cleaver@terabithia.org> 4.3.2-0
+- upgrade to 4.3.2
+
+* Thu Mar 24 2011 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0-0.959
+- add pre-upgrade script to convert client sysconfig to new variable names
+
+* Wed Mar 23 2011 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0-0.958
+- remove "-l" in second useradd call (oops)
+- clean up several patches that were succeeding due to fuzziness
+  but were failing on fedora 14
+- add useLogReaderGrp flag in .spec
+- add /usr/bin/xymon{,cmd} symlinks in client package
+- remove gcc-c++ BuildRequires; seems to no longer be needed
+
+* Fri Mar 18 2011 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0-0.956
+- remove "-l" in useradd call (allow legacy rh builds)
+- alwaysXYMONSERVERS: don't place localhost into xymonclient.cfg (oops)
+
+* Thu Mar 17 2011 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0-0.955
+- update to 4.3.0 release
+- several init script typo fixes
+- remove sar and yum check scripts (to be packaged separately); also
+  remove Requires: perl
+- add ghost /etc/xymon/xymon{passwd,groups} files
+- replace localhost entries in default hosts.cfg with hostname
+
+
+* Mon Feb 14 2011 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0-RC1-0.900
+- massive spec file cleanup
+- update to 4.3.0-RC1, with most files and variables removing
+  references to 'hobbit' anywhere
+- remove patches integrated upstream
+- replacement init scripts now parsed by Makefile with variables
+- add upstream xymonreports.sh to cron; Requires: crontabs, logrotate
+- /etc/sysconfig/xymon on server is now a ghost config
+- rename /etc/xymon-client/launch.d/ to client.d
+
+* Fri Jul 9 2010 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta2-0.6
+- slight spec file clean up
+- hobbitgraph.cfg now broken out into a directory (taken from Mandrake's RPM)
+- user creation in scriptlets done per Fedora standards
+
+* Tue Mar 16 2010 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta2-0.5.4
+- add inodes check to hobbitclient-linux.sh
+
+* Tue Sep 01 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta2-0.5.3
+- add perl to Requires due to use in hobbitclient-sar
+- bugfixes in sample yum check-update script
+
+* Mon Aug 24 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta2-0.5.2
+- fix sadc version determiniation for alternate arguments
+- add hobbitd_rrd.rec.patch for RH7
+
+* Fri Jul 31 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta2-0.5.1
+- apply bbcombotest patch
+- re-add (unused) clientupdate man page to client-passive rpm
+- bbcmd: hush when using default environment file unless in debug mode
+- client: submit data from /proc/mounts along with the mount command's version
+- bb: --both switch to append any STDIN after the msg on the command line
+- add sysstat checks if available (in 1m intervals)
+- remove sleep in hobbitclient.sh for vmstat (and sar) calls
+- initscripts clean up both temp vmstat and sadc data files
+
+
+* Fri Jul 17 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta2-0.4.1
+- disable hobbitd_rrd caching - data loss in high channel loads
+- remove superfluous "exit" in hobbitclient-sh to make easier to patch
+- add xymon.do_ncv.offbyone.patch
+- add hobbitgraph-ff3.5.zoom.patch
+
+* Wed Jul 08 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta2-0.4
+- add client-passive package w/o user or service files
+- minor spec file cleanup
+- bug in hobbit -> xymon httpd.conf rewrite rule
+
+* Fri Jun 12 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta2-0.3
+- fix perms on both server AND client logfetch tool packages
+- split clientlaunch.cfg into /etc/xymon-client/launch.d/ on clients
+- move pidfile for msgcache daemon on client to /var/run where it belongs
+- improved README.redhat doc
+
+* Fri Jun 12 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta2-0.2.3
+- back out dependency patch pending further review, rename hobbitd to _hobbitd
+  inside launch.d/ to work around
+- add hobbitlaunch_newline patch for the above error condition
+- leave BBTMP in place throughout, since we now differentiate between
+  client and server at the environment variable level
+- allow other users to execute logfetch tool, for remote execution
+
+* Thu Jun 11 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta2-0.2.1
+- bug: /var/lib/xymon/tmp (for the server) was not apache-writable;
+  hobbitgraph.sh was exiting immediately
+- include sample sysconfig files on server as well
+- don't require dependencies in hobbitlaunch.cfg to be in any specific order
+
+* Thu May 28 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta2-0.2
+- add xymonClientRoot to client-core to prevent bbcmd errors
+
+* Mon Apr 27 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta2-0.1
+- update to beta2, remove upstreamed patches
+- insert new server variable for pid location: BBRUNDIR
+
+* Mon Apr 20 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta1-0.97.1
+- add xymon.hobbitd_buflen patch
+
+* Fri Apr 17 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta1-0.97
+- remove sar files (will create separate extensions package)
+- bb/bbcmd broken off into a client-core package for non-daemon installs
+
+* Thu Apr 9 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta1-0.965
+- ensure load from client-runtime.cfg file in hobbitserver.cfg
+- reduce sadc report frequency from 30s to 2m
+
+* Fri Mar 27 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta1-0.964
+- bugfixes in xymon-sadc.sh
+- FIXME: double-check using right /tmp directories between sadc scripts and hobbitclient-linux reader
+
+* Fri Mar 27 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta1-0.963
+- increase default MAXMSG_* to at least 512K
+- add xymon-sadc.sh and xymon-sardata.sh for better sar integration on clients
+- server-side script to take data reports and make status reports coming soon
+- data module enabled by default on server (until rrd integration done)
+
+* Thu Mar 26 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta1-0.962
+- add bb-sar script to client (and client on server); Requires: sysstat
+- ensure HOBBITCLIENTHOME is defined in hobbitclient.cfg so that bbcmd has 
+  a valid environment on clients even when not being run by an init script
+- redirect /hobbit in apache config instead of just /hobbit/
+- if using xymon, add mod_rewrites for the older "hobbit" locations
+
+* Wed Mar 25 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta1-0.96
+- bbcmd looks in both the server and client configs for its default environment
+  instead of just the server
+- the client running on the server now loads /etc/sysconfig/xymon-client like
+  the standalone client does (so we can report our local status to an 
+  additional xymon server besides ourself)
+- touch an empty hobbit-holidays.cfg file
+- logfetch is now chmod 2700 (sgid) with a configurable group for 
+  reading /var/log/messages (normally the 'daemon' group)
+
+* Tue Mar 24 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta1-0.95
+- switch client's tmpdir to /dev/shm to ensure it can continue to run even
+  when /tmp and /var/tmp are full.
+- move out unused runclient.sh and hobbit.sh scripts and replace with
+  symlinks to the init scripts
+- convert hobbitlaunch's config to seperate files in /etc/xymon/launch.d
+- hobbitlaunch patch: ignore .rpm files
+- hobbitlaunch patch: don't segfault on empty configs
+
+* Thu Mar 05 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta1-0.92
+- replace BBSERVERLOGS, BBVAR, BBTMP in server hobbitlaunch.cfg
+
+* Wed Mar 04 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta1-0.91
+- add four patches from hobbitmon list
+- add lsbrelease.patch and Requires: lsb
+- add README.redhat describing package changes
+- per Fedora guidelines, no longer delete user/group on uninstall
+- chmod perms on /var/log/messages to allow 'daemon' group to read
+- client: launch pid now stored in /var/run/xymon/hobbitlaunch.pid
+- server: tmpdir moved from /var/lib/xymon/tmp to /var/tmp/xymon
+- server: web templates moved from /etc/xymon/web to /usr/share/xymon/web
+
+
+* Tue Mar 03 2009 Japheth Cleaver <jcleaver@soe.sony.com> 4.3.0_beta1-0.6
+- update package name, service name, and user/groups created
+  from hobbit to xymon
+- rewrite large portions of spec file for clarity
+- make alternate shell configurable in the package
+- tighten a few permissions throughout
+- clean up vmstat files lying around upon service stop
+
+* Wed Nov 19 2008 Japheth Cleaver <jcleaver@soe.sony.com> 4.2.0-14
+- Add BuildRequires: gcc-c++
+
+* Mon Aug 04 2008 Japheth Cleaver <cleaver@redwire.net> 4.2.0-13
+- fix integer bug in relver determiniation in init scripts
+
+* Thu Jun 05 2008 Japheth Cleaver <cleaver@redwire.net> 4.2.0-11
+- make sure we exclude scripts run during install from our sh -> ash search
+
+* Wed Mar 05 2008 Japheth Cleaver <cleaver@redwire.net> 4.2.0-10
+- rebuild
+
+* Thu Oct 12 2006 Japheth Cleaver <cleaver@redwire.net> 4.2.0-9
+- print summaries on bb2 page
+
+* Fri Oct 6 2006 Japheth Cleaver <cleaver@redwire.net> 4.2.0-8
+- update to use most recent all-in-one patch
+- replace all occurances of dig in bb-hosts to dns
+- cleaner killing of vmstat and other processes hanging around
+  after initscript: stop
+- add Obsoletes for big brother
+
+
+* Wed Oct 4 2006 Japheth Cleaver <cleaver@redwire.net> 4.2.0-7
+- update to use most recent all-in-one patch
+- use ash in more places, if package is compiled to use it
+- better error given if reload attempted when server is not running
+
+
+* Mon Oct 2 2006 Japheth Cleaver <cleaver@redwire.net> 4.2.0-6
+- $PATH in initscripts now set by init.d/functions, with libexec added
+
+
+* Thu Sep 28 2006 Japheth Cleaver <cleaver@redwire.net> 4.2.0-5
+- additional released patches from distribution
+- minor package cleanup
+
+
+* Mon Aug 21 2006 Japheth Cleaver <cleaver@redwire.net> 4.2.0-4
+- lots of patches from distribution
+- initscript: runtimefile was not being created on cond restart
+
+
+* Thu Aug 10 2006 Japheth Cleaver <cleaver@redwire.net> 4.2.0-1
+- updated to release version
+
