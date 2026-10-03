@@ -56,11 +56,10 @@ to a GitHub issue.
   showing GitHub's collection take the repository from 2.15 GiB to 41 MB in
   hours.
 
-  `gh-pages` is frozen rather than deleted: it holds the tree as it stood when
-  the archive took over. Deleting it is the step that actually makes a clone of
-  this repository cheap, and it waits on a few publishes going to the archive
-  first — [#37](https://github.com/xymon-monitoring/xymon-rpm/issues/37) has
-  the check to run and the command.
+  `gh-pages` was kept frozen until a few publishes had gone to the archive, then
+  deleted, which is the step that made a clone of this repository cheap —
+  [#37](https://github.com/xymon-monitoring/xymon-rpm/issues/37) has the check
+  that was run.
 - **Whether to put the packages in Fedora, and through it EPEL.** RHEL itself is
   not a community path — Red Hat decides what it ships and supports. "Official
   for RHEL" means EPEL in practice, EPEL is built from Fedora, so the route is
