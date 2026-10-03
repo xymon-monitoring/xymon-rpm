@@ -111,10 +111,10 @@ being updated, which is the symptom to look for.
 
 The published tree moved out of this repository's `gh-pages` branch and into
 `xymon-monitoring/xymon-rpm-archive`, which serves nothing and exists to be
-cloned by the publish job and read by a person. `gh-pages` is no longer
-written; it is left frozen at the tree as it stood when the archive took over,
-and deleting it is a separate act whose only effect is to make a clone of this
-repository cheap.
+cloned by the publish job and read by a person. `gh-pages` was deleted once
+several publishes had shown the archive and the artifact carried the same
+tree ([#37](https://github.com/xymon-monitoring/xymon-rpm/issues/37)), which is
+what made a clone of this repository cheap.
 
 The archive carries no history: each publish replaces `main` with a single
 orphan commit, force-pushed. Nothing reads an older one — a signed rpm differs
