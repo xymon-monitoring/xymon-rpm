@@ -105,20 +105,54 @@ chose, a rule we wrote. Those go in one place.
 |---|---|---|
 | pull request title | everyone scanning the list, and `git log --oneline` after a squash | the component, then what the change makes true |
 | pull request description | the reviewer deciding | the defect, the mechanism, what a reviewer cannot infer, the evidence |
+| pull request comments | the reviewer, in sequence | answers to findings, and what a revision changed |
 | commit message | whoever runs `git blame` years later, offline | what changed and why, in terms that stand alone |
 | spec comment | whoever edits that scriptlet, without the pull request | why this and not the obvious alternative, and which upstream PR would delete it |
 | `docs/` | a packager or a maintainer, with the tree open | how the pieces fit: the spec map, the pipeline, the tests, the upstream ledger |
 | `README.md` | someone deciding whether to install these packages | what the packages are, how to add the repository, how versions are formed |
 | test header and assertion text | whoever the test fails on | what it pins, and what was expected against what happened |
 | `%description` in the spec | someone running `dnf info` | what the package is for, in two or three lines |
+| issue body | whoever decides | the problem with its evidence, the proposal, what is out of scope |
 
-The longer form of this rule, and the companion rule on shortening prose
-without losing what a reader needs, are in the source tree's
-[CONTRIBUTING.md](https://github.com/xymon-monitoring/xymon/blob/main/CONTRIBUTING.md)
-— they are the same rules for both repositories and are maintained there. Two
-worth carrying in your head: shorten losslessly or not at all, and shorten
-last, because text edited while the change is still moving ends up describing
-the previous revision.
+A decision splits across the surfaces, and asking which one it belongs to is
+the wrong question:
+
+- **its observable consequence** — what a host or a user sees, in `README.md`,
+  `docs/` or `%description`, with no trace of the deliberation;
+- **why, in terms that stand alone** — the commit message, for whoever runs
+  `git blame` offline;
+- **why not the obvious alternative** — the spec or workflow comment at the
+  line someone would otherwise change back;
+- **what was weighed and rejected** — the issue or pull request that decided
+  it, which is the only place that record belongs and the only one nobody
+  needs in order to use the packages.
+
+The test for the last one: would the sentence still be true if the
+alternative had never been considered? If not, it is deliberation, not
+documentation.
+
+A pointer says which side is authoritative, in its wording rather than by
+implication: *for X, see Y* where Y holds the fact, *this is the only copy*
+where nothing else does. Two files that split one subject point at each other,
+because a reader landing on either needs to know it is a half. A file cited
+from many places does the opposite and states its own scope instead of listing
+its citers: ten back-links are ten things to keep current.
+
+Put a pointer where it applies — in the section whose subject is divided, or in
+the opening line when it qualifies the whole file. Not in a footer: a "see
+also" at the bottom is detached from the fact it qualifies, which makes it both
+the least read part of a page and the first to go stale.
+
+A pointer missing its other half is not a reason to open a change by itself.
+Add it while you are already editing that document for something else, or fix
+them together in one deliberate pass; scattered across unrelated pull requests,
+each puts a reviewer in front of a diff whose subject is not the change's.
+
+One kind of pointer is not a link and must stay one-way: the `@file` imports
+that pull a file's text into another. `CLAUDE.md` imports `AGENTS.md`, which
+imports this file, so a tool reading the first reads all three. A back-pointer
+is written as a reference, never as an import, or the chain closes into a
+cycle.
 
 The cost of ignoring this is not length, it is drift: when one fact sits in two
 places, one copy goes stale and nothing says which.
@@ -142,6 +176,65 @@ construction and read as history rather than as instructions.
 A version, a NEVRA, a build id, a file count, a package size: none of these is
 a fact about this tree. Each is a fact about one day.
 
+Keep a number exact only where it is the rule holding rather than a census of
+it. *The spec has zero `Patch:` lines* is a sentence that should break the day
+someone adds one.
+
+## Shortening
+
+The rules above say where a fact belongs; this says what may come out when the
+text holding it has grown. It applies to any prose the project carries — a
+pull request description, a review comment, a commit message, a spec comment, a
+document, an issue.
+
+**Shorten losslessly or not at all.** Before each cut, name what a reader could
+no longer do:
+
+| the answer | verdict |
+|---|---|
+| "read it a second time" | cut it |
+| "check the claim" | keep it — that is a citation |
+| "understand why" | keep it — that is what stops someone undoing the change |
+| "know whether it affects them" | keep it — that is the specifics |
+
+Lossless, because the information survives:
+
+- **Deduplicate** — the same fact stated twice in one document.
+- **Relocate** — move a block to where its reader is rather than delete it.
+- **Merge overlapping sections** — two sections making one argument become one.
+- **Delete superseded text** — prose arguing for a design that was replaced.
+- **Cut the audience-less** — notes to self, questions already answered,
+  expired status.
+- **State the rule instead of the enumeration** — unless the examples differ in
+  kind rather than in detail.
+- **Compress prose, not facts** — drop connectives and hedges, and turn a
+  paragraph into a table when the table carries the same facts.
+- **Let each fact live at its natural level** — a fact about what a scriptlet
+  does belongs in the spec comment beside it, with the prose pointing at it.
+- **Reference instead of restate** — only when the reader can reach the target.
+  Pointing someone running `dnf info` at a document the package does not ship
+  removes the information.
+
+Lossy, and each one looks like editing:
+
+- **A citation or a `file:line`** — without it a claim becomes an assertion,
+  and the next reader has to rediscover the evidence.
+- **The reason behind a decision** — it is what stops someone undoing it.
+- **The failure mode or the severity** — it is what justifies the priority, the
+  label or the block.
+- **One of two proofs that look alike** — check what each proves before calling
+  either redundant.
+- **The specifics** — "older releases" loses who is affected; "EL8, whose rpm
+  predates the sysusers macros" lets a reader decide whether it is about them.
+- **An answer pulled out of the thread that asked the question** — the same
+  measurement is context in a description and a rebuttal in the reply that
+  raised the concern.
+
+**Shorten last.** While a change is still moving, editing its text for length
+desynchronises it rather than compressing it: what survives the cut describes
+the previous revision. Shorten when a re-read turns up nothing new — that, not
+a length target, is the signal.
+
 ## Pull requests
 
 Every change goes through a pull request. `main` here is **not** protected —
@@ -162,6 +255,12 @@ does not move to a tool.
 
 - One change per pull request. A fix and the cleanup you noticed next to it are
   two pull requests.
+- A pull request whose change has more than one part — a spec change and the
+  document it makes stale, a refactoring the fix cannot be made without and
+  the fix — keeps each in a commit of its own. Each commit builds, and its
+  message says what it does and why in terms that stand alone, whatever the
+  merge method. A correction found in review is folded into the commit it
+  corrects rather than added after it.
 - Say what you verified, and how. "Built and installed on el9" is useful;
   "should work" is not. A change to prose carries the same obligation with a
   different instrument: name the grep that shows nothing else in the tree still
@@ -175,19 +274,25 @@ does not move to a tool.
   green matrix.
 - If your change fixes something a suite could have caught, adding the
   assertion is worth more than the fix. [docs/testing.md](docs/testing.md) says
-  which suite it belongs in.
+  which suite it belongs in. Show that it fails without the fix — run it
+  against a build of the commit before, or with the fix reverted — and say
+  which; an assertion never seen failing may be passing by doing nothing.
 - Keep the description accurate as it evolves. A reviewer reading it after
   three force-pushes should not be reading the original plan.
 
 ### Titles
 
 The title is the one line a reader gets in the pull request list and, after a
-squash merge, in `git log --oneline`. Write it so that line is enough.
+squash merge, in `git log --oneline`; after a merge commit that line is each
+commit's own subject instead, which is why a commit message stands alone too.
+Write the title so its line is enough.
 
 - Start with the component that changes, then a colon: a name the tree already
   uses — `spec:`, `publish:`, `tests:`, `docs:`, `ci:`, `build:`, `README:`, or
   a package or file this tree names (`xymon-release:`, `xymon.repo:`,
-  `logrotate:`, `selinux:`). One plain name, unscoped. No `DRAFT:` or
+  `logrotate:`, `selinux:`). A change that introduces the component names it
+  too — the tree uses the name once the change lands. One plain name,
+  unscoped. Not a topic, a branch name, or a status such as `DRAFT:` or
   `follow-up:` — GitHub has a draft flag.
 - After the colon, a complete sentence with a verb, in lower case. `reload a
   running httpd after installing the Apache config` says what happens; `httpd
@@ -197,12 +302,15 @@ squash merge, in `git log --oneline`. Write it so that line is enough.
   xymonping`. The verb names the behaviour, not the kind of change — which is
   why `fix` and `add` so rarely fit: the diff already shows the kind.
 - Keep the reason in the title when it fits in a clause.
-- Anything that belongs in the description stays out of the title. A single
-  parenthesis at the end may carry a reference — where the change came from,
-  what it supersedes. `Fixes #N` goes in the description, which is where GitHub
-  acts on it.
-- Keep the sentence to 80 characters or fewer, so it reads whole in the list
-  and in `git log --oneline`. A trailing reference may take the line past that.
+- Anything that belongs in the description stays out of the title: the plan,
+  the review history. A single parenthesis at the end may carry a reference,
+  and only what a later reader cannot reconstruct — where the change came
+  from, what it supersedes. `Fixes #N` goes in the description, which is where
+  GitHub acts on it.
+- Keep the sentence — everything before the trailing reference — to 80
+  characters or fewer, so it reads whole in the list and in `git log
+  --oneline`. The reference may take the line past that: its length is set by
+  what is cited, so capping the whole title would shorten the wrong half.
 
 ### Descriptions
 
@@ -244,6 +352,51 @@ several times the length of its change is usually the form being filled in.
   and a line number on prose that is about to be edited is worse than none. A
   claim about another change carries its number, and upstream ones are written
   `xymon#411` so a reader knows which repository to open.
+- A comment is not a second copy of the description. It answers a finding,
+  records what a revision changed, or states a decision taken since. When the
+  same fact sits in both, one goes stale — and it is the description, because
+  that is the copy nobody re-reads.
+- Shortening a description follows the same rule as shortening anything else,
+  and it comes last: see [Shortening](#shortening).
+
+### The last pass
+
+When a change has stopped moving — before a review is asked for, or before it
+merges without one — read the prose it adds or changes once more, and again
+whenever that prose changes, through a review's findings or the pass's own
+edits. Only its own lines, and any existing line the change makes false: an
+older problem found on the way is a note, or another pull request.
+
+1. **True.** Each sentence against what it describes: each spec or workflow
+   comment against the code under it, each test header and assertion message
+   against what the test checks, the commit message and the description
+   against the final diff, and any other sentence against the tree.
+2. **Current.** Commit ids, suite counts and `file:line` citations against the
+   pull request's final head; a citation of the old code names its revision. A
+   commit message, read later in a plain clone, cites only commits already on
+   `main`.
+3. **In its place.** Each fact once, on the surface whose reader needs it — see
+   [Where a change gets written down](#where-a-change-gets-written-down).
+4. **Said.** What stays untested is in the description, and so is the
+   distribution it was tested on — see [Pull requests](#pull-requests).
+5. **Readable.** One idea per sentence, no aside inside an aside, and table
+   cells short enough to scan. A sentence the reader has to take apart is
+   split, not trimmed.
+6. **Short.** Last, once a re-read turns up nothing new, and losslessly — see
+   [Shortening](#shortening).
+
+If the pass edits the spec, a script or a workflow, it ends like any edit: run
+again the suites that cover what it touched, and say in one comment what it
+changed. If it edits only the description or the commit message, the comment is
+enough.
+
+A review of that prose reports facts: a sentence that is false, misleading — a
+reader would act or decide differently on it — or in conflict with another
+rule. A preference is not a finding, and neither is step 5, which is the
+author's own check, unless the sentence also misleads. When rounds keep
+reopening one choice, it is a principle, not wording: the author decides it,
+records it with the rejected alternative in the pull request, and later rounds
+of that pull request take it as given.
 
 ## Versioning
 
