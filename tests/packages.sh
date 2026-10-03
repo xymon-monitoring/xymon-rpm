@@ -209,6 +209,21 @@ for role in server client; do
 		 readlink $work/$role/usr/lib/xymon/client/etc | grep -qx /etc/xymon-client"
 done
 
+# The one place the two halves of /etc/xymon-client differ on purpose.
+# The server never reads clientlaunch.cfg -- it launches its embedded
+# client from tasks.cfg -- so a clientlaunch.d it owned would take
+# drop-ins and silently never load them. xymonclient.d is read by both
+# roles and ships in both. Ownership is a manifest question, so this
+# reads rpm -qlp rather than the unpacked payload, where cpio would
+# create a parent directory whether or not anything listed it.
+check "only the client package owns clientlaunch.d" \
+	"rpm -qlp $client | grep -qx /etc/xymon-client/clientlaunch.d &&
+	 ! rpm -qlp $server | grep -qx /etc/xymon-client/clientlaunch.d"
+
+check "both packages own xymonclient.d" \
+	"rpm -qlp $server | grep -qx /etc/xymon-client/xymonclient.d &&
+	 rpm -qlp $client | grep -qx /etc/xymon-client/xymonclient.d"
+
 check "the client tree has identical modes and ownership in both" \
 	"rpm -qp --qf '[%{FILENAMES} %{FILEMODES:octal} %{FILEUSERNAME} %{FILEGROUPNAME}\n]' $server |
 	   grep '^/usr/lib/xymon/client/' | sort > $work/s.attr &&
