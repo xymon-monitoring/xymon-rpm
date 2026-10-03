@@ -712,40 +712,20 @@ jobs:
             git push --force origin published-now:main
           fi
 
-      # --- first half of taking the published tree out of git ---
+      # Pages serves this artifact and nothing else, so a failed upload is a
+      # failed publish and fails here, where its cause is, rather than
+      # surfacing as a pages job with nothing to deploy. The deploy is still
+      # its own job (see below). The archive push above has already happened
+      # by now, so a failure here leaves the archive a run ahead of the site
+      # until the next publish.
       #
-      # Pages can serve an uploaded artifact instead of a branch, which would
-      # leave this repository at about a megabyte and stop a contributor
-      # cloning the published rpms. That change cannot be rehearsed: publish
-      # never runs from a pull request, so the first real run is the test. And
-      # what it replaces is the state store -- publish.sh merges into the
-      # previous tree -- so a bug in it would take the fallback away at the
-      # same moment it was needed.
-      #
-      # So it lands in two halves. This is the first: build and upload the
-      # artifact while the branch above is still written and still served.
-      # Both steps are continue-on-error, so nothing here can fail the publish
-      # users depend on, and the deploy itself is a separate job for the same
-      # reason. The second half deletes the branch, once a few nights have
-      # shown the artifact carries the same tree.
-      - name: Stage the published tree for Pages
+      # The published clone is uploaded as it stands: the action's own tar
+      # leaves out .git, the tens of megabytes of objects nobody browses.
+      - name: Upload the published tree as a Pages artifact
         if: steps.key.outputs.ok == 'true'
-        continue-on-error: true
-        run: |
-          set -eu
-          # Without the clone's own .git: tens of megabytes of objects that
-          # nobody browses, and that the branch already holds.
-          rm -rf site
-          mkdir site
-          tar -C published --exclude=.git -cf - . | tar -C site -xf -
-          du -sh site
-
-      - name: Upload it as a Pages artifact
-        if: steps.key.outputs.ok == 'true'
-        continue-on-error: true
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: published
 
   # Deploying is its own job because the github-pages environment can refuse
   # one, and a refusal blocks the whole job rather than a step. Attached to
