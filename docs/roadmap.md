@@ -98,7 +98,8 @@ to a GitHub issue.
   repo as the publish target. Part of that is deciding the fate of upstream's
   own stale `rpm/` (2014, SysV) and `debian/` (2019) packagings.
 
-- **The client's drop-in directories.** *Decided:* the spec creates them, as
+- **The client's drop-in directories.** *Decided:* the spec creates them, and
+  gives `clientlaunch.d` to the client package alone. Only the `install -d` is
   an interim override xymon#411 will delete. `clientlaunch.cfg` and
   `xymonclient.cfg` each end in `optional directory @XYMONHOME@/etc/<name>`,
   and nothing created either. `optional` means nothing fails: a drop-in file is
@@ -129,36 +130,23 @@ to a GitHub issue.
   contents one by one where the server half globs, which is why upstream's nine
   server drop-in directories have always been packaged and the client's two
   would not be. It globs now, so whatever upstream's `client/etc` holds is
-  packaged — which is right whether or not xymon#411 ever lands, and is why it
-  did not have to be timed against it.
+  packaged, with one exception carved out of the server's half — which is
+  right whether or not xymon#411 ever lands, and is why it did not have to be
+  timed against it.
+
+  The exception is `clientlaunch.d`, which `%files` excludes from the server
+  package. A server reads its task list from `tasks.cfg` and never opens
+  `clientlaunch.cfg`, so a drop-in beside the server's copy would be silently
+  unused; extra server tasks belong in `tasks.d`. The `%exclude` is permanent:
+  which of two packages owns a path is not something upstream's build can
+  express, so nothing upstream retires it.
 
   The glob is what makes the override cheap to remove. `check-files` lists
   `-type f -o -type l`, so an unpackaged *directory* is never reported: with the
   old list, xymon#411 would have merged, the build would have stayed green, and
   the package would still have shipped without them, with nothing saying so.
   Now the `install -d` goes and the glob keeps packaging whatever upstream
-  makes.
-
-  **Three sentences here stop being true when
-  [#66](https://github.com/xymon-monitoring/xymon-rpm/pull/66) lands**, and
-  should change with it or straight after. That pull request packages
-  `clientlaunch.d` with the client alone: a server reads its task list from
-  `tasks.cfg` and never opens `clientlaunch.cfg`, so a drop-in beside the
-  server's copy would be silently unused. What each becomes:
-
-  - *Decided: the spec creates them, as an interim override xymon#411 will
-    delete* — only the `install -d` is interim. The `%exclude` is permanent,
-    because which of two packages owns a path is not something upstream's
-    build can express, so nothing upstream retires it.
-  - *It globs now, so whatever upstream's `client/etc` holds is packaged* —
-    with one exception carved out of the server's half.
-  - *Now the `install -d` goes and the glob keeps packaging whatever upstream
-    makes* — the `%exclude` stays behind when it does.
-
-  Written down because nothing would catch it: `docs-drift.yml` runs
-  `compensations.sh` and `docs.sh`, and neither reads prose against the spec.
-  Until #66 merges all three are correct, which is why they are not being
-  edited now.
+  makes; the `%exclude` stays behind when it does.
 
 ## Packaging work (no upstream PR)
 
