@@ -65,6 +65,18 @@ check "the client role drop-in is installed, the server one is not" \
 	"test -f /usr/lib/systemd/system/xymonlaunch.service.d/client.conf &&
 	 ! test -e /usr/lib/systemd/system/xymonlaunch.service.d/server.conf"
 
+# xymonclient.sh asks clientupdate for the version on every run and falls
+# back to `xymon --version` on an empty answer, and execs it to update
+# only when the server sets clientversion:. Both must succeed quietly, or
+# every client run, or every run the server asks to update, ends in an
+# error in the log.
+check "clientupdate --level answers nothing, successfully" \
+	"out=\$(/usr/lib/xymon/client/bin/clientupdate --level) && test -z \"\$out\""
+
+check "clientupdate --update declines, says why, and succeeds" \
+	"msg=\$(/usr/lib/xymon/client/bin/clientupdate --update=probe-1 2>&1) &&
+	 printf '%s\\n' \"\$msg\" | grep -q 'package manager'"
+
 # Without net-tools the ifstat/ports/route client sections arrive empty,
 # and nothing errors -- the data is just missing on the server.
 check "net-tools arrived with the client" \
