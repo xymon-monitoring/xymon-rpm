@@ -2,3 +2,6 @@
 /out/
 *.rpm
 *.tar.gz
+
+# the upstream clone README *Building locally* and tests/docs.sh put here
+/src/
