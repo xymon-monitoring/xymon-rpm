@@ -51,12 +51,24 @@ own issue of that number. Neither of those two reads an rpm.
 ## Running one locally
 
 Each suite is a self-contained script over the built rpms. Build first
-(README *Building locally*), then point a suite at the packages, e.g.:
+(README *Building locally*), then point a suite at the directory holding the
+packages — `out/` when the argument is left off:
 
 ```sh
-tests/packages.sh path/to/*.rpm      # or the layout each script documents
+tests/packages.sh path/to/rpms/
 ```
 
 `systemd.sh`, `upgrade.sh` and `monitoring.sh` want a real init — a container
 with `systemd`, or a throwaway VM — because without PID 1 every `systemctl` is
-swallowed by `|| :`.
+swallowed by `|| :`. The `systemd-lifecycle` job in `build.yml` has a
+container recipe that works outside CI too: an image with `systemd` as its
+`CMD`, run `--privileged --cgroupns=host` with `/sys/fs/cgroup` mounted.
+
+- **EL9:** `systemd.sh` installs `curl`, which conflicts with the
+  `curl-minimal` the image ships, and the suite stops there. Run
+  `dnf -y swap curl-minimal curl` in the container first. CI runs this suite
+  on el10 and fc44 only, so it never meets the conflict.
+- **Comparing against a build from before a change:** the published snapshot
+  will not do. `publish` runs on every push to `main` that is not docs-only,
+  so the snapshot is rebuilt from the merge that brought the change in. Build
+  the earlier commit instead.
