@@ -105,11 +105,12 @@ place that goes stale.
   only. Nothing there is built. Bringing one of its ideas across means writing
   it into `rpm/xymon.spec`, and saying in the pull request that is where it
   came from.
-- **Do not `git add -A` or `git add .`.** README *Building locally* clones
-  upstream into `./src`, and `tests/docs.sh` reads it from there, but
-  `.gitignore` does not cover it — so a tree that has been built or checked
-  once has a whole repository waiting to be committed as an embedded one.
-  Stage the paths you changed.
+- **Do not `git add -A` or `git add .`.** A tree that has been built or
+  checked holds things nobody changed: the upstream clone README *Building
+  locally* and `tests/docs.sh` use, packages, a log, a scratch file.
+  `.gitignore` covers the outputs it knows about and nothing else, and a
+  nested clone it misses is staged as an embedded repository. Stage the paths
+  you changed.
 
 ## What a change here has to survive
 
