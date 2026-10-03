@@ -695,11 +695,8 @@ jobs:
           if git diff --cached --quiet; then
             echo "nothing new to publish"
           else
-            # To the archive. gh-pages is no longer written: Pages serves the
-            # uploaded artifact, so the branch served nothing, and leaving it
-            # frozen rather than deleting it here keeps a copy of the tree as
-            # it stood when the archive took over. Deleting it is a separate,
-            # deliberate act.
+            # To the archive, the state store publish.sh merges into on the
+            # next run. Pages serves the artifact uploaded below.
             # Replace the branch rather than add to it. Pages serves the
             # tip alone, so the history is read by nobody -- and it is the
             # one thing here git cannot compress, because a signed rpm

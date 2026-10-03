@@ -29,10 +29,8 @@ jobs:
     steps:
       - name: Checkout packaging
         uses: actions/checkout@v6
-        # Default depth on purpose. A full history here means cloning
-        # gh-pages, which carries every published rpm -- gigabytes, to read
-        # text the API already holds. All this step has to produce is the
-        # script.
+        # Default depth on purpose: all this step has to produce is the
+        # script, and the commits it checks come from the API.
 
       # A title and a body are contributor-controlled text, and on a fork they
       # are controlled by someone this repository has not vetted. They reach
