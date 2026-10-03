@@ -79,14 +79,15 @@ published rpms along with the packaging. That change cannot be rehearsed —
 `publish.sh` merges into, so a bug in it would remove the fallback at the
 moment it was wanted. So it was done in a step that could be stopped at.
 
-That step is in place: `publish` stages the tree without the clone's `.git`
-and uploads it as a Pages artifact. It was taken while the branch was still
-written, which is what made it stoppable; the state store moved out of this
-repository afterwards, and *The archive* below has where it went. Both steps
-are `continue-on-error`, and the deploy is the separate
-`pages` job, because the `github-pages` environment can refuse a deployment and
-a refusal blocks a whole job rather than a step — attached to `publish` it
-would stop the publish.
+That step is in place: `publish` uploads the published tree as a Pages
+artifact, and the action leaves out the clone's `.git`. It was taken while the
+branch was still written, which is what made it stoppable; the state store
+moved out of this repository afterwards, and *The archive* below has where it
+went. While the branch still served users the upload was `continue-on-error`;
+now that the artifact is all Pages serves, a failed upload fails `publish`. The
+deploy is the separate `pages` job, because the `github-pages` environment can
+refuse a deployment and a refusal blocks a whole job rather than a step —
+attached to `publish` it would stop the publish.
 
 Two repository settings govern this, and they do different things. The
 `github-pages` environment's deployment branch policy decides whether the job
