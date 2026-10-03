@@ -72,6 +72,16 @@ not say is which document answers which question:
 - **what the pipeline does, job by job** —
   [docs/build-pipeline.md](docs/build-pipeline.md).
 
+A tool's private memory holds only what does not belong to the project:
+private data such as non-secret access details, one person's working
+preferences, and facts about that person's own machine that would change
+nothing another contributor does or decides. A secret — a password, a token, a
+private key — is not written there unless the person asks for it: tool memory
+is plain text, not a secret store. Project facts — decisions, conventions, how
+a distribution or the pipeline behaves — live in this tree, the wiki, or the
+issue or pull request that decided them. A private copy of one is a second
+place that goes stale.
+
 ## Do not
 
 - **Do not patch the source.** The spec has zero `Patch:` lines and that is the
@@ -95,6 +105,11 @@ not say is which document answers which question:
   only. Nothing there is built. Bringing one of its ideas across means writing
   it into `rpm/xymon.spec`, and saying in the pull request that is where it
   came from.
+- **Do not `git add -A` or `git add .`.** README *Building locally* clones
+  upstream into `./src`, and `tests/docs.sh` reads it from there, but
+  `.gitignore` does not cover it — so a tree that has been built or checked
+  once has a whole repository waiting to be committed as an embedded one.
+  Stage the paths you changed.
 
 ## What a change here has to survive
 
