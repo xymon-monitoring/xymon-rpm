@@ -121,6 +121,14 @@ systemctl show -p MainPID --value xymonlaunch | xargs -I{} tr '\0' ' ' < /proc/{
   htpasswd /etc/xymon/xymonpasswd alice     # -c only for the first user
   ```
 
+- **Let clients in.** Clients report to port 1984. firewalld ships a service
+  for it, `bb`, on every release these packages are built for, so with
+  firewalld running:
+
+  ```sh
+  firewall-cmd --permanent --add-service=bb && firewall-cmd --reload
+  ```
+
 - **Config files.** Alerts in `alerts.cfg`, thresholds in `analysis.cfg`,
   graphs in `graphs.cfg` / `rrddefinitions.cfg`; each has a `.d/` directory for
   drop-ins.
@@ -165,7 +173,7 @@ Before this design, `xymon` required `xymon-client` and a separate
 | Host missing from the web UI | in `hosts.cfg`? `MACHINEDOTS` matching? unit running? |
 | Host shows as a "ghost" | reported name differs from `hosts.cfg` |
 | Host green but no cpu/disk/memory | not matched in `hosts.cfg` — check for a duplicate address |
-| Client runs, no data arrives | `XYMSRV`; port 1984 reachable; `clientlaunch.log` |
+| Client runs, no data arrives | `XYMSRV`; port 1984 reachable (firewalld service `bb` on the server); `clientlaunch.log` |
 | Sections empty (disk, ports, ifstat) | `net-tools` missing, or the collector failed — `clientlaunch.log` |
 | Web pages 500 | `xymonpasswd` missing or not `apache`-owned; httpd error log |
 | Nothing running after a swap | `systemctl restart xymonlaunch` |
