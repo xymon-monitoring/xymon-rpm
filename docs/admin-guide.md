@@ -112,7 +112,9 @@ systemctl show -p MainPID --value xymonlaunch | xargs -I{} tr '\0' ' ' < /proc/{
   be unique** — Xymon keys hosts by address, so a second entry for an
   address already listed is ignored (rename the existing entry instead). An
   unmatched host still shows green from network tests while its client data is
-  never analysed.
+  never analysed. In `hosts.cfg`, add hosts **above** its last line, `optional
+  directory …/hosts.d`, or put them in a file under `hosts.d/`: a host listed
+  after that line gets no alerts and no client analysis (README *Known gaps*).
 - **Web access.** The UI is `http://<server>/xymon/`. The authenticated CGIs
   read `/etc/xymon/xymonpasswd`, which ships empty and `apache`-owned, so add a
   user before anyone can log in:

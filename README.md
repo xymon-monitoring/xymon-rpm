@@ -283,6 +283,15 @@ build and install gaps this packaging compensates for, each with the upstream
 pull request that would let the spec drop its workaround, are in
 [docs/upstream.md](docs/upstream.md) *Gaps sent back upstream*.
 
+- **Hosts listed after the last line of `hosts.cfg` get no alerts and no client
+  analysis.** That line is `optional directory …/hosts.d`, and while `hosts.d`
+  is empty, xymond's reply to `config hosts.cfg` carries the line with a NUL in
+  it. `xymond_alert`, `xymond_client` and the other programs that load the hosts
+  through xymond stop reading there, so they never see a host listed below it.
+  `xymongen` reads the file itself, so those hosts still show on the web pages.
+  Until [xymon#585](https://github.com/xymon-monitoring/xymon/pull/585) ships,
+  list hosts above that line, or in a file under `hosts.d/`. A non-empty
+  directory does not trigger the fault.
 - **The preprocessor channel is still dropped** — `CPPFLAGS`, where Debian's
   `dpkg-buildflags` ships `_FORTIFY_SOURCE`. Fedora and EL fold FORTIFY into
   `CFLAGS`, so RPM builds are covered and this is a Debian gap, tracked in
