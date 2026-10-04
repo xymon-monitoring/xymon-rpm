@@ -89,7 +89,8 @@ Source11:       xymon-sysctl.conf
 #   reference material, shipped as %%doc only:
 Source9:        xymon.te
 Source10:       xymon-client.te
-Source12:       bb.xml
+#   (no bb.xml: firewalld ships the identical service, bb, on every
+#   target, so a copy here was a second one of what the host has)
 #   Fedora's rpm generates Requires: user(xymon) for any package owning
 #   files with a non-root owner; only sysusers.d generates the Provides.
 Source13:       xymon.sysusers
@@ -481,7 +482,7 @@ touch %{buildroot}%{_sysconfdir}/xymon/xymongroups
 
 # Shipped as reference material only, so %%doc them from the build dir --
 # %%doc cannot take a %%{SOURCEn} path directly.
-cp -p %{SOURCE9} %{SOURCE10} %{SOURCE12} .
+cp -p %{SOURCE9} %{SOURCE10} .
 
 # Development files. The build installs neither headers nor the static
 # libraries, so take them from the build tree. include/ and lib/ must stay
@@ -740,7 +741,6 @@ fi
 # Reference only until the policy is reviewed and compiled (%%bcond selinux).
 %doc xymon.te
 %doc xymon-client.te
-%doc bb.xml
 
 %post client
 # In a demotion the server package -- and its "enable xymonlaunch"
