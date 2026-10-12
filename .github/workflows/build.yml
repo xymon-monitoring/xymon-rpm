@@ -250,19 +250,13 @@ jobs:
       - name: Parse the spec
         run: rpmspec -P rpm/xymon.spec >/dev/null
 
-      # The define has to reach builddep as well as rpmbuild: conditional
-      # BuildRequires are invisible to dependency resolution otherwise, and
-      # the build then fails on deps that were never asked for.
       - name: Install build dependencies
-        run: |
-          dnf -y builddep ${{ matrix.rpmdefine && format('-D "{0}"', matrix.rpmdefine) || '' }} \
-            rpm/xymon.spec
+        run: dnf -y builddep rpm/xymon.spec
 
       - name: Build
         run: |
           set -eux
           rpmbuild -ba rpm/xymon.spec \
-            ${{ matrix.rpmdefine && format('--define "{0}"', matrix.rpmdefine) || '' }} \
             --define "baseversion ${{ steps.ver.outputs.base }}" \
             --define "releasenum ${{ github.event.inputs.releasenum || '1' }}" \
             ${{ steps.ver.outputs.snapshot && format('--define "gitsnapshot {0}"', steps.ver.outputs.snapshot) || '' }} \
