@@ -90,8 +90,6 @@ to a GitHub issue.
     the decision.**
   - `%pretrans` in lua is the layout migration, and it ends when no supported
     upgrade starts from the old layout — after the first release.
-  - The SELinux policy is `%bcond_with`, off, and its target is an unpublished
-    canary. Nothing to decide until it ships.
 - **The eventual move upstream.** [upstream.md](upstream.md) intends to move
   the spec and workflow into `xymon-monitoring/xymon` once stable, leaving this
   repo as the publish target. Part of that is deciding the fate of upstream's
@@ -149,11 +147,13 @@ to a GitHub issue.
 
 ## Packaging work (no upstream PR)
 
-- **Reconcile the SELinux `.te` with `%post`.** The modules still reference
+- **Reconcile the SELinux `.te` with `%posttrans`.** The modules still reference
   `/var/cache/xymon`, which this layout does not use; the real labeling is in
-  `%post` ([selinux.md](selinux.md)).
-- **Validate on an enforcing host.** CI compiles the policy but never runs
-  enforcing — needs a real RHEL/Oracle box ([selinux.md](selinux.md)).
+  `%posttrans` ([selinux.md](selinux.md)).
+- **Validate on more enforcing hosts.** Validated on AlmaLinux 8, 9 and 10
+  and Fedora 44; CI compiles the policy but never runs enforcing. Real
+  RHEL/Oracle are open, and `mls` is unsupported — it would need a policy
+  with domains of its own for the daemons ([selinux.md](selinux.md)).
 - **Validate on genuine RHEL and OracleLinux.** CI builds on AlmaLinux (a RHEL
   rebuild), which cannot surface a symbol RHEL lacks; real RHEL/OL testing is a
   standing gap. Recruit downstream testers.

@@ -187,7 +187,6 @@ the repo file states it rather than making it: the stanza is there with
 | `stream9` | `quay.io/centos/centos:stream9` | no — canary |
 | `stream10` | `quay.io/centos/centos:stream10` | no — canary |
 | `fedora-rawhide` | `fedora:rawhide` | no — canary |
-| `selinux` | `almalinux:10` | no — builds the policy with `--with selinux` |
 
 EL builds run on AlmaLinux, a rebuild of *released* RHEL, so they cannot
 need a symbol version RHEL lacks; the dist tag carries no vendor marker, so
@@ -307,12 +306,14 @@ pull request that would let the spec drop its workaround, are in
   `systemctl restart` to reach the daemons; the logrotate `copytruncate` sits
   behind the same gate. xymon#172 (stacked on xymon#219) is likewise rebased
   and CI-green, in draft.
-- The SELinux modules build with `--with selinux` (`targeted`, `mls`,
-  `minimum`) but are **off by default**: nothing in CI runs enforcing, so a
-  green build only proves they compile — and their rules still reference
-  `/var/cache/xymon`, which this layout does not use. Independently, `%post`
-  labels the CGI and www paths when `semanage` is present. How to build,
-  load and validate the modules is in [docs/selinux.md](docs/selinux.md).
+- On an SELinux-enforcing host, `%post` loads the packages' policy modules
+  and `%posttrans` labels the daemons, the CGIs, the web and RRD trees and
+  port 1984 — but only when `semanage` is installed, which a default
+  `dnf install` brings as a weak dependency and an `rpm -i` does not.
+  Validated on AlmaLinux 8, 9 and 10 and Fedora 44; CI runs nothing
+  enforcing. Xymon does not run under the `mls` policy. The modules' rules
+  still reference `/var/cache/xymon`, which this layout does not use. Details, and how to
+  report a denial, in [docs/selinux.md](docs/selinux.md).
 - `XYMONSERVERHOSTNAME` is baked as `localhost` and rewritten from `uname -n`
   in `%post`, because a package must not carry the build host's name.
 
