@@ -113,9 +113,17 @@ systemctl show -p MainPID --value xymonlaunch | xargs -I{} tr '\0' ' ' < /proc/{
   address already listed is ignored (rename the existing entry instead). An
   unmatched host still shows green from network tests while its client data is
   never analysed.
-- **Web access.** The UI is `http://<server>/xymon/`. The authenticated CGIs
-  read `/etc/xymon/xymonpasswd`, which ships empty and `apache`-owned, so add a
-  user before anyone can log in:
+- **Web access.** The UI is `http://<server>/xymon/`. firewalld's default
+  zone does not admit HTTP, so with firewalld running, let browsers in — and
+  add `--add-service=https` if httpd serves the UI over TLS (`mod_ssl`, which
+  these packages do not pull in):
+
+  ```sh
+  firewall-cmd --permanent --add-service=http && firewall-cmd --reload
+  ```
+
+  The authenticated CGIs read `/etc/xymon/xymonpasswd`, which ships empty and
+  `apache`-owned, so add a user before anyone can log in:
 
   ```sh
   htpasswd /etc/xymon/xymonpasswd alice     # -c only for the first user
@@ -175,6 +183,7 @@ Before this design, `xymon` required `xymon-client` and a separate
 | Host green but no cpu/disk/memory | not matched in `hosts.cfg` — check for a duplicate address |
 | Client runs, no data arrives | `XYMSRV`; port 1984 reachable (firewalld service `bb` on the server); `clientlaunch.log` |
 | Sections empty (disk, ports, ifstat) | `net-tools` missing, or the collector failed — `clientlaunch.log` |
+| Web UI loads on the server but not from elsewhere | firewalld service `http` (or `https`) on the server |
 | Web pages 500 | `xymonpasswd` missing or not `apache`-owned; httpd error log |
 | Nothing running after a swap | `systemctl restart xymonlaunch` |
 | `dnf upgrade` fails on a server | pre-conflict layout: `dnf swap xymon-client xymon` |
