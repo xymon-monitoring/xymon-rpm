@@ -11,17 +11,17 @@ spec is heavily commented inline, so this says *where*, the comments say *why*.
 
 | Where | What |
 | --- | --- |
-| **header** (top) | build knobs `--with selinux` (off by default) and `--without xymonping`; the globals that matter most: `xymonhome` (`/usr/lib/xymon`), and `dropindir`/`server.conf`/`client.conf` — the systemd drop-ins that pick a host's role |
+| **header** (top) | build knobs `--without selinux` (the policy modules, on by default) and `--without xymonping`; the globals that matter most: `xymonhome` (`/usr/lib/xymon`), and `dropindir`/`server.conf`/`client.conf` — the systemd drop-ins that pick a host's role |
 | **`%create_xymon_account`** | the `xymon` system user/group, via `sysusers.d` with a `sysusers_create_compat` fallback for RPM too old to have the macro |
 | **`%package` blocks** | `xymon`, `client`, `client-local`, `devel`, `tools`, each with its `%description`. `xymon` and `xymon-client` `Conflict` — one host is a server or a client |
-| **`%build`** | configures and builds upstream, passing `%{optflags}` and `%{build_ldflags}` through the environment — the comment there says why that channel and not the make command line; compiles the SELinux `.pp` per `targeted/mls/minimum` only under `--with selinux` |
+| **`%build`** | configures and builds upstream, passing `%{optflags}` and `%{build_ldflags}` through the environment — the comment there says why that channel and not the make command line; compiles the SELinux `.pp` per `targeted`/`minimum` unless `--without selinux` |
 | **`%install`** | the compensation layer. Moves the httpd config where a web server reads it (`#412`), splits static web content off the writable tree (`#414`), installs the systemd unit + role drop-ins (`#415`), the sysusers file, and the SELinux modules. Each workaround names its upstream PR |
-| **scriptlets** | `%pretrans` (lua, the layout migration), `%pre` (account), **`%post`** (systemd preset, tmpfiles, the `localhost`→`uname -n` rewrite, `semanage` file labeling, `semodule` load), `%preun`/`%postun` — and the parallel `client` set |
+| **scriptlets** | `%pretrans` (lua, the layout migration), `%pre` (account), **`%post`** (systemd preset, tmpfiles, the `localhost`→`uname -n` rewrite, `semodule` load), **`%posttrans`** (`semanage` file and port labeling, the httpd reload), `%preun`/`%postun` — and the parallel `client` set |
 | **`%files`** | one block per package; the client tree is shipped identically by both `xymon` and `xymon-client` |
 
 ## See also
 
 - [upstream.md](upstream.md) — where `rpm/sources/` files come from, and the
   upstream PRs that would shrink `%install`
-- [selinux.md](selinux.md) — the `%build`/`%post` SELinux path in detail
+- [selinux.md](selinux.md) — the `%build`/`%post`/`%posttrans` SELinux path in detail
 - README *Versioning* — how `Version`/`Release` are computed at build time

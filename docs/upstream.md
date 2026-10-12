@@ -44,7 +44,8 @@ hardcoded, so it serves a source install and any packaging, not only RPM.
 | `xymon-sysctl.conf` | byte-identical to `devel`'s | the backfeed-queue tunables; `main` has no equivalent | — none |
 | `xymon.logrotate` | adapted from `devel` | the `devel` copy's postrotate HUPs `xymonlaunch`, which `main` does not relay yet; `copytruncate` until it does | [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172) (the `SENDHUP` enabler) |
 | `xymon-client.default`, `xymonlaunch.default` | adapted from `devel` | both name this packaging's config paths instead of upstream's; `xymon-client.default` also documents `XYMONSERVERS`, which only patched clients read | [xymon#415](https://github.com/xymon-monitoring/xymon/pull/415) (`xymonlaunch.default` only) |
-| `xymon.te`, `xymon-client.te` | copied from `devel` | reference material, shipped as `%doc` by default and compiled to loadable modules only under `--with selinux` (see [docs/selinux.md](selinux.md)) | — `%doc` only |
+| `xymon.te` | adapted from `devel` | the server's policy module, built and loaded by default; adds `xymon_port_t`, the type `%posttrans` gives port 1984 so the CGIs may reach xymond (see [docs/selinux.md](selinux.md)) | — packaging-only |
+| `xymon-client.te` | copied from `devel` | the client's policy module, built and loaded by default | — packaging-only |
 
 ## Gaps sent back upstream
 

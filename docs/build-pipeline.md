@@ -10,7 +10,7 @@ pull request*).
 ```
 lint                               (no container; publish waits on it too)
 
-rpm (matrix: el8/9/10, fc43/44, stream9/10*, rawhide*, selinux)
+rpm (matrix: el8/9/10, fc43/44, stream9/10*, rawhide*)
  ├─ systemd-lifecycle ┐
  ├─ upgrade           ├─ publish ── pages   (needs all five; main / rel-* only)
  └─ monitoring        ┘

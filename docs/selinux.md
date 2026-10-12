@@ -1,60 +1,80 @@
 # The SELinux policy
 
-The packaging carries two SELinux type-enforcement modules, `xymon.te` and
+Xymon's runtime layout under `/usr/lib/xymon` and `/var/lib/xymon` has no
+file contexts in the default targeted policy, so on an enforcing host
+everything there is `lib_t` or `var_lib_t` — and both the daemons and the
+CGIs are denied. The packaging fixes that in two parts: file and port labels
+applied in `%posttrans`, and two type-enforcement modules, `xymon.te` and
 `xymon-client.te` (in `rpm/sources/`), adapted from the Terabithia lineage.
-They exist because Xymon's runtime layout under `/usr/lib/xymon` conflicts
-with the default targeted policy in a few specific places.
+Why each label is what it is sits beside it in the spec's `%posttrans`; this page
+is what an administrator sees.
 
-## Two independent parts
+## What `%posttrans` labels
 
-- **File-context labels** are applied in `%post` whenever `semanage` is
-  present, *regardless of how the package was built*. They label the CGIs
-  `httpd_sys_script_exec_t`, the `www` tree and `/usr/share/xymon`
-  `httpd_sys_content_t`, and `rep`/`snap` `httpd_sys_rw_content_t`, then
-  `restorecon`. Without these the CGIs are `lib_t` and the web tree
-  `var_lib_t`, both denied to `httpd_t`.
-- **The type-enforcement modules** are **off by default** (`%bcond_with
-  selinux`). By default the `.te` files ship as `%doc` reference and are not
-  compiled. Only a `--with selinux` build compiles them.
+Applied whenever `semanage` is installed — a weak dependency of both the
+server and the client package, so a default `dnf install` brings it; an
+`rpm -i`, or `dnf` with weak dependencies off, does not, and then nothing is
+labeled.
 
-## What the modules grant
+| path or port | label | without it |
+| --- | --- | --- |
+| `/usr/lib/xymon/server/bin`, `client/bin` | `bin_t` | the daemons run in `init_t`, and cannot reach xymond, the client's temp files or the network tests' ports |
+| `server/bin/cgiwrap` | `httpd_sys_script_exec_t` | every CGI is a hard link to it, so `bin_t` would turn them all, and they would run as `httpd_t` |
+| `cgi-bin`, `cgi-secure` | `httpd_sys_script_exec_t` | httpd will not run the CGIs |
+| `/var/lib/xymon/www`, `/usr/share/xymon` | `httpd_sys_content_t` | httpd will not serve the pages |
+| `www/rep`, `www/snap` | `httpd_sys_rw_content_t` | on-demand reports and snapshots cannot be written |
+| `/var/lib/xymon/rrd` | `httpd_sys_content_t` | graphs cannot read their data |
+| `/var/lib/xymon/tmp` | `httpd_sys_rw_content_t` | graphs cannot flush pending updates |
+| TCP port 1984 | `xymon_port_t` | the CGIs cannot query xymond |
 
-The rules address denials seen on an enforcing host:
+The client package labels `client/bin` itself. Erasing either package removes
+its rules, except `client/bin`'s while the other package is installed.
 
-- **`httpd_sys_script_t` → `httpd_cache_t`** (create/write/unlink/rename): the
-  on-demand `report.cgi`/`snapshot.cgi` regenerating content under
-  `/var/cache/xymon`.
-- **CGI → `sendto`/`connectto` on the daemon domains**: `showgraph` flushing
-  the RRD control sockets (and `rrdcached` if used).
+## The modules
+
+Built and loaded by default; a `--without selinux` build leaves them out, and
+then port 1984 stays unlabeled and the CGIs cannot reach xymond.
+
+- **`xymon_port_t`**, which `%posttrans` gives to 1984, and the one rule that lets
+  the CGIs (`httpd_sys_script_t`) connect to it. The alternative, the
+  `httpd_can_network_connect` boolean, lets every httpd script on the host
+  connect to any port.
+- **CGI → `sendto` on the daemon domains**: `showgraph` flushing the RRD
+  control sockets.
 - **`httpd_sys_script_t` → `var_log_t` read**: the ack/notification CGIs.
 - **`ping_t`**: fping's temp files.
 
-## Building and loading the modules
+`%post` loads the `targeted` and `minimum` modules the host has, best-effort:
+a container, or a host with SELinux disabled, just skips it.
+
+**Xymon does not run on an `mls` host**, and no `mls` module is built. The
+module requires `unconfined_service_t` and the `initrc_*` types, which only
+`targeted` and `minimum` define, so `semodule` refuses it there; and without
+`unconfined_service_t` the daemons stay in `init_t` whatever their label.
+Supporting `mls` would need a policy with domains of its own for the
+daemons.
+
+## Validating on an enforcing host
+
+Validated enforcing with the `targeted` policy on AlmaLinux 8, 9 and 10 and
+Fedora 44 — fresh server installs, a client-only host, and on AlmaLinux 9 an
+upgrade from a package without these labels and both role swaps — and with
+Fedora's `minimum` policy; the pull request that added them has the record.
+CI compiles the modules on every target but runs nothing enforcing, so RHEL
+itself, and any release not listed, is still worth a report:
 
 ```sh
-rpmbuild -ba rpm/xymon.spec --define 'baseversion 4.3.31' --with selinux
+getenforce                         # Enforcing
+dnf install xymon httpd
+systemctl enable --now httpd xymonlaunch
+ps -eZ | grep -E ' (xymond|xymonlaunch)$'   # unconfined_service_t, not init_t
+# open a host page, a graph, an acknowledgement, a report and a snapshot
+ausearch -m avc -ts recent         # any AVC is a policy gap
 ```
 
-`%build` compiles each of `targeted mls minimum` via
-`/usr/share/selinux/devel/Makefile`; `%install` ships the `.pp` under
-`%{_datadir}/selinux/<variant>/`; and `%post` loads the matching one with
-`semodule -s <variant> -i …` (best-effort — a container or permissive host
-just skips it). The CI `selinux` target builds this on `almalinux:10`, so a
-green run proves only that the policy **compiles** — nothing in CI runs
-enforcing.
-
-## Validating on an enforcing host — help wanted
-
-This is the one part CI cannot exercise. To test it end to end on a real
-enforcing RHEL/Oracle box:
-
-```sh
-setenforce 1                       # confirm: getenforce -> Enforcing
-dnf install ./xymon-*.rpm          # a --with selinux build
-# exercise the web UI: open a host page, a graph (showgraph), an
-# acknowledgement, and an on-demand report/snapshot
-ausearch -m avc -ts recent         # any AVC denial is a policy gap
-```
+`ausearch` reads standard input instead of the logs when it is not run from a
+terminal — from a script, or `ssh host cmd` — and then finds nothing; add
+`--input-logs` there.
 
 Report AVCs — and which action triggered them — as an issue on
 `xymon-monitoring/xymon-rpm`.
@@ -62,5 +82,5 @@ Report AVCs — and which action triggered them — as an issue on
 ## Known issue
 
 The module rules still reference `/var/cache/xymon`, a path this layout does
-not use (the `rep`/`snap` labeling in `%post` targets the `www` tree instead).
-Those dead rules should be reconciled with the actual `%post` labeling.
+not use (`rep` and `snap` are labeled under the `www` tree instead). Those
+dead rules should be reconciled with the actual `%posttrans` labeling.
