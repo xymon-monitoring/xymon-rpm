@@ -58,7 +58,6 @@ rather than what the spec compensates for — are in README *Known gaps*.
 
 | PR | What it adds | State |
 | --- | --- | --- |
-| [xymon#409](https://github.com/xymon-monitoring/xymon/pull/409) | installs the `lib/` diagnostics | open |
 | [xymon#410](https://github.com/xymon-monitoring/xymon/pull/410) | `make install-devel` installs the libraries and headers | open |
 | [xymon#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | open |
 | [xymon#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | draft |
@@ -68,7 +67,7 @@ rather than what the spec compensates for — are in README *Known gaps*.
 
 Each is opt-in behind a variable or an unused target, so it is a no-op for
 an existing build, which is why
-xymon#409, xymon#410, xymon#411, xymon#414 and xymon#443 merge in any order.
+xymon#410, xymon#411, xymon#414 and xymon#443 merge in any order.
 Whether that stays true is read off each diff rather than checked: being a
 no-op is a claim about what `make install` produces, and nothing in `tests/`
 decides it.

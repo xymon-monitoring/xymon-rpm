@@ -17,15 +17,15 @@ built from the upstream tree with **no source patches** — the spec has zero
 | `xymon-client` | the same client packaged alone, for every non-server host |
 | `xymon-client-local` | `xymond_client` on a client, for local threshold analysis |
 | `xymon-devel` | headers, static libraries, and a pkg-config file (`xymon.pc`) for building modules; pulls in `pcre2-devel` |
-| `xymon-tools` | diagnostics: stackio, locator, tree, availability, loadhosts |
+| `xymon-tools` | diagnostics: xymonstackio, xymonlocator, xymonavailability, xymonloadhosts, xymonnetprobe, and their manual page `xymontools(1)` |
 
 `xymon` and `xymon-client` **conflict**: a host is a server or a client,
 never both. See [docs/deployment-strategies.md](docs/deployment-strategies.md)
 for why, and how Debian, Terabithia and FreeBSD packaged the same split.
 
 `xymon-devel` and `xymon-tools` exist because Xymon's own build discards
-both: `make install` ships no headers or libraries, and `lib/` has no install
-rule for the tools it builds.
+both: `make install` ships no headers or libraries, and the tools it builds
+are installed only by an opt-in `make install-tools`.
 
 ## Installing
 
