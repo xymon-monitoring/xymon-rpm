@@ -266,7 +266,12 @@ check "xymond_client ships for local analysis" \
 	"test -x /usr/lib/xymon/server/bin/xymond_client"
 
 check "the diagnostic tools are executable" \
-	"test -x /usr/lib/xymon/server/bin/stackio -a -x /usr/lib/xymon/server/bin/loadhosts"
+	"test -x /usr/lib/xymon/server/bin/xymonstackio -a -x /usr/lib/xymon/server/bin/xymonloadhosts -a -x /usr/lib/xymon/server/bin/xymonnetprobe"
+
+# The man/ path, not the bare name: the server's web help carries an HTML
+# copy of every manual page, help/manpages/man1/xymontools.1.html included.
+check "xymontools(1) ships with the tools, not the server" \
+	"rpm -ql xymon-tools | grep -q '/man/man1/xymontools\.1' && ! rpm -ql xymon | grep -q '/man/man1/xymontools\.1'"
 
 check "the static library is packaged" \
 	"ls /usr/lib*/xymon/libxymon.a"
