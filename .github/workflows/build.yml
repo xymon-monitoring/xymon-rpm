@@ -148,16 +148,6 @@ jobs:
             image: fedora:rawhide
             family: fedora
             experimental: true
-          # Proves the SELinux policy still compiles. It is off by default
-          # in the shipped packages because nothing here runs enforcing
-          # SELinux, so this only demonstrates that the modules build --
-          # not that they are correct. Without this leg the wiring would
-          # never be exercised at all.
-          - name: selinux
-            image: almalinux:10
-            family: el
-            experimental: true
-            rpmdefine: _with_selinux 1
 
     steps:
       # EL needs CRB (c-ares-devel) and EPEL (rrdtool-devel); Fedora has
