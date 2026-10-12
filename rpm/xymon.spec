@@ -28,12 +28,18 @@
 # --with xymonping restores the setuid helper and drops the dependency.
 %bcond_with xymonping
 
-# SELinux policy modules, off by default: nothing in CI runs enforcing,
-# so a green build proves only that they compile. Enable with
-# --with selinux once verified on an enforcing machine. They declare no
-# new types -- only allow rules -- so there is no .fc and nothing to label.
-%bcond_with selinux
-%global selinux_variants targeted mls minimum
+# SELinux policy modules, built by default: the server's declares
+# xymon_port_t, which %%posttrans gives to port 1984 so that the CGIs may
+# reach xymond without the host-wide httpd_can_network_connect boolean.
+# Nothing in CI runs enforcing, so a green build proves only that they
+# compile; --without selinux leaves them out. They label no files --
+# %%posttrans does that with semanage -- so there is no .fc.
+%bcond_without selinux
+# Not mls: the server's module requires unconfined_service_t and the
+# initrc_* types, which only targeted and minimum define, so semodule
+# refuses it there; and without unconfined_service_t the daemons would stay
+# in init_t whatever their label. Xymon under mls needs a policy of its own.
+%global selinux_variants targeted minimum
 
 %global xymonhome  %{_prefix}/lib/xymon
 
@@ -86,7 +92,7 @@ Source6:        xymon.logrotate
 Source8:        xymon-client.default
 Source7:        xymonlaunch.default
 Source11:       xymon-sysctl.conf
-#   reference material, shipped as %%doc only:
+#   the policy modules, compiled in %%build; their source ships as %%doc:
 Source9:        xymon.te
 Source10:       xymon-client.te
 #   (no bb.xml: firewalld ships the identical service, bb, on every
@@ -237,7 +243,7 @@ Requires:       httpd-filesystem
 # Without the setuid xymonping helper, xymonnet shells out to fping.
 Requires:       fping
 %endif
-# semanage, for the file-context labeling in %%post. Weak on purpose: a
+# semanage, for the file-context labeling in %%posttrans. Weak on purpose: a
 # container or a disabled-SELinux host works without it.
 Recommends:     policycoreutils-python-utils
 
@@ -263,6 +269,9 @@ Requires(pre):  shadow-utils
 Requires:       net-tools
 # The client ships /etc/logrotate.d/xymon; nothing rotates it otherwise.
 Recommends:     logrotate
+# semanage, for labeling client/bin in %%posttrans; weak for the server's
+# reason.
+Recommends:     policycoreutils-python-utils
 
 %description client
 Client-side data collection for Xymon. It gathers CPU, memory, filesystem,
@@ -480,7 +489,7 @@ done
 touch %{buildroot}%{_sysconfdir}/xymon/xymonpasswd
 touch %{buildroot}%{_sysconfdir}/xymon/xymongroups
 
-# Shipped as reference material only, so %%doc them from the build dir --
+# The modules' source, shipped as %%doc from the build dir --
 # %%doc cannot take a %%{SOURCEn} path directly.
 cp -p %{SOURCE9} %{SOURCE10} .
 
@@ -599,12 +608,37 @@ if [ $1 -eq 1 ]; then
     sed -i -e "s/^\\(127\\.0\\.0\\.1[[:space:]]\\+\\)localhost\\b/\\1$(uname -n)/" \
         %{_sysconfdir}/xymon/hosts.cfg || :
 fi
-# Label the web-facing paths so httpd can reach them on an enforcing
-# host: the default policy has no contexts for /usr/lib/xymon, so the
-# CGIs are lib_t and the www tree var_lib_t, both denied to httpd_t.
+%if %{with selinux}
+# Never fatal: a container or a machine with SELinux disabled has no
+# working semodule, and failing there would abort an otherwise fine
+# installation. Before %%posttrans labels port 1984 with the module's
+# xymon_port_t.
+for v in %{selinux_variants}; do
+    semodule -s "$v" -i %{_datadir}/selinux/"$v"/xymon.pp >/dev/null 2>&1 || :
+done
+%endif
+
+%posttrans
+# In %%posttrans, not %%post: semanage comes from a weak dependency, which
+# does not order the transaction -- on Fedora 44 dnf installed it after
+# this package, %%post found no semanage, and nothing was labeled. By now
+# everything the transaction brings is in place.
+# Label the tree so it works on an enforcing host: the default policy has
+# no contexts for /usr/lib/xymon, so everything there is lib_t and the
+# state under /var/lib/xymon var_lib_t.
+#  - bin/ as bin_t: systemd has no transition for a lib_t ExecStart, so
+#    xymonlaunch and every daemon it starts would stay in init_t, which
+#    may not reach xymond's port, the client's temp files or the network
+#    tests' ports. From bin_t they run as unconfined_service_t.
+#  - cgiwrap back to httpd_sys_script_exec_t, after bin/: every CGI in
+#    cgi-bin and cgi-secure is a hard link to it, one inode, so bin_t
+#    there would relabel all of them and they would run as httpd_t.
+#  - rrd/ readable and tmp/ writable by the CGIs: showgraph reads the RRD
+#    files and writes xymond_rrd's rrdctl sockets to flush them.
+#  - port 1984 as xymon_port_t, which the module lets only the CGIs reach.
 # Best-effort by design -- semanage only exists where the SELinux tooling
 # is installed, and a container or disabled-SELinux host needs none of
-# this.
+# this. An upgrade re-adds rules it already has, which semanage refuses.
 if command -v semanage >/dev/null 2>&1; then
     semanage fcontext -a -t httpd_sys_script_exec_t '%{xymonhome}/cgi-bin(/.*)?'    2>/dev/null || :
     semanage fcontext -a -t httpd_sys_script_exec_t '%{xymonhome}/cgi-secure(/.*)?' 2>/dev/null || :
@@ -612,17 +646,19 @@ if command -v semanage >/dev/null 2>&1; then
     semanage fcontext -a -t httpd_sys_content_t '%{_datadir}/xymon(/.*)?' 2>/dev/null || :
     semanage fcontext -a -t httpd_sys_rw_content_t '%{_sharedstatedir}/xymon/www/rep(/.*)?'  2>/dev/null || :
     semanage fcontext -a -t httpd_sys_rw_content_t '%{_sharedstatedir}/xymon/www/snap(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t bin_t '%{xymonhome}/server/bin(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t bin_t '%{xymonhome}/client/bin(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_script_exec_t '%{xymonhome}/server/bin/cgiwrap' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_content_t '%{_sharedstatedir}/xymon/rrd(/.*)?'    2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_rw_content_t '%{_sharedstatedir}/xymon/tmp(/.*)?' 2>/dev/null || :
     restorecon -R %{xymonhome}/cgi-bin %{xymonhome}/cgi-secure \
-        %{_sharedstatedir}/xymon/www %{_datadir}/xymon 2>/dev/null || :
-fi
+        %{xymonhome}/server/bin %{xymonhome}/client/bin \
+        %{_sharedstatedir}/xymon/www %{_sharedstatedir}/xymon/rrd \
+        %{_sharedstatedir}/xymon/tmp %{_datadir}/xymon 2>/dev/null || :
 %if %{with selinux}
-# Never fatal: a container or a machine with SELinux disabled has no
-# working semodule, and failing there would abort an otherwise fine
-# installation.
-for v in %{selinux_variants}; do
-    semodule -s "$v" -i %{_datadir}/selinux/"$v"/xymon.pp >/dev/null 2>&1 || :
-done
+    semanage port -a -t xymon_port_t -p tcp 1984 2>/dev/null || :
 %endif
+fi
 # A running httpd does not pick up a new conf.d drop-in until it reloads,
 # so without this the /xymon UI stays unreachable until the next restart.
 # Policy, not an upstream gap: the service name and the init system are
@@ -657,10 +693,10 @@ fi
 
 %postun
 %systemd_postun_with_restart xymonlaunch.service
-# The removal half of the %post reload. The conf.d drop-in is gone, but a
+# The removal half of the %%posttrans reload. The conf.d drop-in is gone, but a
 # running httpd keeps serving /xymon from the config it last read, aliased
 # to trees just deleted, until something reloads it. Erase only: on an
-# upgrade the new package's %post has already reloaded against the new
+# upgrade the new package's %%posttrans reloads against the new
 # file. Same guard and same best effort as %post.
 if [ $1 -eq 0 ] && [ -d /run/systemd/system ]; then
     systemctl try-reload-or-restart httpd.service >/dev/null 2>&1 || :
@@ -672,6 +708,17 @@ if [ $1 -eq 0 ] && command -v semanage >/dev/null 2>&1; then
     semanage fcontext -d '%{_datadir}/xymon(/.*)?'                 2>/dev/null || :
     semanage fcontext -d '%{_sharedstatedir}/xymon/www/rep(/.*)?'  2>/dev/null || :
     semanage fcontext -d '%{_sharedstatedir}/xymon/www/snap(/.*)?' 2>/dev/null || :
+    semanage fcontext -d '%{xymonhome}/server/bin(/.*)?'           2>/dev/null || :
+    semanage fcontext -d '%{xymonhome}/server/bin/cgiwrap'         2>/dev/null || :
+    semanage fcontext -d '%{_sharedstatedir}/xymon/rrd(/.*)?'      2>/dev/null || :
+    semanage fcontext -d '%{_sharedstatedir}/xymon/tmp(/.*)?'      2>/dev/null || :
+    # Shared with the client package: in a demotion it is installed by
+    # now (see %%preun), and its client/bin still needs the rule.
+    if [ ! -e %{clientconf} ]; then
+        semanage fcontext -d '%{xymonhome}/client/bin(/.*)?'       2>/dev/null || :
+    fi
+    # Before the module goes: semodule will not remove a type in use.
+    semanage port -d -t xymon_port_t -p tcp 1984 2>/dev/null || :
 fi
 %if %{with selinux}
 if [ $1 -eq 0 ]; then
@@ -739,7 +786,7 @@ fi
 %if %{with selinux}
 %{_datadir}/selinux/*/xymon.pp
 %endif
-# Reference only until the policy is reviewed and compiled (%%bcond selinux).
+# The modules' source, beside the compiled ones %%post loads.
 %doc xymon.te
 %doc xymon-client.te
 
@@ -775,6 +822,15 @@ done
 %endif
 exit 0
 
+%posttrans client
+# client/bin as bin_t, for the reason given in the server's %%posttrans:
+# from a lib_t ExecStart the client would run in init_t. In %%posttrans
+# for the same reason too, and with the same best effort.
+if command -v semanage >/dev/null 2>&1; then
+    semanage fcontext -a -t bin_t '%{xymonhome}/client/bin(/.*)?' 2>/dev/null || :
+    restorecon -R %{xymonhome}/client/bin 2>/dev/null || :
+fi
+
 %preun client
 # Mirror of the server's guard: in a promotion (dnf swap xymon-client
 # xymon) the server package is already installed when this runs, the
@@ -789,6 +845,11 @@ fi
 
 %postun client
 %systemd_postun_with_restart xymonlaunch.service
+# Kept in a promotion: the server package is installed by now (see
+# %%preun client) and labels the same client/bin.
+if [ $1 -eq 0 ] && [ ! -e %{serverconf} ] && command -v semanage >/dev/null 2>&1; then
+    semanage fcontext -d '%{xymonhome}/client/bin(/.*)?' 2>/dev/null || :
+fi
 %if %{with selinux}
 if [ $1 -eq 0 ]; then
     for v in %{selinux_variants}; do

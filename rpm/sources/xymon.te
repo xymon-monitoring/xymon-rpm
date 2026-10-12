@@ -4,6 +4,8 @@
 ##	xymond_rrd is unconfined_service_t in EL7, so sendto needs access to files by that
 ## ping_t is for fping input/output tmp files
 ## Read to var_log_t:file needed for acknowledgements and notifications.cgi's to work
+## xymon_port_t is 1984 (%posttrans labels it): the CGIs query xymond there, and the
+##	only other route is the host-wide httpd_can_network_connect boolean
 ## httpd_cache_t is for /rep and /snap in /var/cache/xymon/
 ##	add write/unlink/rename to httpd_cache_t:file
 ##	add read to httpd_cache_t:lnk_file
@@ -27,6 +29,8 @@ require {
 	type initrc_var_run_t;
 	type httpd_sys_script_t;
 	type unconfined_service_t;
+	attribute port_type;
+	class tcp_socket name_connect;
 	class unix_dgram_socket sendto;
 	class unix_stream_socket connectto;
 	class sock_file write;
@@ -37,7 +41,11 @@ require {
 	class dir manage_dir_perms;
 }
 
+type xymon_port_t;
+typeattribute xymon_port_t port_type;
+
 #============= httpd_sys_script_t ==============
+allow httpd_sys_script_t xymon_port_t:tcp_socket name_connect;
 allow httpd_sys_script_t { var_run_t initrc_var_run_t }:dir list_dir_perms;
 allow httpd_sys_script_t { initrc_var_run_t initrc_t unconfined_service_t }:unix_dgram_socket sendto;
 allow httpd_sys_script_t { initrc_t }:unix_stream_socket connectto;
