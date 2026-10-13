@@ -504,9 +504,11 @@ install -pm 0644 include/*.h %{buildroot}%{_includedir}/xymon/include/
 install -pm 0644 lib/*.h     %{buildroot}%{_includedir}/xymon/lib/
 install -pm 0644 lib/*.a     %{buildroot}%{_libdir}/xymon/
 
-# xymon.pc: ship a pkg-config file with -devel. Written by hand because xymon
-# main has no install-devel target yet; when xymon#410 lands it generates the
-# same file and this becomes "make install-devel" with no change to the package.
+# xymon.pc: ship a pkg-config file with -devel, written by hand. The one
+# install-devel generates (xymon#410) is close but not the same: its prefix is
+# Xymon's home, unused since includedir and libdir are absolute, and its
+# Libs.private has no -lz, which nothing in lib/ needs. Shipping it instead
+# would drop -lz here.
 mkdir -p %{buildroot}%{_libdir}/pkgconfig
 cat > %{buildroot}%{_libdir}/pkgconfig/xymon.pc <<'PC'
 prefix=%{_prefix}
