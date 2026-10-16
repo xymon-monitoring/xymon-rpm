@@ -18,7 +18,7 @@ on:
   schedule:
     # Half an hour after the nightly build, so the two do not compete for
     # runners and the drift report lands next to that day's build result.
-    - cron: '47 3 * * *'
+    - cron: '47 0 * * *'
   workflow_dispatch:
   # Also on pushes that touch a document or a checker: those are the moments a
   # human can act on the answer immediately. The list is what the two checkers
