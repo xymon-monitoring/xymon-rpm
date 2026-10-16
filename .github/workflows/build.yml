@@ -21,7 +21,7 @@ on:
   # change moves an install path or a configure flag, this goes red the
   # next day rather than at the next release.
   schedule:
-    - cron: '17 3 * * *'
+    - cron: '17 0 * * *'
   workflow_dispatch:
     inputs:
       xymon_ref:

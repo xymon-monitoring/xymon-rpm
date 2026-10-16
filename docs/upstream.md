@@ -89,10 +89,10 @@ release instead.
 
 Two nightly schedules catch upstream moving underneath this packaging:
 
-- **`build.yml`** rebuilds `main` (cron `17 3 * * *`). If an upstream
+- **`build.yml`** rebuilds `main` (cron `17 0 * * *`). If an upstream
   change moves an install path or a configure flag, the build goes red
   the next day rather than at the next release.
-- **`docs-drift.yml`** runs `tests/docs.sh` (cron `47 3 * * *`, plus
+- **`docs-drift.yml`** runs `tests/docs.sh` (cron `47 0 * * *`, plus
   `workflow_dispatch` and pushes touching the doc or checker). It parses
   the origin and state columns above out of this file and tests them
   against `main` and `devel` — so a merged PR or a file newly landed on
