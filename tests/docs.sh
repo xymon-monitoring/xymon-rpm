@@ -1,6 +1,7 @@
 #!/bin/sh
 #
-# Asserts that docs/upstream.md still describes reality.
+# Asserts that docs/upstream.md, and the tracking issue it links to, still
+# describe reality.
 #
 # Everything here checks a claim that can change without anyone editing
 # this repository: a pull request is merged, a file appears on `devel`, a
@@ -9,8 +10,9 @@
 # that was true when written and had gone wrong by the time it was
 # checked.
 #
-# The doc is the input, not a copy of it: the origin column and the state
-# column are parsed out and tested against the source. Hardcoding the
+# The doc and the issue are the input, not a copy of them: the origin column
+# is parsed out of the doc, the state column out of the issue, and both are
+# tested against the source. Hardcoding the
 # expectations here would test this script against reality and leave the
 # doc free to drift, which is the failure being prevented.
 #
@@ -21,13 +23,15 @@
 #
 # Needs a xymon checkout with an `origin` remote (default ./src, as the
 # build workflow clones it) and, for the pull request assertions, gh
-# authenticated against the upstream repository.
+# authenticated against GitHub, to read the tracking issue and the upstream
+# pull requests.
 
 set -eu
 
 src=${1:-src}
 doc=docs/upstream.md
 upstream=xymon-monitoring/xymon
+packaging=xymon-monitoring/xymon-rpm
 
 fail=0
 check() {
@@ -95,32 +99,54 @@ while IFS="$(printf '\t')" read -r files origin; do
 done < "/tmp/docs-prov-$$"
 rm -f "/tmp/docs-prov-$$"
 
-echo "== the pull request table matches the pull requests =="
+echo "== the tracking issue's pull request table matches the pull requests =="
+
+# The table is in an issue, not in this tree: its state column changes every
+# time an upstream pull request moves, which no commit here marks. The doc's
+# *Gaps sent back upstream* links to it, and that link is the one place its
+# number is written, so the doc and these checks cannot point at two issues.
+issue=$(sed -n '/^## Gaps sent back upstream/,/^## Drift detection/p' "$doc" |
+	grep -oE 'xymon-rpm/issues/[0-9]+' | head -1 | grep -oE '[0-9]+$' || :)
 
 if ! command -v gh >/dev/null 2>&1; then
 	echo "NOT OK   gh not found -- the pull request assertions cannot run"
 	fail=1
+elif [ -z "$issue" ]; then
+	echo "NOT OK   $doc *Gaps sent back upstream* links to no xymon-rpm issue"
+	fail=1
+elif ! gh issue view "$issue" --repo "$packaging" --json body --jq .body \
+		> "/tmp/docs-body-$$" 2>/dev/null; then
+	echo "NOT OK   cannot read xymon-rpm#$issue"
+	fail=1
+	rm -f "/tmp/docs-body-$$"
 else
 	# Rows are: | [xymon#NNN](url) | what it adds | open|draft |
-	sed -n 's/^| \[xymon#\([0-9]\{1,\}\)\][^|]*|[^|]*| *\([a-z]*\) *|.*/\1 \2/p' "$doc" > "/tmp/docs-prs-$$"
-	[ -s "/tmp/docs-prs-$$" ] || { echo "NOT OK   no PR rows parsed out of $doc"; fail=1; }
+	rows='s/^| \[xymon#\([0-9]\{1,\}\)\][^|]*|[^|]*| *\([a-z]*\) *|.*/\1 \2/p'
+	sed -n "$rows" "/tmp/docs-body-$$" > "/tmp/docs-prs-$$"
+	[ -s "/tmp/docs-prs-$$" ] || { echo "NOT OK   no PR rows parsed out of xymon-rpm#$issue"; fail=1; }
 
+	# Through the issues API rather than gh pr view, because one row is an
+	# upstream issue (xymon#444), which gh pr view cannot read.
 	while read -r n claimed; do
 		[ -n "$n" ] || continue
-		real=$(gh pr view "$n" --repo "$upstream" --json state,isDraft \
-			--jq 'if .state != "OPEN" then (.state|ascii_downcase) elif .isDraft then "draft" else "open" end' 2>/dev/null || echo "unknown")
-		check "#$n is $claimed" "test '$real' = '$claimed'"
+		real=$(gh api "repos/$upstream/issues/$n" \
+			--jq 'if .pull_request then (if .pull_request.merged_at then "merged" elif .state == "closed" then "closed" elif .draft then "draft" else "open" end) else .state end' 2>/dev/null || echo "unknown")
+		check "xymon#$n is $claimed" "test '$real' = '$claimed'"
 	done < "/tmp/docs-prs-$$"
 
-	# The doc names which PRs merge in any order. That list is only correct
-	# while it is exactly the open, non-draft ones in the table -- it went
-	# stale the moment a sixth PR opened. A "merge in any order" claim needs
-	# at least two PRs to be about; with fewer than two open the claim is
-	# degenerate, so the doc must not make it and the check inverts to say so.
-	named=$(sed -n 's/^xymon#\([0-9, xymon#]*\)and xymon#\([0-9]\{1,\}\) merge in any order.*/\1 \2/p' "$doc" |
+	# The issue names which PRs merge in any order. That list is only correct
+	# while it is exactly the open, non-draft ones in the build and install
+	# table -- it went stale the moment a sixth PR opened. The runtime table
+	# is left out: its rows are not opt-in, and two of them are stacked. A
+	# "merge in any order" claim needs at least two PRs to be about; with
+	# fewer than two open the claim is degenerate, so the issue must not make
+	# it and the check inverts to say so.
+	sed -n '/^## Build and install/,/^## /p' "/tmp/docs-body-$$" |
+		sed -n "$rows" > "/tmp/docs-build-$$"
+	named=$(sed -n 's/^xymon#\([0-9, xymon#]*\)and xymon#\([0-9]\{1,\}\) merge in any order.*/\1 \2/p' "/tmp/docs-body-$$" |
 		tr -dc '0-9 ' | tr -s ' ' '\n' | grep . | sort -u | tr '\n' ' ')
-	open=$(awk '$2 == "open" { print $1 }' "/tmp/docs-prs-$$" | sort -u | tr '\n' ' ')
-	opencount=$(awk '$2 == "open"' "/tmp/docs-prs-$$" | grep -c . || :)
+	open=$(awk '$2 == "open" { print $1 }' "/tmp/docs-build-$$" | sort -u | tr '\n' ' ')
+	opencount=$(awk '$2 == "open"' "/tmp/docs-build-$$" | grep -c . || :)
 	if [ "$opencount" -ge 2 ]; then
 		check "the PRs named as order-independent are exactly the open ones" \
 			"test '$named' = '$open'"
@@ -137,7 +163,7 @@ else
 	# produces, which a test change neither shows nor hides: xymon#411 proved
 	# both halves at once, growing a test and, separately, an unconditional
 	# mkdir. Read the diff; no proxy stands in for that.
-	rm -f "/tmp/docs-prs-$$"
+	rm -f "/tmp/docs-prs-$$" "/tmp/docs-build-$$" "/tmp/docs-body-$$"
 fi
 
 echo "== what main does and does not carry =="
@@ -170,6 +196,7 @@ echo
 if [ "$fail" -eq 0 ]; then
 	echo "docs.sh: all assertions passed"
 else
-	echo "docs.sh: docs/upstream.md no longer matches the source -- update the doc"
+	echo "docs.sh: docs/upstream.md or its tracking issue no longer matches the"
+	echo "  source -- update the doc, or the issue's row (drop it once merged)"
 fi
 exit "$fail"

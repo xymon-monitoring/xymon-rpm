@@ -19,9 +19,9 @@ suite that can see it.
 | `systemd.sh` | a real PID 1 | `systemd-lifecycle` job |
 | `upgrade.sh` | the **published** build, then this one | `upgrade` job |
 | `monitoring.sh` | a running server + its client | `monitoring` job |
-| `docs.sh` | `upstream.md` vs the source | `docs-drift.yml` (schedule) |
+| `docs.sh` | `upstream.md` and the tracking issue vs the source | `docs-drift.yml` (schedule) |
 | `attribution.sh` | one text file | `attribution.yml` (pull requests, pushes to `main`) |
-| `compensations.sh` | the spec, the two trackers, every document | `docs-drift.yml` (schedule) |
+| `compensations.sh` | the spec, the tracking issue, README *Known gaps*, every document | `docs-drift.yml` (schedule) |
 
 The first four read from the built rpms and run inside the container matrix.
 The next three need PID 1 or a non-empty root, so they are separate jobs on

@@ -277,10 +277,10 @@ is named in the publish log, with which of the two rules dropped it.
 
 ## Known gaps
 
-Runtime shortfalls waiting on upstream. This is one half of the ledger: the
-build and install gaps this packaging compensates for, each with the upstream
-pull request that would let the spec drop its workaround, are in
-[docs/upstream.md](docs/upstream.md) *Gaps sent back upstream*.
+Runtime shortfalls waiting on upstream: what each one means on a host. Where
+each upstream pull request stands is tracked in
+[xymon-rpm#109](https://github.com/xymon-monitoring/xymon-rpm/issues/109),
+with the build and install gaps this packaging compensates for.
 
 - **The preprocessor channel is still dropped** — `CPPFLAGS`, where Debian's
   `dpkg-buildflags` ships `_FORTIFY_SOURCE`. Fedora and EL fold FORTIFY into
@@ -298,14 +298,12 @@ pull request that would let the spec drop its workaround, are in
   [xymon#219](https://github.com/xymon-monitoring/xymon/pull/219) adds
   `XYMONRUNDIR` but defaults it to `$XYMONLOGDIR`, so the spec must also pass
   `XYMONRUNDIR=/run/xymon` — and ship the tmpfiles snippet in the client
-  package, which currently lacks it. xymon#219 is rebased on current `main`,
-  reviewed and CI-green, in draft.
+  package, which currently lacks it.
 - `ExecReload` sends `SIGHUP`, which `xymonlaunch` acts on itself but does not
   relay to its children until
   [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172), so use
   `systemctl restart` to reach the daemons; the logrotate `copytruncate` sits
-  behind the same gate. xymon#172 (stacked on xymon#219) is likewise rebased
-  and CI-green, in draft.
+  behind the same gate.
 - On an SELinux-enforcing host, `%post` loads the packages' policy modules
   and `%posttrans` labels the daemons, the CGIs, the web and RRD trees and
   port 1984 — but only when `semanage` is installed, which a default
