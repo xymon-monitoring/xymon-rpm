@@ -3,9 +3,10 @@
 The **live trackers already exist and are checked in CI** — don't duplicate
 them here:
 
-- upstream fixes that let the spec drop a workaround → [upstream.md](upstream.md)
-  *Gaps sent back upstream* (a PR table, verified nightly by `docs.sh`)
-- runtime shortfalls waiting on upstream → README *Known gaps*
+- upstream fixes that let the spec drop a workaround, and where each stands →
+  [xymon-rpm#109](https://github.com/xymon-monitoring/xymon-rpm/issues/109)
+  (a PR table, verified nightly by `docs.sh`)
+- what the runtime shortfalls mean on a host → README *Known gaps*
 
 This file is for what those don't cover: **decisions to make, and packaging
 work with no upstream PR behind it.** Keep it short; move anything actionable

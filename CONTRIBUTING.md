@@ -46,8 +46,9 @@ rather than discovering it at release time.
 The rule says where a fix belongs, not when you can have it. A gap that belongs
 upstream may be compensated here in the meantime — that is a good part of what
 this packaging is for — on one condition: **the compensation names the upstream
-pull request that will delete it**, in the spec comment beside it and in
-[docs/upstream.md](docs/upstream.md) *Gaps sent back upstream*. That comment is
+pull request that will delete it**, in the spec comment beside it and in a
+row of the tracking issue, which [docs/upstream.md](docs/upstream.md) *Gaps
+sent back upstream* links to. That comment is
 what lets someone who was not there remove the workaround later. Without it,
 the override is not interim, it is a permanent divergence nobody will recognise
 as removable.
@@ -60,7 +61,7 @@ pull request merges, the same code becomes divergence. So the table does not
 classify once and for all — it records where the line runs now.
 
 Two checks watch that, nightly, from opposite ends. `tests/docs.sh` reads the
-*Gaps sent back upstream* table and checks each pull request's real state: when
+tracking issue's table and checks each pull request's real state: when
 one merges, the drift check goes red — not because something broke, but because
 a compensation just stopped being one. `tests/compensations.sh` takes the
 condition above and checks it the other way, that every `xymon#NNN` the spec

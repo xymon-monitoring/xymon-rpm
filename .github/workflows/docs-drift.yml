@@ -39,6 +39,8 @@ on:
 
 permissions:
   contents: read
+  # Both checkers read the tracking issue docs/upstream.md links to.
+  issues: read
 
 jobs:
   drift:
@@ -51,6 +53,9 @@ jobs:
       # this repository's spec against this repository's trackers. Running it
       # first means a network failure fetching xymon cannot hide its result.
       - name: Check the spec's citations against the trackers
+        env:
+          # gh reads the tracking issue with the run's own token.
+          GH_TOKEN: ${{ github.token }}
         run: ./tests/compensations.sh
 
       # blob:none keeps the clone small; the checker only reads file
@@ -64,8 +69,9 @@ jobs:
             https://github.com/xymon-monitoring/xymon.git src
           git -C src fetch -q origin main devel
 
-      - name: Check docs/upstream.md against the source
+      - name: Check docs/upstream.md and its tracking issue against the source
         env:
-          # gh reads public pull requests with the run's own token.
+          # gh reads the tracking issue and public pull requests with the
+          # run's own token.
           GH_TOKEN: ${{ github.token }}
         run: ./tests/docs.sh src

@@ -4,8 +4,8 @@ The spec builds the `xymon-monitoring/xymon` tree **with no patches at
 all; fixes belong upstream.** This repository and that one are separate
 on purpose: packaging iterates faster than a source tree can review it.
 This file records what had to be written here because upstream has no
-equivalent, and which of those gaps are being closed upstream so the
-spec can delete its workaround.
+equivalent, and points to the issue that tracks which of those gaps are
+being closed upstream so the spec can delete its workaround.
 
 ## How the upstream ref is selected
 
@@ -49,29 +49,18 @@ hardcoded, so it serves a source install and any packaging, not only RPM.
 
 ## Gaps sent back upstream
 
-Each is a feature this packaging proposed upstream — most let the spec
-delete a hand-rolled workaround; one (xymon#443) completes the `www` FHS
-story ahead of the spec consuming it. They are proposed rather than waited on; a
-proposal drops off this list once it merges.
+The upstream pull requests this packaging waits on, and the state of each,
+are tracked in one issue,
+[xymon-rpm#109](https://github.com/xymon-monitoring/xymon-rpm/issues/109),
+not here: their state changes every time one moves, and a document only
+changes when someone edits it. That issue is the only copy. It has the
+build and install compensations and the runtime shortfalls, each row naming
+the pull request and what it would add; README *Known gaps* says what each
+shortfall means on a host. A row goes once its pull request merges.
 
-This is one half of the ledger. Runtime shortfalls — what does not work yet,
-rather than what the spec compensates for — are in README *Known gaps*.
-
-| PR | What it adds | State |
-| --- | --- | --- |
-| [xymon#410](https://github.com/xymon-monitoring/xymon/pull/410) | `make install-devel` installs the libraries and headers | open |
-| [xymon#411](https://github.com/xymon-monitoring/xymon/pull/411) | `INSTALLCLIENT*DIR` | open |
-| [xymon#412](https://github.com/xymon-monitoring/xymon/pull/412) | `INSTALLHTTPDCONFDIR` | draft |
-| [xymon#414](https://github.com/xymon-monitoring/xymon/pull/414) | `INSTALLSTATICWWWDIR` (build placement) + `XYMONSTATICWWWDIR` (runtime — re-bases the `help` dir off `XYMONNOTESDIR` onto the static tree in `lib/links.c`) | open |
-| [xymon#415](https://github.com/xymon-monitoring/xymon/pull/415) | `devel`'s systemd unit generated from the build's paths, plus its preset, tmpfiles and defaults files and `INSTALLSYSTEMDDIR` | draft |
-| [xymon#443](https://github.com/xymon-monitoring/xymon/pull/443) | `XYMONCACHEWWWDIR` — lets `rep`/`snap` move to `/var/cache` (not consumed here yet) | open |
-
-Each is opt-in behind a variable or an unused target, so it is a no-op for
-an existing build, which is why
-xymon#410, xymon#411, xymon#414 and xymon#443 merge in any order.
-Whether that stays true is read off each diff rather than checked: being a
-no-op is a claim about what `make install` produces, and nothing in `tests/`
-decides it.
+`tests/docs.sh` and `tests/compensations.sh` read the issue's body, and find
+it through the link above, so that link is the one place its number is
+written.
 
 The spec adopts each feature as it lands, via its own consuming PRs — e.g.
 [xymon-rpm #4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) swaps the
@@ -94,9 +83,10 @@ Two nightly schedules catch upstream moving underneath this packaging:
   the next day rather than at the next release.
 - **`docs-drift.yml`** runs `tests/docs.sh` (cron `47 0 * * *`, plus
   `workflow_dispatch` and pushes touching the doc or checker). It parses
-  the origin and state columns above out of this file and tests them
-  against `main` and `devel` — so a merged PR or a file newly landed on
-  `devel` reports here rather than leaving a stale sentence. It is a
+  the origin column above out of this file and tests it against `devel`,
+  and the state column out of the tracking issue and tests it against the
+  pull requests — so a merged PR or a file newly landed on `devel` reports
+  here rather than leaving a stale sentence or a stale row. It is a
   separate workflow on purpose: a stale doc is worth a red run, not a
   held release, so it must not gate publishing.
 

@@ -8,14 +8,17 @@
 # the override. This checks the half of that a machine can check: that the
 # name leads somewhere.
 #
-# The two trackers are docs/upstream.md *Gaps sent back upstream* (build and
-# install compensations) and README *Known gaps* (runtime shortfalls). A
-# citation in neither is a workaround nobody will ever remove.
+# The two trackers are the tracking issue docs/upstream.md *Gaps sent back
+# upstream* links to (each upstream pull request and where it stands) and
+# README *Known gaps* (what a runtime shortfall means on a host). A citation
+# in neither is a workaround nobody will ever remove.
 #
-# It has teeth at the moment it matters. upstream.md says a proposal drops off
-# its table once it merges, so when one does, the row goes and the citation
-# left in the spec becomes untracked -- and this goes red, saying the
-# compensation should now be deleted, on the day that becomes true.
+# It has teeth at the moment it matters. A row leaves the issue once its pull
+# request merges, so when one does, the citation left in the spec becomes
+# untracked -- and this goes red, saying the compensation should now be
+# deleted, on the day that becomes true.
+#
+# Needs gh authenticated against GitHub, to read the issue.
 #
 # It does not check the converse, and cannot. The trackers legitimately list
 # proposals the spec has not consumed yet, so "tracked but not cited" is a
@@ -29,6 +32,7 @@ set -eu
 
 specs="rpm/xymon.spec rpm/xymon-release.spec"
 trackers="docs/upstream.md README.md"
+packaging=xymon-monitoring/xymon-rpm
 # Globbed rather than listed, so a document added later is covered without
 # anyone remembering to add it here.
 trackerdocs="README.md AGENTS.md CONTRIBUTING.md docs/*.md"
@@ -54,15 +58,27 @@ done
 # shellcheck disable=SC2086  # $specs is a list of paths; the split is the point
 cited=$(grep -ohE 'xymon#[0-9]+' $specs | grep -oE '[0-9]+' | sort -u)
 
+# The issue is found through the link in docs/upstream.md, the one place its
+# number is written; tests/docs.sh finds it the same way.
+issue=$(sed -n '/^## Gaps sent back upstream/,/^## Drift detection/p' docs/upstream.md |
+	grep -oE 'xymon-rpm/issues/[0-9]+' | head -1 | grep -oE '[0-9]+$' || :)
+[ -n "$issue" ] || { echo "NOT OK   docs/upstream.md *Gaps sent back upstream* links to no xymon-rpm issue"; exit 1; }
+command -v gh >/dev/null 2>&1 || { echo "NOT OK   gh not found -- cannot read the tracking issue"; exit 1; }
+
 # Tracked means linked, not merely mentioned: a row cites the pull request or
-# issue by URL, which is also what tests/docs.sh parses. Written to a file
-# rather than a variable, so each assertion is a plain grep of one number.
+# issue by URL, which is also what tests/docs.sh parses. Only upstream links
+# count -- the issue's own links into this repository are not trackers.
+# Written to a file rather than a variable, so each assertion is a plain grep
+# of one number.
 tracked=/tmp/compensations-tracked-$$
-trap 'rm -f "$tracked"' EXIT INT TERM
+body=/tmp/compensations-body-$$
+trap 'rm -f "$tracked" "$body"' EXIT INT TERM
+gh issue view "$issue" --repo "$packaging" --json body --jq .body > "$body" 2>/dev/null ||
+	{ echo "NOT OK   cannot read xymon-rpm#$issue"; exit 1; }
 {
-	sed -n '/^## Gaps sent back upstream/,/^## Drift detection/p' docs/upstream.md
+	cat "$body"
 	sed -n '/^## Known gaps/,/^## Testing/p' README.md
-} | grep -oE '/(pull|issues)/[0-9]+' | grep -oE '[0-9]+' | sort -u > "$tracked"
+} | grep -oE 'xymon-monitoring/xymon/(pull|issues)/[0-9]+' | grep -oE '[0-9]+$' | sort -u > "$tracked"
 
 echo "== every upstream reference the spec cites is tracked =="
 
@@ -111,8 +127,7 @@ else
 	echo "compensations.sh: the spec cites something no tracker holds, or the"
 	echo "  spec or a document cites it in a form this cannot follow."
 	echo "  A pull request that merged: delete the workaround it justified."
-	echo "  A compensation that is new: add it to docs/upstream.md *Gaps sent back"
-	echo "  upstream*, or to README *Known gaps* if it is a runtime shortfall."
+	echo "  A compensation that is new: add a row for it to xymon-rpm#$issue."
 	echo "  A bare #NNN: write it xymon#NNN, so a reader knows which repository"
 	echo "  -- in a document a bare one renders as a link to this repository's"
 	echo "  own issue of that number, which is not what was meant."
