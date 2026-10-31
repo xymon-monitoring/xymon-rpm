@@ -40,7 +40,9 @@ own issue of that number. Neither of those two reads an rpm.
 ## Two that earn their place
 
 - **`upgrade.sh`** is the only suite starting from a non-empty root, so the
-  only one that exercises `%pretrans` (the layout migration).
+  only one that exercises `%pretrans` (the layout migration). It upgrades from
+  the snapshot channel, so a preview build skips it: a preview is another line
+  and would read as a downgrade. Its packaging is main's, tested there.
 - **`monitoring.sh`** is the only suite that checks the thing actually
   *monitors* — it asserts the server analyses its own client into `cpu`,
   `disk`, `memory`, `procs`, with the board read *before* any client runs so a

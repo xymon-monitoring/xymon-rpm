@@ -12,7 +12,7 @@ lint                               (no container; publish waits on it too)
 
 rpm (matrix: el8/9/10, fc43/44, stream9/10*, rawhide*)
  ├─ systemd-lifecycle ┐
- ├─ upgrade           ├─ publish ── pages   (needs all five; main / rel-* only)
+ ├─ upgrade           ├─ publish ── pages   (needs all five; main / rel-* / preview-* only)
  └─ monitoring        ┘
    (* = canary: allowed to fail, never published)
 ```
@@ -52,12 +52,13 @@ inside the container matrix.
 
 ## Publishing
 
-The `publish` job gates on all four test jobs and only runs for `main` or a
-dispatched `rel-*` tag (a tag build is the release flow). It imports the
+The `publish` job gates on all four test jobs and only runs for `main`, a
+dispatched `rel-*` tag (a tag build is the release flow), or a dispatched
+`preview-*` tag from xymon-experimental. It imports the
 signing key, downloads every target's rpms, checks out the published tree from
 `xymon-monitoring/xymon-rpm-archive`, and runs `build/publish.sh` — which
-signs, sorts each package into the stable or `xymon-snapshot` channel by its
-`Release` field, and commits. A `concurrency` group serialises overlapping runs
+signs, sorts each package into the stable, `xymon-snapshot` or `xymon-preview`
+channel by its `Release` field, and commits. A `concurrency` group serialises overlapping runs
 so two publishes cannot race the push. No key present (a fork) → build and
 test, skip publish.
 

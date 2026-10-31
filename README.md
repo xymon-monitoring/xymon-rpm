@@ -119,6 +119,25 @@ dnf install xymon          # server
 dnf install xymon-client   # client only
 ```
 
+### Previews of each unreleased milestone
+
+The `xymon-preview` channel holds the published previews of
+[xymon-experimental](https://github.com/xymon-monitoring/xymon-experimental/releases):
+`main` plus the pull requests left for a milestone, most of them not reviewed
+yet. For testing, not production. It ships disabled, like the snapshot
+channel; enable it the same way, naming `xymon-preview` instead.
+
+Every unreleased milestone is in it at once. A plain install takes the newest;
+naming a version takes that milestone:
+
+```sh
+dnf install xymon            # the newest milestone's latest preview
+dnf install xymon-4.3.32     # 4.3.32's latest preview
+```
+
+A plain `dnf upgrade` follows the newest milestone. When a milestone is
+released, its `X.Y.Z-1` in the stable channel outranks its previews.
+
 ### Trying a snapshot without a host
 
 There has been no release, so trying one means installing a pre-release
@@ -212,12 +231,13 @@ tests/              see Testing
 
 ## Versioning
 
-Two channels, which must sort correctly or dnf does the wrong thing silently.
+Three channels, which must sort correctly or dnf does the wrong thing silently.
 
 | Built from | Version | Release |
 | --- | --- | --- |
 | tag `rel-X.Y.Z` | `X.Y.Z` | `<n>%{?dist}`, default `1` |
 | `main` | contents of `rpm/baseversion` | `0.<date>git<sha>.<pkgdate>p<pkgsha>%{?dist}` |
+| tag `preview-X.Y.Z-N` (xymon-experimental) | `X.Y.Z` | `0.preview<N>.<pkgdate>p<pkgsha>%{?dist}` |
 
 A snapshot is a *pre-release of the next version* (`Release` starts with
 `0.`), naming the upstream commit and then the last commit here that could
@@ -264,6 +284,10 @@ directory, and of each only its newest packaging rebuild, to stay within
 GitHub Pages limits; the **build** workflow can override the number for one
 run with `snapshot_keep`, or republish the channel from that run alone with
 `snapshot_reset`.
+
+The preview channel keeps the newest **2 previews** of each milestone per
+directory, each in its newest packaging rebuild only (`XYMON_PREVIEW_KEEP` in
+`build/publish.sh`).
 
 Counting upstream commits rather than published runs is what makes those slots
 worth having. Rolling back on a snapshot channel means going back to a different
@@ -356,9 +380,10 @@ goes red the next day rather than at the next release.
 ## Building a branch or a pull request
 
 Actions → **build** → *Run workflow* with a ref: `main` (default), `devel`,
-`pr/163`, or any sha or tag. Only `main` and dispatched `rel-*` tags publish
-(a tag build is the release flow); everything else produces downloadable
-artifacts only. The run logs the exact commit built. The `releasenum` input
+`pr/163`, `preview-4.3.32-1`, or any sha or tag. Only `main`, dispatched
+`rel-*` tags (the release flow) and dispatched `preview-*` tags (fetched from
+xymon-experimental, published to `xymon-preview`) publish; everything else
+produces downloadable artifacts only. The run logs the exact commit built. The `releasenum` input
 re-releases a tag with packaging fixes (see Versioning).
 
 ## Building locally

@@ -109,6 +109,11 @@ relrpm=${relrpm:-xymon-release-1-1.noarch.rpm}
 	      <td>tagged releases &mdash; enabled by default</td></tr>
 	  <tr><td><a href="xymon-snapshot/">xymon-snapshot/</a></td>
 	      <td>builds from the development branch &mdash; disabled by default</td></tr>
+	  <tr><td><a href="xymon-preview/">xymon-preview/</a></td>
+	      <td>previews of each unreleased milestone, from
+	      <a href="https://github.com/xymon-monitoring/xymon-experimental/releases">xymon-experimental</a>
+	      &mdash; disabled by default; <code>dnf install xymon-4.3.32</code>
+	      picks a milestone</td></tr>
 	</table>
 
 	<p>Snapshots are pre-releases of the next version and have had no release

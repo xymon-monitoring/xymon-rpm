@@ -61,16 +61,25 @@ HOME_ORIG=$HOME
 export HOME=$work
 cp "$work/rpmmacros" "$work/.rpmmacros"
 
-# A snapshot-versioned package, which is what a build of main produces.
-snap=$(find "$rpmdir" -name 'xymon-client-*0.*git*.rpm' ! -name '*debuginfo*' | head -1)
-[ -n "$snap" ] || { echo "NOT OK   no snapshot-versioned rpm in $rpmdir"; exit 1; }
+# A pre-release package: snapshot-versioned from a build of main, or
+# preview-versioned from a preview-X.Y.Z-N build. publish.sh files by file
+# name alone, so the one built is published under both names, and both
+# channels are exercised whichever kind of build this is.
+built=$(find "$rpmdir" -name 'xymon-client-*0.*git*.rpm' ! -name '*debuginfo*' | head -1)
+[ -n "$built" ] || built=$(find "$rpmdir" -name 'xymon-client-*0.preview*.rpm' ! -name '*debuginfo*' | head -1)
+[ -n "$built" ] || { echo "NOT OK   no snapshot- or preview-versioned rpm in $rpmdir"; exit 1; }
 # Absolute, because publish.sh is handed a temporary directory to work in.
-snap=$(cd "$(dirname "$snap")" && pwd)/$(basename "$snap")
+built=$(cd "$(dirname "$built")" && pwd)/$(basename "$built")
 
 repo=$work/repo
 art=$work/artifacts/target
 mkdir -p "$repo" "$art"
-cp "$snap" "$art/"
+b=$(basename "$built")
+snapname=$(printf '%s\n' "$b" | sed -E 's/-0\.preview[0-9]+\./-0.20991231git0000000./')
+prevname=$(printf '%s\n' "$snapname" | sed -E 's/-0\.[0-9]{8}git[0-9a-f]+\./-0.preview1./')
+cp "$built" "$art/$snapname"
+cp "$built" "$art/$prevname"
+snap=$art/$snapname
 
 ./build/publish.sh "$art/.." "$repo" > "$work/publish.log" 2>&1 ||
 	{ echo "NOT OK   publish.sh failed"; sed 's/^/    /' "$work/publish.log"; exit 1; }
@@ -78,7 +87,12 @@ cp "$snap" "$art/"
 echo "== a snapshot-only tree still gives the stable channel a usable repository =="
 
 check "the snapshot package was filed under xymon-snapshot" \
-	"find $repo/xymon-snapshot -name '*.rpm' | grep -q ."
+	"find $repo/xymon-snapshot -name '$snapname' | grep -q ."
+check "the preview package was filed under xymon-preview" \
+	"find $repo/xymon-preview -name '$prevname' | grep -q ."
+check "and neither channel took the other's" \
+	"test -z \"\$(find $repo/xymon-snapshot -name '*.preview*')\" &&
+	 test -z \"\$(find $repo/xymon-preview -name '*git*')\""
 
 # The regression: with no release ever published, the stable channel used
 # to be absent rather than empty.
@@ -156,6 +170,22 @@ check "a superseded packaging rebuild says why it went" \
 	"grep -q 'superseded packaging of' $work/prune.log"
 check "an upstream commit past the window says why it went" \
 	"grep -q 'upstream build past the newest' $work/prune.log"
+
+echo "== preview retention keeps the newest two previews of a milestone =="
+pdir=$(find "$repo/xymon-preview" -name '*.rpm' -printf '%h\n' | head -1)
+# previews 2 and 3 of the same milestone, and an older packaging of 3
+for n in 2 3; do
+	cp "$pdir/$prevname" "$pdir/$(printf '%s\n' "$prevname" | sed "s/\.preview1\./.preview$n./")"
+done
+cp "$pdir/$prevname" "$pdir/$(printf '%s\n' "$prevname" | sed -E 's/\.preview1\.[0-9]{12}p[0-9a-f]+\./.preview3.200001010000p0000000./')"
+./build/publish.sh "$art/.." "$repo" > "$work/pprune.log" 2>&1
+previews() {
+	find "$pdir" -name '*.rpm' -printf '%f\n' | sed -nE 's/.*-0\.(preview[0-9]+)\..*/\1/p' | sort | uniq -c | awk '{ print $2 "=" $1 }' | paste -sd' ' -
+}
+check "previews 2 and 3 stayed, one packaging each, and preview 1 went (got: $(previews))" \
+	"test \"\$(previews)\" = 'preview2=1 preview3=1'"
+check "the snapshot channel was not touched by preview retention" \
+	"find $repo/xymon-snapshot -name '$snapname' | grep -q ."
 
 echo "== reset republishes from this run alone =="
 XYMON_SNAPSHOT_RESET=1 ./build/publish.sh "$art/.." "$repo" > "$work/reset.log" 2>&1

@@ -60,4 +60,18 @@ enabled=0
 gpgcheck=1
 repo_gpgcheck=1
 gpgkey=$gpgkey
+
+# Previews of each unreleased milestone, from xymon-experimental: main
+# plus the pull requests left for that release, most of them not reviewed
+# yet. For testing, not production. Every milestone is here at once: plain
+# "dnf install xymon" takes the newest, "dnf install xymon-4.3.32" that
+# one. Disabled by default; enable it the way the snapshot channel above
+# says, naming xymon-preview.
+[xymon-preview]
+name=Xymon (previews of unreleased milestones)
+baseurl=$base/xymon-preview/\$releasever/\$basearch/
+enabled=0
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=$gpgkey
 EOF

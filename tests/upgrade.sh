@@ -41,6 +41,18 @@ new_server=$(find "$rpmdir" -name 'xymon-[0-9]*.rpm' ! -name '*.src.rpm')
 	exit 1
 }
 
+# The fixture is the snapshot channel, the line main builds. A preview is
+# another line -- a milestone's pull requests, not main's tip -- and sorts
+# below a same-version snapshot, so dnf would see a downgrade and the check
+# would fail on the comparison rather than on the migration it is for. The
+# packaging a preview carries is main's, which the snapshot builds test.
+case "$(rpm -qp --qf '%{release}' "$new_server" 2>/dev/null)" in
+0.preview*)
+	echo "SKIP     a preview build: its line is not the snapshot channel this upgrades from"
+	exit 0
+	;;
+esac
+
 echo "== fetching the published build =="
 curl -fsS -o /etc/yum.repos.d/xymon.repo \
 	https://xymon-monitoring.github.io/xymon-rpm/xymon.repo
