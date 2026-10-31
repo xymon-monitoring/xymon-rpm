@@ -1,0 +1,49 @@
+name: previews
+
+# Builds each new xymon-experimental preview into the xymon-preview channel.
+# For every milestone with no rel-<milestone> tag in xymon yet, the highest
+# published preview is looked for in the published tree (xymon-rpm-archive);
+# one that is not there is handed to the build workflow as
+# xymon_ref=preview-<milestone>-<n>, which builds, tests and publishes it as
+# it would main. Drafts are not published previews, so they are not seen.
+#
+# A preview whose build fails is dispatched again the next day: the archive
+# is the only record of what was built, and it holds successes alone.
+
+on:
+  schedule:
+    - cron: '47 1 * * *'   # after xymon-experimental's nightly build
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write   # dispatching the build workflow
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch the build of each new preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          released=$(git ls-remote --tags --refs https://github.com/xymon-monitoring/xymon 'refs/tags/rel-*' \
+                       | sed 's|.*refs/tags/rel-||')
+          published=$(gh api 'repos/xymon-monitoring/xymon-rpm-archive/git/trees/main?recursive=1' \
+                        -q '.tree[].path' | grep '^xymon-preview/' || true)
+          gh release list -R xymon-monitoring/xymon-experimental --exclude-drafts --limit 200 \
+              --json tagName -q '.[].tagName' \
+            | sed -n 's/^preview-\([0-9][0-9.]*\)-\([0-9][0-9]*\)$/\1 \2/p' \
+            | sort -k1,1V -k2,2nr | awk '!seen[$1]++' \
+            | while read -r m n; do
+                if printf '%s\n' "$released" | grep -qxF "$m"; then
+                  echo "$m: released, no preview built"
+                elif printf '%s\n' "$published" | grep -q "/xymon-$m-0\.preview$n\."; then
+                  echo "$m: preview$n already published"
+                else
+                  gh workflow run build.yml -R "$REPO" --ref main -f xymon_ref="preview-$m-$n"
+                  echo "$m: preview$n dispatched" | tee -a "$GITHUB_STEP_SUMMARY"
+                fi
+              done

@@ -138,6 +138,10 @@ dnf install xymon-4.3.32     # 4.3.32's latest preview
 A plain `dnf upgrade` follows the newest milestone. When a milestone is
 released, its `X.Y.Z-1` in the stable channel outranks its previews.
 
+A new preview reaches the channel the day after it is published: the
+**previews** workflow looks each night and dispatches the build of any that
+is not in it yet.
+
 ### Trying a snapshot without a host
 
 There has been no release, so trying one means installing a pre-release
