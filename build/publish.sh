@@ -19,10 +19,13 @@ artifacts=${1:?usage: publish.sh <artifacts-dir> <repo-dir>}
 repodir=${2:?usage: publish.sh <artifacts-dir> <repo-dir>}
 
 # A release build has no snapshot marker in its Release field; anything
-# else is a snapshot. Keeping the two in separate repositories is what
-# stops a stable user being silently moved onto a nightly build.
+# else is a snapshot, or a preview (0.previewN, a published
+# xymon-experimental preview). Keeping them in separate repositories is
+# what stops a stable user being silently moved onto a nightly build, and
+# a snapshot user onto a preview: the two are different lines of code.
 channel_for() {
 	case "$1" in
+	*-0.preview*) echo "xymon-preview" ;;
 	*-0.*git*) echo "xymon-snapshot" ;;
 	*)         echo "xymon" ;;
 	esac
@@ -165,6 +168,43 @@ if [ -d "$repodir/xymon-snapshot" ]; then
 	done
 fi
 
+# --- preview retention -------------------------------------------------
+#
+# A preview channel holds every unreleased milestone at once, so users
+# pick one by version; what is bounded is the history of each. Per
+# directory and milestone, the newest $pkeep previews stay, each in its
+# newest packaging rebuild only. Whole builds go, never single files, for
+# the reason given for snapshots above.
+pkeep=${XYMON_PREVIEW_KEEP:-2}
+
+# xymon-client-4.3.32-0.preview1.202610311000pab12cd3.el10.x86_64.rpm ->
+# milestone, preview number, packaging half, tab-separated.
+previewid() {
+	printf '%s\n' "${1##*/}" \
+	| sed -nE 's/.*-([0-9]+\.[0-9]+\.[0-9]+)-0\.preview([0-9]+)\.([0-9]{12}p[0-9a-f]+)\..*/\1\t\2\t\3/p'
+}
+
+if [ -d "$repodir/xymon-preview" ]; then
+	echo "== pruning previews (keeping $pkeep per milestone per directory, newest packaging of each) =="
+	find "$repodir/xymon-preview" -name '*.rpm' -printf '%h\n' | sort -u | while read -r dir; do
+		# Newest first within a milestone: preview number, then the
+		# packaging datetime that leads its half.
+		kept=$(for f in "$dir"/*.rpm; do
+			[ -e "$f" ] || continue
+			previewid "$f"
+		done | sort -u | sort -t "$(printf '\t')" -k1,1V -k2,2nr -k3,3r \
+		| awk -F'\t' -v k="$pkeep" '!(($1 FS $2) in seen) { seen[$1 FS $2] = 1; if (++n[$1] <= k) print }')
+		for f in "$dir"/*.rpm; do
+			[ -e "$f" ] || continue
+			id=$(previewid "$f")
+			[ -n "$id" ] || continue
+			printf '%s\n' "$kept" | grep -qxF "$id" && continue
+			rm -f "$f"
+			echo "  - ${dir#"$repodir"/}: dropped ${f##*/} (past the newest $pkeep previews of its milestone, or superseded packaging)"
+		done
+	done
+fi
+
 # A channel that has no packages yet still needs metadata. createrepo_c
 # on an empty directory produces valid repodata listing zero packages,
 # and dnf then says "no match for argument" and carries on; with no
@@ -173,14 +213,15 @@ fi
 # shipped .repo file enables the stable channel, so until the first
 # release lands that 404 is what every new user meets.
 #
-# The snapshot channel defines which releasever/arch combinations exist,
-# so mirror its layout rather than hardcoding a list that would drift
-# from the build matrix.
-if [ -d "$repodir/xymon-snapshot" ]; then
-	find "$repodir/xymon-snapshot" -mindepth 2 -maxdepth 2 -type d | while read -r d; do
-		mkdir -p "$repodir/xymon/${d#"$repodir"/xymon-snapshot/}"
+# The pre-release channels define which releasever/arch combinations
+# exist, so mirror their layout rather than hardcoding a list that would
+# drift from the build matrix.
+for ch in xymon-snapshot xymon-preview; do
+	[ -d "$repodir/$ch" ] || continue
+	find "$repodir/$ch" -mindepth 2 -maxdepth 2 -type d | while read -r d; do
+		mkdir -p "$repodir/xymon/${d#"$repodir/$ch"/}"
 	done
-fi
+done
 
 echo "== regenerating metadata =="
 # Every channel/releasever/arch directory gets its own metadata; that is

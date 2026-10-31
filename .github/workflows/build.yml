@@ -25,7 +25,7 @@ on:
   workflow_dispatch:
     inputs:
       xymon_ref:
-        description: 'Ref to build: a branch, tag, sha, or pr/NNN'
+        description: 'Ref to build: a branch, tag, sha, pr/NNN, or preview-X.Y.Z-N'
         required: false
         default: 'main'
       # A published NEVRA is immutable, so a packaging-only fix to an
@@ -178,7 +178,9 @@ jobs:
       # Accepts a branch, a tag, a sha, or a pull request -- either as
       # "pr/163" or as the full "refs/pull/163/head". A plain clone does not
       # fetch refs/pull/*, so a PR reference has to be asked for explicitly
-      # before it can be checked out.
+      # before it can be checked out. A preview-X.Y.Z-N tag is not in xymon
+      # at all: xymon-experimental makes it, main plus the pull requests
+      # left for X.Y.Z, and it is fetched from there.
       - name: Checkout xymon source
         run: |
           set -eux
@@ -192,12 +194,18 @@ jobs:
             # pull request moves, so "pr/163" alone does not identify a build.
             echo "::notice::built from PR #${pr} at $(git -C src rev-parse --short HEAD)"
             ;;
+          preview-*)
+            git -C src fetch https://github.com/xymon-monitoring/xymon-experimental.git \
+              "refs/tags/${XYMON_REF}:refs/tags/${XYMON_REF}"
+            git -C src checkout "${XYMON_REF}"
+            ;;
           *)
             git -C src checkout "${XYMON_REF}"
             ;;
           esac
 
-      # A tag builds as X.Y.Z-1; anything else as a pre-release of the
+      # A tag builds as X.Y.Z-1; a preview-X.Y.Z-N as X.Y.Z-0.previewN.
+      # <pkgdate>p<pkgsha>; anything else as a pre-release of the
       # upcoming version, X.Y.Z-0.<date>git<sha>.<pkgdate>p<pkgsha>, which
       # sorts below the eventual -1. First pair: the upstream commit.
       # Second: the packaging commit -- a published NEVRA is immutable, so
@@ -211,7 +219,24 @@ jobs:
           set -eux
           base=$(cat rpm/baseversion)
           ref=$(git -C src rev-parse --short=7 HEAD)
-          if tag=$(git -C src describe --exact-match --tags 2>/dev/null); then
+          # The packaging checkout is owned by the runner user, not the
+          # container user, and git refuses mismatched ownership. src is
+          # immune only because it was cloned inside the container.
+          git config --global --add safe.directory "$(pwd)"
+          # The last commit that can change a package -- not HEAD.
+          # Keyed on HEAD, a docs or test commit mints a new NEVRA for
+          # a byte-identical rpm, and publishes a rebuild that differs
+          # from the one before it only in its name.
+          pkgpaths="rpm build .github"
+          pkgdate=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y%m%d%H%M -- $pkgpaths)
+          pkgref=$(git log -1 --format=%h --abbrev=7 -- $pkgpaths)
+          # Checked before the tag below: a preview tag is an exact tag
+          # match too, and would be taken for a release.
+          if [[ "${XYMON_REF}" =~ ^preview-([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)$ ]]; then
+            base="${BASH_REMATCH[1]}"
+            echo "snapshot=0.preview${BASH_REMATCH[2]}.${pkgdate}p${pkgref}" >> "$GITHUB_OUTPUT"
+            echo "gitref=${XYMON_REF}" >> "$GITHUB_OUTPUT"
+          elif tag=$(git -C src describe --exact-match --tags 2>/dev/null); then
             base="${tag#rel-}"
             echo "snapshot=" >> "$GITHUB_OUTPUT"
             # Source0 names what was packaged. On a tag that is the tag, so
@@ -219,17 +244,6 @@ jobs:
             echo "gitref=${tag}" >> "$GITHUB_OUTPUT"
           else
             date=$(git -C src log -1 --format=%cd --date=format:%Y%m%d)
-            # The packaging checkout is owned by the runner user, not the
-            # container user, and git refuses mismatched ownership. src is
-            # immune only because it was cloned inside the container.
-            git config --global --add safe.directory "$(pwd)"
-            # The last commit that can change a package -- not HEAD.
-            # Keyed on HEAD, a docs or test commit mints a new NEVRA for
-            # a byte-identical rpm, and publishes a rebuild that differs
-            # from the one before it only in its name.
-            pkgpaths="rpm build .github"
-            pkgdate=$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y%m%d%H%M -- $pkgpaths)
-            pkgref=$(git log -1 --format=%h --abbrev=7 -- $pkgpaths)
             echo "snapshot=0.${date}git${ref}.${pkgdate}p${pkgref}" >> "$GITHUB_OUTPUT"
             echo "gitref=${ref}" >> "$GITHUB_OUTPUT"
           fi
@@ -487,14 +501,17 @@ jobs:
     # it were main. A dispatched rel-* ref IS the release flow, so it
     # publishes; if someone names an upstream *branch* rel-*, the Compute
     # version step still versions it as a snapshot (only an exact tag match
-    # builds as X.Y.Z-n), so it cannot impersonate a release.
+    # builds as X.Y.Z-n), so it cannot impersonate a release. A dispatched
+    # preview-* ref is a published xymon-experimental preview; its Release
+    # starts 0.preview, which files it in the xymon-preview channel alone.
     if: >-
       github.event_name != 'pull_request'
       && github.ref == 'refs/heads/main'
       && (github.event.inputs.xymon_ref == ''
           || github.event.inputs.xymon_ref == null
           || github.event.inputs.xymon_ref == 'main'
-          || startsWith(github.event.inputs.xymon_ref, 'rel-'))
+          || startsWith(github.event.inputs.xymon_ref, 'rel-')
+          || startsWith(github.event.inputs.xymon_ref, 'preview-'))
     runs-on: ubuntu-latest
     container:
       image: fedora:44

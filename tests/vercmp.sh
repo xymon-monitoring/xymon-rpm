@@ -67,6 +67,17 @@ below "4.3.31-2.el10" "4.3.32-0.20270101gitabcdefa.202701011200p1234abc.el10"
 # And the next release supersedes the previous one.
 below "4.3.31-1.el10" "4.3.32-1.el10"
 
+# Previews (0.previewN, the xymon-preview channel) advance by preview
+# number -- numerically, so preview10 follows preview9 -- then by
+# packaging, and the release of their milestone supersedes them all.
+below "4.3.32-0.preview1.202610311000pab12cd3.el10" "4.3.32-0.preview2.202610311000pab12cd3.el10"
+below "4.3.32-0.preview9.202610311000pab12cd3.el10" "4.3.32-0.preview10.202610311000pab12cd3.el10"
+below "4.3.32-0.preview1.202610311000pab12cd3.el10" "4.3.32-0.preview1.202611011000pdeadbee.el10"
+below "4.3.32-0.preview10.209912312359pfffffff.el10" "4.3.32-1.el10"
+# A later milestone's preview outranks an earlier one's release, so a host
+# following the channel moves forward when a milestone ships.
+below "4.3.31-1.el10" "4.3.32-0.preview1.202610311000pab12cd3.el10"
+
 # When the upstream clone is present (CI runs from the repo root with the
 # source checked out in src/), assert that rpm/baseversion is ahead of the
 # newest release tag. A missed bump after a release makes every later
