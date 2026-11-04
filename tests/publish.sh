@@ -187,6 +187,31 @@ check "previews 2 and 3 stayed, one packaging each, and preview 1 went (got: $(p
 check "the snapshot channel was not touched by preview retention" \
 	"find $repo/xymon-snapshot -name '$snapname' | grep -q ."
 
+echo "== the next release's channel holds the lowest unreleased milestone =="
+# Two milestones below any real one, so the build's own preview is never the
+# lowest: 0.0.1 is the next release until a 0.0.1-1 lands in the stable
+# channel, then 0.0.2 is.
+n1=$(printf '%s\n' "$prevname" | sed -E 's/-[0-9.]+-0\.preview1\./-0.0.1-0.preview1./')
+n2=$(printf '%s\n' "$prevname" | sed -E 's/-[0-9.]+-0\.preview1\./-0.0.2-0.preview1./')
+cp "$built" "$art/$n1"
+cp "$built" "$art/$n2"
+./build/publish.sh "$art/.." "$repo" > "$work/next.log" 2>&1
+check "xymon-preview-next holds 0.0.1, the lowest unreleased milestone" \
+	"find $repo/xymon-preview-next -name '$n1' | grep -q ."
+check "and not 0.0.2, nor any other milestone's preview" \
+	"test \$(find $repo/xymon-preview-next -name '*.rpm' | wc -l) -eq \$(find $repo/xymon-preview-next -name '$n1' | wc -l)"
+check "it has its own signed metadata" \
+	"find $repo/xymon-preview-next -name repomd.xml.asc | grep -q ."
+rel=$(printf '%s\n' "$n1" | sed -E 's/-0\.0\.1-0\.preview1\.[0-9]{12}p[0-9a-f]+\./-0.0.1-1./')
+cp "$built" "$art/$rel"
+./build/publish.sh "$art/.." "$repo" > "$work/next2.log" 2>&1
+check "a 0.0.1 release in the stable channel moves it on to 0.0.2" \
+	"find $repo/xymon-preview-next -name '$n2' | grep -q . &&
+	 test -z \"\$(find $repo/xymon-preview-next -name '$n1')\""
+check "the stable channel filed the release" \
+	"find $repo/xymon -name '$rel' | grep -q ."
+rm -f "$art/$n1" "$art/$n2" "$art/$rel"
+
 echo "== reset republishes from this run alone =="
 XYMON_SNAPSHOT_RESET=1 ./build/publish.sh "$art/.." "$repo" > "$work/reset.log" 2>&1
 check "the snapshot channel holds only this run's package" \

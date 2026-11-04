@@ -138,6 +138,12 @@ dnf install xymon-4.3.32     # 4.3.32's latest preview
 A plain `dnf upgrade` follows the newest milestone. When a milestone is
 released, its `X.Y.Z-1` in the stable channel outranks its previews.
 
+To follow the **next release** instead, enable `xymon-preview-next` rather
+than `xymon-preview`. It holds the previews of the lowest milestone that has
+no release yet, e.g. 4.3.31, so a plain install or upgrade takes that
+milestone's latest preview. Once that milestone is released it moves on to the
+following one by itself, as Homebrew's `xymon-server-preview` does.
+
 A new preview reaches the channel the day after it is published: the
 **previews** workflow looks each night and dispatches the build of any that
 is not in it yet.

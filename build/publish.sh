@@ -20,7 +20,8 @@ repodir=${2:?usage: publish.sh <artifacts-dir> <repo-dir>}
 
 # A release build has no snapshot marker in its Release field; anything
 # else is a snapshot, or a preview (0.previewN, a published
-# xymon-experimental preview). Keeping them in separate repositories is
+# xymon-experimental preview; the next release's are also copied into
+# xymon-preview-next, below). Keeping them in separate repositories is
 # what stops a stable user being silently moved onto a nightly build, and
 # a snapshot user onto a preview: the two are different lines of code.
 channel_for() {
@@ -203,6 +204,38 @@ if [ -d "$repodir/xymon-preview" ]; then
 			echo "  - ${dir#"$repodir"/}: dropped ${f##*/} (past the newest $pkeep previews of its milestone, or superseded packaging)"
 		done
 	done
+fi
+
+# --- the next release's previews ----------------------------------------
+#
+# xymon-preview-next holds the previews of the next release alone: the
+# lowest milestone with a preview and no release in the stable channel yet.
+# A host that follows only the next release enables it, as Homebrew's
+# xymon-server-preview does. It is rebuilt from xymon-preview on every
+# publish, so a release moves it on to the following milestone by itself.
+if [ -d "$repodir/xymon-preview" ]; then
+	# The stable channel is absent until a first publish has mirrored it;
+	# under pipefail a find on a missing directory would end the script.
+	released=
+	if [ -d "$repodir/xymon" ]; then
+		released=$(find "$repodir/xymon" -name '*.rpm' -printf '%f\n' \
+			| sed -nE 's/.*-([0-9]+\.[0-9]+\.[0-9]+)-[1-9][0-9]*\..*/\1/p' | sort -u)
+	fi
+	next=$(find "$repodir/xymon-preview" -name '*.rpm' -printf '%f\n' \
+		| sed -nE 's/.*-([0-9]+\.[0-9]+\.[0-9]+)-0\.preview[0-9]+\..*/\1/p' | sort -uV \
+		| while read -r m; do
+			printf '%s\n' "$released" | grep -qxF "$m" || { echo "$m"; break; }
+		done)
+	rm -rf "${repodir:?}/xymon-preview-next"
+	# Every releasever/arch of the preview channel, empty when there is no
+	# next release, so the channel never answers a 404 once it exists.
+	find "$repodir/xymon-preview" -mindepth 2 -maxdepth 2 -type d | while read -r d; do
+		dest="$repodir/xymon-preview-next/${d#"$repodir/xymon-preview"/}"
+		mkdir -p "$dest"
+		[ -n "$next" ] || continue
+		find "$d" -maxdepth 1 -name "*-$next-0.preview*.rpm" -exec cp -p {} "$dest/" \;
+	done
+	echo "== next release's previews: ${next:-none} =="
 fi
 
 # A channel that has no packages yet still needs metadata. createrepo_c
