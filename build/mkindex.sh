@@ -97,7 +97,7 @@ relrpm=${relrpm:-xymon-release-1-1.noarch.rpm}
 
 	<p><strong>There has been no release yet.</strong> The stable channel
 	the release package enables answers, but holds no package &mdash; so the
-	second command finds nothing until the snapshot channel is enabled too,
+	second command finds nothing until a snapshot or preview channel is enabled too,
 	as <a href="#channels">Channels</a> below describes. That step goes once
 	the first release is out.</p>
 
@@ -108,16 +108,16 @@ relrpm=${relrpm:-xymon-release-1-1.noarch.rpm}
 	  <tr><td><a href="xymon/">xymon/</a></td>
 	      <td>tagged releases &mdash; enabled by default</td></tr>
 	  <tr><td><a href="xymon-snapshot/">xymon-snapshot/</a></td>
-	      <td>builds from the development branch &mdash; disabled by default</td></tr>
+	      <td>builds of upstream <code>main</code> &mdash; disabled by default</td></tr>
 	  <tr><td><a href="xymon-preview/">xymon-preview/</a></td>
 	      <td>previews of each unreleased milestone, from
 	      <a href="https://github.com/xymon-monitoring/xymon-experimental/releases">xymon-experimental</a>
-	      &mdash; disabled by default; <code>dnf install xymon-4.3.32</code>
-	      picks a milestone</td></tr>
+	      &mdash; the 2 newest of every milestone, disabled by default;
+	      <code>dnf install xymon-4.3.32</code> picks a milestone</td></tr>
 	  <tr><td><a href="xymon-preview-next/">xymon-preview-next/</a></td>
 	      <td>the previews of the next release alone &mdash; disabled by
 	      default; <code>dnf upgrade</code> follows the release that is
-	      coming</td></tr>
+	      coming &mdash; the usual choice for testing a preview</td></tr>
 	</table>
 
 	<p>Snapshots are pre-releases of the next version and have had no release
@@ -129,6 +129,16 @@ relrpm=${relrpm:-xymon-release-1-1.noarch.rpm}
 
 	dnf config-manager --set-enabled xymon-snapshot      # dnf4: EL
 	dnf config-manager setopt xymon-snapshot.enabled=1   # dnf5: Fedora</pre>
+
+	<p>Previews are test builds of an upcoming release: <code>main</code> plus
+	the pull requests planned for a milestone, most of them not reviewed yet.
+	For testing, not production. Enable <em>one</em> preview channel, and not
+	together with <code>xymon-snapshot</code>: a snapshot of the same version
+	sorts above a preview, so dnf would install the snapshot.</p>
+	<pre>dnf config-manager --set-enabled xymon-preview-next      # dnf4: EL
+	dnf config-manager setopt xymon-preview-next.enabled=1   # dnf5: Fedora</pre>
+	<p>For a given milestone, use <code>xymon-preview</code> the same way
+	instead.</p>
 
 	<h2>Signing</h2>
 	<p>Packages and repository metadata are both signed. Verify the

@@ -33,7 +33,7 @@ cat <<EOF
 #
 # A host pinned to a RHEL minor release (subscription-manager release
 # --set=9.4) expands \$releasever to "9.4", where there is no tree, and
-# every transaction fails on the 404. Set releasever=9 in both stanzas
+# every transaction fails on the 404. Set releasever=9 in every stanza
 # below on such a host.
 #
 [xymon]
@@ -44,7 +44,7 @@ gpgcheck=1
 repo_gpgcheck=1
 gpgkey=$gpgkey
 
-# Built from the tip of the development branch, several times a week.
+# Built from upstream main, nightly when it or this packaging has moved.
 # Disabled by default: these are pre-releases of the next version, and a
 # machine that follows them is running code that has had no release
 # testing. Enable deliberately, per host -- set enabled=1 below, which
@@ -61,12 +61,19 @@ gpgcheck=1
 repo_gpgcheck=1
 gpgkey=$gpgkey
 
-# Previews of each unreleased milestone, from xymon-experimental: main
-# plus the pull requests left for that release, most of them not reviewed
-# yet. For testing, not production. Every milestone is here at once: plain
-# "dnf install xymon" takes the newest, "dnf install xymon-4.3.32" that
-# one. Disabled by default; enable it the way the snapshot channel above
-# says, naming xymon-preview.
+# Previews, from xymon-experimental: main plus the pull requests planned
+# for a milestone, most of them not reviewed yet. For testing, not
+# production. Enable ONE preview channel, and not together with
+# xymon-snapshot: a snapshot of the same version sorts above a preview, so
+# dnf would install the snapshot.
+#
+# This one holds the 2 newest previews of every milestone: plain
+# "dnf install xymon" takes the newest milestone, "dnf install
+# xymon-4.3.32" that one.
+#
+#     dnf config-manager --set-enabled xymon-preview      # dnf4, EL
+#     dnf config-manager setopt xymon-preview.enabled=1   # dnf5, Fedora
+#
 [xymon-preview]
 name=Xymon (previews of unreleased milestones)
 baseurl=$base/xymon-preview/\$releasever/\$basearch/
@@ -76,8 +83,13 @@ repo_gpgcheck=1
 gpgkey=$gpgkey
 
 # The previews of the next release alone, e.g. 4.3.31 until it is released,
-# then 4.3.32: a plain "dnf upgrade" then follows the release that is coming
-# rather than the newest milestone. Enable either this or xymon-preview.
+# then 4.3.32: a plain "dnf upgrade" follows the release that is coming
+# rather than the newest milestone. The usual choice; enable it instead of
+# xymon-preview, never with it.
+#
+#     dnf config-manager --set-enabled xymon-preview-next      # dnf4, EL
+#     dnf config-manager setopt xymon-preview-next.enabled=1   # dnf5, Fedora
+#
 [xymon-preview-next]
 name=Xymon (previews of the next release)
 baseurl=$base/xymon-preview-next/\$releasever/\$basearch/
