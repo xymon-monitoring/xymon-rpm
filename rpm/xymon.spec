@@ -493,16 +493,20 @@ touch %{buildroot}%{_sysconfdir}/xymon/xymongroups
 # %%doc cannot take a %%{SOURCEn} path directly.
 cp -p %{SOURCE9} %{SOURCE10} .
 
-# Development files. The build installs neither headers nor the static
-# libraries, so take them from the build tree. include/ and lib/ must stay
-# siblings: libxymon.h pulls in 52 further headers as "../lib/...", so a
-# flat include directory would break on the first #include.
-install -d %{buildroot}%{_includedir}/xymon/include \
-           %{buildroot}%{_includedir}/xymon/lib \
-           %{buildroot}%{_libdir}/xymon
-install -pm 0644 include/*.h %{buildroot}%{_includedir}/xymon/include/
-install -pm 0644 lib/*.h     %{buildroot}%{_includedir}/xymon/lib/
-install -pm 0644 lib/*.a     %{buildroot}%{_libdir}/xymon/
+# Development files: headers and static libraries, via Xymon's own opt-in
+# install-devel target (not in the default install set). It produces the same
+# sibling include/+lib/ layout at INSTALLINCDIR (kept because libxymon.h reaches
+# its headers as "../lib/..."), and installs the archives into INSTALLLIBDIR,
+# the paths this package always shipped. PKGBUILD skips the chown and the
+# in-place compat symlinks.
+make install-devel \
+    INSTALLROOT=%{buildroot} PKGBUILD=1 \
+    INSTALLINCDIR=%{_includedir}/xymon \
+    INSTALLLIBDIR=%{_libdir}/xymon
+# install-devel also generates its own xymon.pc under the app libdir; drop it
+# and keep shipping the hand-written one below, so the -devel package does not
+# change with this switch.
+rm -rf %{buildroot}%{_libdir}/xymon/pkgconfig
 
 # xymon.pc: ship a pkg-config file with -devel, written by hand. The one
 # install-devel generates (xymon#410) is close but not the same: its prefix is
