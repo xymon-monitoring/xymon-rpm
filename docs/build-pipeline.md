@@ -78,50 +78,35 @@ packages and drop every other build from the channel.
 
 ### Serving the tree from an artifact
 
-Pages can serve an uploaded artifact instead of a branch, which would leave
-this repository at about a megabyte and stop a contributor cloning the
-published rpms along with the packaging. That change cannot be rehearsed —
-`publish` never runs from a pull request — and it replaces the state store
-`publish.sh` merges into, so a bug in it would remove the fallback at the
-moment it was wanted. So it was done in a step that could be stopped at.
+Pages serves an artifact the `publish` job uploads — the published tree,
+without the clone's `.git` — so a clone of this repository carries no rpms. A
+failed upload fails `publish`. The deploy is its own `pages` job, because the
+`github-pages` environment can refuse a deployment and a refusal blocks a whole
+job rather than a step: attached to `publish` it would stop the publish.
 
-That step is in place: `publish` uploads the published tree as a Pages
-artifact, and the action leaves out the clone's `.git`. It was taken while the
-branch was still written, which is what made it stoppable; the state store
-moved out of this repository afterwards, and *The archive* below has where it
-went. While the branch still served users the upload was `continue-on-error`;
-now that the artifact is all Pages serves, a failed upload fails `publish`. The
-deploy is the separate `pages` job, because the `github-pages` environment can
-refuse a deployment and a refusal blocks a whole job rather than a step —
-attached to `publish` it would stop the publish.
-
-Two repository settings govern this, and they do different things. The
-`github-pages` environment's deployment branch policy decides whether the job
-may deploy at all: it named only `gh-pages` while the workflow runs on `main`,
-so the job failed outright — *branch "main" is not allowed to deploy to
-github-pages due to environment protection rules* — until `main` was added.
-The Pages source decides what is *served*. It is GitHub Actions now, so the
-artifact answers a request; while it was the `gh-pages` branch, a deployment
-from `main` was accepted and recorded and the branch build answered instead.
-
-That split gave the change the only rehearsal available to it, since `publish`
-never runs from a pull request: with the branch policy open and the source
-still the branch, the artifact path ran green end to end while users were
-served exactly as before. The switch was then checked by hashing `repomd.xml`
-off the live site against the blob the branch held, which matched, and by
-downloading a signed rpm from it.
-
-If either setting is changed back the `pages` job fails and the site stops
-being updated, which is the symptom to look for.
+Two repository settings govern it. The `github-pages` environment's deployment
+branch policy must allow `main`, or the job fails outright (*branch "main" is
+not allowed to deploy to github-pages due to environment protection rules*).
+The Pages source must be GitHub Actions, or a deployment is accepted and
+recorded while something else is served. If either setting is changed back the
+`pages` job fails and the site stops being updated, which is the symptom to
+look for.
 
 ### The archive
 
-The published tree moved out of this repository's `gh-pages` branch and into
-`xymon-monitoring/xymon-rpm-archive`, which serves nothing and exists to be
-cloned by the publish job and read by a person. `gh-pages` was deleted once
-several publishes had shown the archive and the artifact carried the same
-tree ([#37](https://github.com/xymon-monitoring/xymon-rpm/issues/37)), which is
-what made a clone of this repository cheap.
+The published tree lives in `xymon-monitoring/xymon-rpm-archive`, which serves
+nothing and exists to be cloned by the publish job and read by a person; it
+moved there from this repository's `gh-pages` branch
+([#37](https://github.com/xymon-monitoring/xymon-rpm/issues/37)).
+
+A repository of its own, rather than keeping the branch or dropping the copy:
+keeping `gh-pages` made every clone of this repository fetch the rpms, roughly
+460 MB at a full retention window; dropping it needed a new state store and gave
+up a copy of the published tree a person can check out and restore. Moving it
+kept both, at the price of a credential, since `github.token` reaches only the
+repository running the workflow. Unbounded growth was not the reason:
+[#15](https://github.com/xymon-monitoring/xymon-rpm/issues/15) showed GitHub's
+collection take the repository from 2.15 GiB to 41 MB in hours.
 
 The archive carries no history: each publish replaces `main` with a single
 orphan commit, force-pushed. Nothing reads an older one — a signed rpm differs

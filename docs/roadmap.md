@@ -36,31 +36,10 @@ to a GitHub issue.
   standing in for much. Required review would retire it rather than mend it:
   there would be no self-merge left to disclose. So how it is rewritten follows
   from this decision and should not be patched ahead of it.
-- **The published tree, and where it lives.** *Decided.* It is in
-  `xymon-monitoring/xymon-rpm-archive`, reaches users as a Pages artifact the
-  publish job uploads, and is no longer a branch of this repository.
-  [build-pipeline.md](build-pipeline.md) *Serving the tree from an artifact*
-  and *The archive* have the mechanism.
-
-  Three ways were open, and the reasoning is what dates rather than the
-  outcome. Keeping `gh-pages` cost about four seconds of a publish and nothing
-  on GitHub, but every clone of this repository fetched the rpms with it —
-  roughly 460 MB at a full retention window. Deleting it outright made the
-  clone cheap and needed a new state store written on the publishing path,
-  giving up a copy of the published tree that a person can check out and
-  restore. Moving it kept both, at the price of a credential, since
-  `github.token` reaches only the repository running the workflow.
-
-  What settled it was that the first two traded one property for the other and
-  the third did not. [#15](https://github.com/xymon-monitoring/xymon-rpm/issues/15)
-  had already removed the reason usually given for this — unbounded growth — by
-  showing GitHub's collection take the repository from 2.15 GiB to 41 MB in
-  hours.
-
-  `gh-pages` was kept frozen until a few publishes had gone to the archive, then
-  deleted, which is the step that made a clone of this repository cheap —
-  [#37](https://github.com/xymon-monitoring/xymon-rpm/issues/37) has the check
-  that was run.
+- **The published tree, and where it lives.** *Decided:* in
+  `xymon-monitoring/xymon-rpm-archive`, served as a Pages artifact.
+  [build-pipeline.md](build-pipeline.md) *The archive* has the mechanism and
+  the reasoning.
 - **Whether to put the packages in Fedora, and through it EPEL.** RHEL itself is
   not a community path — Red Hat decides what it ships and supports. "Official
   for RHEL" means EPEL in practice, EPEL is built from Fedora, so the route is
@@ -216,9 +195,7 @@ to a GitHub issue.
 
 ## Tracked elsewhere (pointers, not tasks)
 
-- Enabling distribution hardening — done for RPM with
-  [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163); the Debian
-  `CPPFLAGS` gap remains,
+- Enabling distribution hardening — the Debian `CPPFLAGS` gap,
   [xymon#444](https://github.com/xymon-monitoring/xymon/issues/444)
 - `/run/xymon` + `SIGHUP` relay — the `#219 → #172` stack (README *Known gaps*)
 - Consuming a merged upstream feature — one spec PR each, e.g.
