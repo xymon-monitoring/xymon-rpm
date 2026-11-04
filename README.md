@@ -198,11 +198,9 @@ Xymon Project (RPM signing key)
 BD24 FB87 154D 561B 66F6  66DF 639D E923 AA08 904A
 ```
 
-Snapshots built from `main` are in the same repo file, and ship disabled on
-purpose: they are pre-releases of the next version, so a machine that follows
-them runs code no release has tested. Enabling one is a per-host decision, so
-the repo file states it rather than making it: the stanza is there with
-`enabled=0`, and the command sits in a comment beside it.
+Snapshots built from `main` ship disabled: following a pre-release is a per-host
+decision, so the stanza is there with `enabled=0` and the command sits in a
+comment beside it.
 
 ## Targets
 
@@ -321,10 +319,8 @@ with the build and install gaps this packaging compensates for.
   `CFLAGS`, so RPM builds are covered and this is a Debian gap, tracked in
   [xymon#444](https://github.com/xymon-monitoring/xymon/issues/444). The RPM
   half closed with
-  [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163): the
-  makefiles take environment `CFLAGS` with `?=` and carry `$(LDFLAGS)` into
-  all 92 link rules, so the spec passes `%{optflags}` and `%{build_ldflags}`
-  and no longer needs the `-no-pie` that undid the asymmetry.
+  [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163); the spec's
+  `%build` says how.
 - `xymon-tmpfiles.conf` creates `/run/xymon`, which nothing uses yet: the
   pidfiles and control sockets that would fill it arrive with xymon#172 (the
   next gap), stacked on this one — the two land together,
