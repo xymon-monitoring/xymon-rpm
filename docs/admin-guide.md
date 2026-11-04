@@ -188,17 +188,23 @@ Before this design, `xymon` required `xymon-client` and a separate
 | Nothing running after a swap | `systemctl restart xymonlaunch` |
 | `dnf upgrade` fails on a server | pre-conflict layout: `dnf swap xymon-client xymon` |
 
-## Package versions: snapshots vs releases
+## Package versions: snapshots, previews and releases
 
-Two kinds of package come from the same spec:
+Three kinds of package come from the same spec:
 
-- **Snapshots** track upstream `main`, rebuilt several times a week — the
-  bleeding edge, in the `xymon-snapshot` channel (off by default).
+- **Snapshots** track upstream `main`, rebuilt nightly when upstream or the
+  packaging has moved — the bleeding edge, in the `xymon-snapshot` channel
+  (off by default).
+- **Previews** are test builds of an upcoming release from xymon-experimental:
+  `main` plus a milestone's pull requests, mostly unreviewed — in
+  `xymon-preview-next` (the next release) and `xymon-preview` (every milestone),
+  both off by default. Enable one, not together with the snapshot channel; the
+  README's *Previews* has the commands.
 - **Releases** are cut from a `rel-*` tag — the stable channel. There has been
   no release yet, so until the first tag the stable channel is empty and you
   install from the snapshot channel.
 
-A snapshot sorts below the eventual release, so a snapshot host is absorbed
+A snapshot or preview sorts below the eventual release, so a snapshot host is absorbed
 into the stable channel cleanly when the release lands. How the version
 strings are built, and why, is in the README's *Versioning*.
 

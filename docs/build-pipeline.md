@@ -1,9 +1,11 @@
 # The build pipeline
 
 One workflow, `.github/workflows/build.yml`, builds every target, gates on the
-tests, and publishes. It runs on pushes to `main`, on a nightly cron (upstream
-drift), and on manual dispatch (any ref — see README *Building a branch or a
-pull request*).
+tests, and publishes. It runs on every push and pull request that changes more
+than documentation, on a nightly cron (upstream drift), and on manual dispatch
+(any ref — see README *Building a branch or a pull request*). The nightly
+`previews.yml` dispatches it once per new xymon-experimental preview, with
+`xymon_ref=preview-<milestone>-<n>`; only `main` publishes.
 
 ## The job graph
 
@@ -31,8 +33,8 @@ is accepted knowingly — a new error-level check in some future shellcheck coul
 stop a publish — because a release held by a lint is recoverable in a way a
 half-published repository is not.
 
-`systemd-lifecycle`, `upgrade` and `monitoring` need PID 1 or a non-empty
-root, so they run as their own jobs on one EL + one Fedora target rather than
+`systemd-lifecycle` needs PID 1, `upgrade` a non-empty root, and `monitoring`
+starts daemons that would disturb the install test, so they run as their own jobs on one EL + one Fedora target rather than
 inside the container matrix.
 
 ## What the `rpm` job does, per target
@@ -40,8 +42,9 @@ inside the container matrix.
 1. **enable build repos** — EPEL/CRB on EL for `rrdtool-devel`, `c-ares-devel`
 2. **checkout packaging** (full history — the packaging sha is half the version)
 3. **checkout xymon source** — clones upstream, resolves `xymon_ref` (a branch,
-   tag, sha, or `pr/NNN`)
-4. **compute version** — release vs snapshot `Release` string (README *Versioning*)
+   tag, sha, `pr/NNN`, or `preview-X.Y.Z-N`, fetched from xymon-experimental)
+4. **compute version** — release, snapshot or preview `Release` string (README
+   *Versioning*)
 5. **create source tarball** — `git archive` of the checked-out HEAD; no tree is
    ever modified between clone and build (the "no patches" rule)
 6. **parse the spec** — `rpmspec -P` (a lua `#` comment fails this)
@@ -52,13 +55,15 @@ inside the container matrix.
 
 ## Publishing
 
-The `publish` job gates on all four test jobs and only runs for `main`, a
+The `publish` job gates on the four test jobs and `lint`, and only runs for `main`, a
 dispatched `rel-*` tag (a tag build is the release flow), or a dispatched
 `preview-*` tag from xymon-experimental. It imports the
 signing key, downloads every target's rpms, checks out the published tree from
 `xymon-monitoring/xymon-rpm-archive`, and runs `build/publish.sh` — which
 signs, sorts each package into the stable, `xymon-snapshot` or `xymon-preview`
-channel by its `Release` field, and commits. A `concurrency` group serialises overlapping runs
+channel by its `Release` field, and rebuilds `xymon-preview-next` from the next
+release's previews; the job then commits and pushes the tree. A `concurrency`
+group serialises overlapping runs
 so two publishes cannot race the push. No key present (a fork) → build and
 test, skip publish.
 

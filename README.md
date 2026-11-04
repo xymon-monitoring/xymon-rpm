@@ -30,10 +30,12 @@ are installed only by an opt-in `make install-tools`.
 ## Installing
 
 **There has been no release yet**, so the stable channel the repo file enables
-is empty — it answers, and holds no package. Everything goes to the snapshot
-channel, which ships disabled, so enabling it is what makes `dnf install` find
-anything today. The release procedures below are the same without the steps
-that enable it.
+is empty — it answers, and holds no package. Builds of `main` go to the
+snapshot channel and previews to the preview channels (see
+[Previews](#previews-of-the-next-release-and-of-each-milestone)), all shipped
+disabled, so enabling one of them is what makes `dnf install` find anything
+today. The release procedures below are the same without the steps that
+enable it.
 
 Published for **x86_64 only**. The repo file enables the stable channel on
 every host that installs it, and no tree exists for another architecture, so
@@ -45,8 +47,7 @@ package and no URL you have to look up. The landing page offers the other
 route: `xymon-release`, a small package carrying the same file and the signing
 key, where rpm verifies the key against the package's own signature instead of
 your trusting it on first fetch. It is linked there rather than named here,
-because its filename carries a version and that ages. Either way the snapshot
-channel still has to be enabled until there is a release.
+because its filename carries a version and that ages.
 
 ### Snapshots, on EL 8, 9 and 10
 
@@ -119,34 +120,55 @@ dnf install xymon          # server
 dnf install xymon-client   # client only
 ```
 
-### Previews of each unreleased milestone
+### Previews of the next release and of each milestone
 
-The `xymon-preview` channel holds the published previews of
-[xymon-experimental](https://github.com/xymon-monitoring/xymon-experimental/releases):
-`main` plus the pull requests left for a milestone, most of them not reviewed
-yet. For testing, not production. It ships disabled, like the snapshot
-channel; enable it the same way, naming `xymon-preview` instead.
+A **preview** is a test build of an upcoming release: xymon's `main` plus the
+pull requests planned for one milestone, most of them not reviewed yet, as
+[xymon-experimental](https://github.com/xymon-monitoring/xymon-experimental/releases)
+publishes it once its test lanes pass. For testing, not production.
 
-Every unreleased milestone is in it at once. A plain install takes the newest;
-naming a version takes that milestone:
+| | Built from | Channel | Version, e.g. |
+| --- | --- | --- | --- |
+| release | an upstream `rel-X.Y.Z` tag | `xymon` (enabled) | `4.3.31-1` |
+| snapshot | upstream `main`, nightly | `xymon-snapshot` | `4.3.31-0.20261103git2f4f14d.…` |
+| preview | a xymon-experimental preview | `xymon-preview-next`, `xymon-preview` | `4.3.31-0.preview4.…` |
+
+Two preview channels, both shipped disabled. Enable **one**, and **not together
+with `xymon-snapshot`**: a snapshot of the same version sorts above a preview,
+so dnf would install the snapshot.
+
+| Channel | Holds | Enable it to |
+| --- | --- | --- |
+| `xymon-preview-next` | the previews of the next release alone: the lowest milestone with no release yet (4.3.31 today); it moves on to the following one by itself once that is released, as Homebrew's `xymon-server-preview` does | follow the release that is coming — **the usual choice** |
+| `xymon-preview` | the 2 newest previews of every milestone | test a given milestone |
 
 ```sh
+dnf config-manager --set-enabled xymon-preview-next      # dnf4: EL
+dnf config-manager setopt xymon-preview-next.enabled=1   # dnf5: Fedora
+
+dnf install xymon            # the next release's latest preview
+```
+
+```sh
+dnf config-manager --set-enabled xymon-preview           # dnf4: EL
+dnf config-manager setopt xymon-preview.enabled=1        # dnf5: Fedora
+
 dnf install xymon            # the newest milestone's latest preview
 dnf install xymon-4.3.32     # 4.3.32's latest preview
 ```
 
-A plain `dnf upgrade` follows the newest milestone. When a milestone is
-released, its `X.Y.Z-1` in the stable channel outranks its previews.
+`config-manager` needs `dnf-plugins-core` (EL) or `dnf5-command(config-manager)`
+(Fedora), as in the snapshot procedures above. A preview's `Release` starts with
+`0.`, so when its milestone is released, `X.Y.Z-1` in the stable channel
+outranks every preview of it.
 
-To follow the **next release** instead, enable `xymon-preview-next` rather
-than `xymon-preview`. It holds the previews of the lowest milestone that has
-no release yet, e.g. 4.3.31, so a plain install or upgrade takes that
-milestone's latest preview. Once that milestone is released it moves on to the
-following one by itself, as Homebrew's `xymon-server-preview` does.
-
-A new preview reaches the channel the day after it is published: the
-**previews** workflow looks each night and dispatches the build of any that
-is not in it yet.
+A preview reaches the channels through the **previews** workflow, which runs
+each night (01:47 UTC, often started hours later by GitHub). It takes the
+newest published preview of each unreleased milestone that is not in the
+channel yet and builds it like `main`: every target, the same tests, signed —
+except `upgrade.sh`, whose fixture is the snapshot channel. Only that newest
+preview is built, so one superseded the same day is skipped; a failed build is
+tried again the next night.
 
 ### Trying a snapshot without a host
 
@@ -241,7 +263,8 @@ tests/              see Testing
 
 ## Versioning
 
-Three channels, which must sort correctly or dnf does the wrong thing silently.
+Four channels, which must sort correctly or dnf does the wrong thing silently;
+`xymon-preview-next` holds a subset of `xymon-preview`'s packages.
 
 | Built from | Version | Release |
 | --- | --- | --- |
@@ -273,8 +296,9 @@ of this in CI.
 ### Commit documentation separately
 
 Documentation is `**.md` and `docs/**`; everything else is code — **including
-comments inside `rpm/`, `build/`, `tests/` and `.github/`**, because the
-packaging half of the version is keyed on those paths. A comment-only edit
+comments inside `rpm/`, `build/` and `.github/`**, because the packaging half
+of the version is keyed on those paths (`tests/` is not, so a tests-only edit
+mints no NEVRA). A comment-only edit
 there mints a new NEVRA for a byte-identical package.
 
 The build skips only when the *whole push* is documentation (GitHub matches
@@ -297,7 +321,8 @@ run with `snapshot_keep`, or republish the channel from that run alone with
 
 The preview channel keeps the newest **2 previews** of each milestone per
 directory, each in its newest packaging rebuild only (`XYMON_PREVIEW_KEEP` in
-`build/publish.sh`).
+`build/publish.sh`), and `xymon-preview-next` is rebuilt from those on every
+publish.
 
 Counting upstream commits rather than published runs is what makes those slots
 worth having. Rolling back on a snapshot channel means going back to a different
@@ -355,14 +380,15 @@ How the suites are layered and how to run one is in [docs/testing.md](docs/testi
 
 
 Every build runs `rpmspec -P` (a lua scriptlet with a `#` comment fails the
-spec parse) and four suites over the built rpms:
+spec parse), `vercmp.sh` on the `Release` strings, and three suites over the
+built rpms:
 
 | | |
 | --- | --- |
-| `vercmp.sh` | the version ordering above |
+| `vercmp.sh` | the version ordering above, snapshots and previews included |
 | `packages.sh` | the `Conflicts`, one byte-identical unit name in both packages, each role owning only its drop-in, no config under `/usr`, the client tree identical in both |
 | `install.sh` | installs the client alone, proves `dnf install xymon` fails on the conflict, promotes and demotes, then serves the URLs — static content through its symlinks, a 404 for a missing file, the secure CGI answering 401 |
-| `publish.sh` | publishes into a temporary tree with a throwaway key: the stable channel usable before its first release, a NEVRA never overwritten, retention dropping whole builds, a reset sparing stable |
+| `publish.sh` | publishes into a temporary tree with a throwaway key: the stable channel usable before its first release, snapshots and previews each in their channel, a NEVRA never overwritten, both retentions dropping whole builds, `xymon-preview-next` holding the lowest unreleased milestone and moving on after a release, a reset sparing stable |
 
 Three more run on one EL and one Fedora target. Publishing waits on all of
 them, and on the `lint` job:
@@ -378,11 +404,13 @@ naming `localhost` while the server's own client reported under `uname -n`, and
 `xymond_client` silently discards a report whose host it cannot find. The host
 stayed green from the network tests while no threshold was ever evaluated.
 
-One more runs on a schedule rather than against a build. `docs.sh` checks that
+Two more run on their own workflow, `docs-drift.yml`, nightly and on every
+push to `main` that touches the docs or the specs: `compensations.sh` checks
+that every `xymon#NNN` the spec cites is still held by a tracker, and `docs.sh` that
 [docs/upstream.md](docs/upstream.md) still matches the source — the PR table's
 states, that every file its provenance table calls copied from `devel` still
 compares equal, and that the PRs named order-independent are exactly the open
-ones. It reports drift without gating publishing: a stale sentence is worth a
+ones. They report drift without gating publishing: a stale sentence is worth a
 red run, not a held release. Separately, the build workflow rebuilds `main`
 nightly as an upstream drift detector — a moved install path or configure flag
 goes red the next day rather than at the next release.
@@ -392,7 +420,8 @@ goes red the next day rather than at the next release.
 Actions → **build** → *Run workflow* with a ref: `main` (default), `devel`,
 `pr/163`, `preview-4.3.32-1`, or any sha or tag. Only `main`, dispatched
 `rel-*` tags (the release flow) and dispatched `preview-*` tags (fetched from
-xymon-experimental, published to `xymon-preview`) publish; everything else
+xymon-experimental, published to `xymon-preview` and, for the next release,
+`xymon-preview-next`) publish; everything else
 produces downloadable artifacts only. The run logs the exact commit built. The `releasenum` input
 re-releases a tag with packaging fixes (see Versioning).
 

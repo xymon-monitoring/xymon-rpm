@@ -122,9 +122,9 @@ The pipeline is the specification, and it is cheaper to read than to trigger:
   path needs.
 - `tests/packages.sh`, `tests/publish.sh` and `tests/install.sh` run on every
   build of the container matrix.
-- `tests/systemd.sh`, `tests/upgrade.sh` and `tests/monitoring.sh` need a real
-  PID 1 or a non-empty root, so they are separate jobs on one EL and one Fedora
-  target. `upgrade.sh` is the only suite that starts from a non-empty root, so
+- `tests/systemd.sh` needs a real PID 1, `tests/upgrade.sh` a non-empty root,
+  and `tests/monitoring.sh` starts daemons that would disturb the install test,
+  so they are separate jobs on one EL and one Fedora target. `upgrade.sh` is the only suite that starts from a non-empty root, so
   the only one that exercises `%pretrans`.
 - The `lint` job shellchecks every shell script the repository owns, and
   `publish` waits on it. [docs/build-pipeline.md](docs/build-pipeline.md) has

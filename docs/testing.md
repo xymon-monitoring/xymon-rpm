@@ -19,15 +19,16 @@ suite that can see it.
 | `systemd.sh` | a real PID 1 | `systemd-lifecycle` job |
 | `upgrade.sh` | the **published** build, then this one | `upgrade` job |
 | `monitoring.sh` | a running server + its client | `monitoring` job |
-| `docs.sh` | `upstream.md` and the tracking issue vs the source | `docs-drift.yml` (schedule) |
+| `docs.sh` | `upstream.md` and the tracking issue vs the source | `docs-drift.yml` (nightly, and pushes to `main` touching the docs or specs) |
 | `attribution.sh` | one text file | `attribution.yml` (pull requests, pushes to `main`) |
-| `compensations.sh` | the spec, the tracking issue, README *Known gaps*, every document | `docs-drift.yml` (schedule) |
+| `compensations.sh` | the spec, the tracking issue, README *Known gaps*, every document | `docs-drift.yml` (nightly, and pushes to `main` touching the docs or specs) |
 
-The first four read from the built rpms and run inside the container matrix.
-The next three need PID 1 or a non-empty root, so they are separate jobs on
-one EL + one Fedora target ([build-pipeline.md](build-pipeline.md)). `docs.sh`
-guards the docs, not a build, so it runs on a schedule and never gates a
-release. `attribution.sh` guards text rather than packages — a commit message,
+`vercmp.sh` reads only the `Release` strings; the next three read the built
+rpms. All four run inside the container matrix. The next three are separate
+jobs on one EL + one Fedora target ([build-pipeline.md](build-pipeline.md)):
+`systemd.sh` needs PID 1, `upgrade.sh` a non-empty root, and `monitoring.sh`
+starts daemons that would disturb the install test. `docs.sh` guards the docs,
+not a build, so it runs on its own workflow and never gates a release. `attribution.sh` guards text rather than packages — a commit message,
 a pull request title and body — so it has its own workflow for the same reason.
 `compensations.sh` joins `docs.sh` in `docs-drift.yml`: it asserts that every
 upstream pull request the spec cites is held by a tracker, which is how a
