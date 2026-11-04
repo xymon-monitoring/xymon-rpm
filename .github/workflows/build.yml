@@ -503,7 +503,7 @@ jobs:
     # version step still versions it as a snapshot (only an exact tag match
     # builds as X.Y.Z-n), so it cannot impersonate a release. A dispatched
     # preview-* ref is a published xymon-experimental preview; its Release
-    # starts 0.preview, which files it in the xymon-preview channel alone.
+    # starts 0.preview, which files it in the preview channels alone.
     if: >-
       github.event_name != 'pull_request'
       && github.ref == 'refs/heads/main'
@@ -729,10 +729,10 @@ jobs:
   # one, and a refusal blocks the whole job rather than a step. Attached to
   # publish it would stop the publish; here it stops nothing.
   #
-  # Two repository settings govern it and both are now set: Pages builds from
-  # a workflow, and the github-pages environment allows main to deploy. If
-  # either is changed back this job fails and the site stops being updated,
-  # which is the symptom to look for.
+  # Two repository settings govern it: Pages builds from a workflow, and the
+  # github-pages environment allows main to deploy. If either is changed back
+  # this job fails and the site stops being updated, which is the symptom to
+  # look for.
   pages:
     name: pages
     needs: publish
