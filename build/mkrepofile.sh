@@ -74,4 +74,15 @@ enabled=0
 gpgcheck=1
 repo_gpgcheck=1
 gpgkey=$gpgkey
+
+# The previews of the next release alone, e.g. 4.3.31 until it is released,
+# then 4.3.32: a plain "dnf upgrade" then follows the release that is coming
+# rather than the newest milestone. Enable either this or xymon-preview.
+[xymon-preview-next]
+name=Xymon (previews of the next release)
+baseurl=$base/xymon-preview-next/\$releasever/\$basearch/
+enabled=0
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=$gpgkey
 EOF

@@ -10,7 +10,7 @@
 Name:           xymon-release
 # A published NEVRA is immutable: bump Version whenever the repo file or
 # the key changes, or the publish step will refuse to ship the new copy.
-Version:        4
+Version:        5
 Release:        1
 Summary:        Xymon repository configuration and signing key
 License:        GPL-2.0-only
@@ -34,10 +34,11 @@ HIGHLY EXPERIMENTAL: this packaging is new and has seen no production
 use. Layout, versioning and repository structure may still change
 without notice.
 
-Three repositories are configured. The stable one, built from tagged
+Four repositories are configured. The stable one, built from tagged
 releases, is enabled. Development snapshots built from the tip of the
-development branch, and previews of each unreleased milestone
-(xymon-preview), are configured but disabled; enable one per host by
+development branch, previews of each unreleased milestone
+(xymon-preview), and previews of the next release alone
+(xymon-preview-next) are configured but disabled; enable one per host by
 setting enabled=1 in /etc/yum.repos.d/xymon.repo, or with the command your
 dnf understands:
 
