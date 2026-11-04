@@ -410,7 +410,7 @@ prohibitions:
 - Do not write a `%changelog` entry. It stays empty because there is no
   hand-written version for it to describe.
 - Do not republish a NEVRA. Two builds producing the same one is a versioning
-  bug to fix, not something to paper over. `build/publish.sh:81` will not
+  bug to fix, not something to paper over. `build/publish.sh:85` will not
   overwrite a published file — it leaves the first copy in place and says so,
   so the second build's package is silently not the one users get.
 

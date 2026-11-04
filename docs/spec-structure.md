@@ -1,6 +1,6 @@
 # How the spec is laid out
 
-`rpm/xymon.spec` is one spec, ~780 lines, that builds five packages from the
+`rpm/xymon.spec` is one spec, about 900 lines, that builds five packages from the
 upstream tree with no patches. It reads long because it compensates in
 `%install` and the scriptlets for things upstream does not yet provide (see
 [upstream.md](upstream.md) for which upstream PRs would let each go away).
@@ -11,7 +11,7 @@ spec is heavily commented inline, so this says *where*, the comments say *why*.
 
 | Where | What |
 | --- | --- |
-| **header** (top) | build knobs `--without selinux` (the policy modules, on by default) and `--without xymonping`; the globals that matter most: `xymonhome` (`/usr/lib/xymon`), and `dropindir`/`server.conf`/`client.conf` — the systemd drop-ins that pick a host's role |
+| **header** (top) | build knobs `--without selinux` (the policy modules, on by default) and `--with xymonping` (the setuid helper, off by default: fping is used); the globals that matter most: `xymonhome` (`/usr/lib/xymon`), and `dropindir`/`server.conf`/`client.conf` — the systemd drop-ins that pick a host's role |
 | **`%create_xymon_account`** | the `xymon` system user/group, via `sysusers.d` with a `sysusers_create_compat` fallback for RPM too old to have the macro |
 | **`%package` blocks** | `xymon`, `client`, `client-local`, `devel`, `tools`, each with its `%description`. `xymon` and `xymon-client` `Conflict` — one host is a server or a client |
 | **`%build`** | configures and builds upstream, passing `%{optflags}` and `%{build_ldflags}` through the environment — the comment there says why that channel and not the make command line; compiles the SELinux `.pp` per `targeted`/`minimum` unless `--without selinux` |

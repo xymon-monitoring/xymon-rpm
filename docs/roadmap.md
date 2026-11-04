@@ -81,7 +81,7 @@ to a GitHub issue.
   the form the guidelines ask for. The one hard blocker — a build that ignored
   the distribution's flags — closed when `%build` took `%{optflags}`.
 
-  Four things remain, and only one is a decision:
+  Three things remain, and only one is a decision:
   - `%changelog` is empty because the version is derived; Fedora wants entries.
     One written at each release satisfies it without touching the model.
   - `Conflicts: xymon-client` between subpackages is what a review pushes back

@@ -13,7 +13,10 @@ The build clones `https://github.com/xymon-monitoring/xymon.git` and
 checks out `XYMON_REF`, which the `workflow_dispatch` input `xymon_ref`
 sets and which defaults to `main`. It accepts a branch, tag, sha, or a
 pull request as `pr/NNN` (or `refs/pull/NNN/head`) — a PR ref is fetched
-explicitly, since a plain clone does not carry `refs/pull/*`. The source
+explicitly, since a plain clone does not carry `refs/pull/*` — or a
+`preview-X.Y.Z-N` tag, fetched from
+[xymon-experimental](https://github.com/xymon-monitoring/xymon-experimental),
+where previews are made. The source
 tarball is `git archive` of the checked-out `HEAD`, so no tree
 modification ever happens between clone and build.
 
@@ -81,7 +84,7 @@ Two nightly schedules catch upstream moving underneath this packaging:
 - **`build.yml`** rebuilds `main` (cron `17 0 * * *`). If an upstream
   change moves an install path or a configure flag, the build goes red
   the next day rather than at the next release.
-- **`docs-drift.yml`** runs `tests/docs.sh` (cron `47 0 * * *`, plus
+- **`docs-drift.yml`** runs `tests/compensations.sh`, then `tests/docs.sh` (cron `47 0 * * *`, plus
   `workflow_dispatch` and pushes touching the doc or checker). It parses
   the origin column above out of this file and tests it against `devel`,
   and the state column out of the tracking issue and tests it against the
