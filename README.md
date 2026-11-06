@@ -29,13 +29,12 @@ are installed only by an opt-in `make install-tools`.
 
 ## Installing
 
-**There has been no release yet**, so the stable channel the repo file enables
-is empty — it answers, and holds no package. Builds of `main` go to the
-snapshot channel and previews to the preview channels (see
-[Previews](#previews-of-the-next-release-and-of-each-milestone)), all shipped
-disabled, so enabling one of them is what makes `dnf install` find anything
-today. The release procedures below are the same without the steps that
-enable it.
+**4.3.31 is the first release**, carried as `4.3.31-1` by the stable channel the
+repo file enables, so `dnf install xymon` works straight after the repo file is
+in place. Builds of `main` go to the snapshot channel and previews to the
+preview channels (see
+[Previews](#previews-of-the-next-release-and-of-each-milestone)), both shipped
+disabled; enable one only to track something newer than the release.
 
 Published for **x86_64 only**. The repo file enables the stable channel on
 every host that installs it, and no tree exists for another architecture, so
@@ -139,7 +138,7 @@ so dnf would install the snapshot.
 
 | Channel | Holds | Enable it to |
 | --- | --- | --- |
-| `xymon-preview-next` | the previews of the next release alone: the lowest milestone with no release yet (4.3.31 today); it moves on to the following one by itself once that is released, as Homebrew's `xymon-server-preview` does | follow the release that is coming — **the usual choice** |
+| `xymon-preview-next` | the previews of the next release alone: the lowest milestone with no release yet (4.3.32 today); it moves on to the following one by itself once that is released, as Homebrew's `xymon-server-preview` does | follow the release that is coming — **the usual choice** |
 | `xymon-preview` | the 2 newest previews of every milestone | test a given milestone |
 
 ```sh

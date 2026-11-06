@@ -137,8 +137,6 @@ to a GitHub issue.
 - **Validate on genuine RHEL and OracleLinux.** CI builds on AlmaLinux (a RHEL
   rebuild), which cannot surface a symbol RHEL lacks; real RHEL/OL testing is a
   standing gap. Recruit downstream testers.
-- **Cut the first release.** The stable channel is empty until the first
-  `rel-*` tag; cut it when 4.3.31 releases upstream.
 - **A stable-release upgrade path.** A server upgrade currently needs a manual
   `dnf swap` — the package conflict makes `dnf upgrade` stop otherwise. A stable
   release needs a `%triggerun` migration or a transitional package
