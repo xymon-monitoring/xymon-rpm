@@ -200,9 +200,8 @@ Three kinds of package come from the same spec:
   `xymon-preview-next` (the next release) and `xymon-preview` (every milestone),
   both off by default. Enable one, not together with the snapshot channel; the
   README's *Previews* has the commands.
-- **Releases** are cut from a `rel-*` tag — the stable channel. There has been
-  no release yet, so until the first tag the stable channel is empty and you
-  install from the snapshot channel.
+- **Releases** are cut from a `rel-*` tag — the stable channel, enabled by the
+  repo file. 4.3.31 is the first; the stable channel carries it.
 
 A snapshot or preview sorts below the eventual release, so a snapshot host is absorbed
 into the stable channel cleanly when the release lands. How the version
