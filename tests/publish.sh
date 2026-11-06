@@ -67,7 +67,7 @@ cp "$work/rpmmacros" "$work/.rpmmacros"
 # used to require a snapshot or preview here and so could not run on a release
 # build. publish.sh files by file name, so the Release field the real package
 # carries does not matter; the names it is given do.
-built=$(find "$rpmdir" -name 'xymon-client-*.rpm' ! -name '*debuginfo*' ! -name '*.src.rpm' | head -1)
+built=$(find "$rpmdir" -name 'xymon-client-[0-9]*.rpm' ! -name '*debuginfo*' ! -name '*.src.rpm' | head -1)
 [ -n "$built" ] || { echo "NOT OK   no xymon-client rpm in $rpmdir"; exit 1; }
 # Absolute, because publish.sh is handed a temporary directory to work in.
 built=$(cd "$(dirname "$built")" && pwd)/$(basename "$built")
