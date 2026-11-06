@@ -86,8 +86,8 @@ ver=${nevra%%\|*}; arch=${nevra##*\|}; dist=${nevra#*\|}; dist=${dist%%\|*}
 repo=$work/repo
 art=$work/artifacts/target
 mkdir -p "$repo" "$art"
-snapname="xymon-client-$ver-0.20991231git0000000.202612312359p0000000.$dist.$arch.rpm"
-prevname="xymon-client-$ver-0.preview1.202612312359p0000000.$dist.$arch.rpm"
+snapname="xymon-client-$ver-0.20991231git0000000.202612312359pfffffff.$dist.$arch.rpm"
+prevname="xymon-client-$ver-0.preview1.202612312359pfffffff.$dist.$arch.rpm"
 cp "$built" "$art/$snapname"
 cp "$built" "$art/$prevname"
 snap=$art/$snapname
