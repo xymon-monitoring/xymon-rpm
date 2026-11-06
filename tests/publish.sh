@@ -61,22 +61,33 @@ HOME_ORIG=$HOME
 export HOME=$work
 cp "$work/rpmmacros" "$work/.rpmmacros"
 
-# A pre-release package: snapshot-versioned from a build of main, or
-# preview-versioned from a preview-X.Y.Z-N build. publish.sh files by file
-# name alone, so the one built is published under both names, and both
-# channels are exercised whichever kind of build this is.
-built=$(find "$rpmdir" -name 'xymon-client-*0.*git*.rpm' ! -name '*debuginfo*' | head -1)
-[ -n "$built" ] || built=$(find "$rpmdir" -name 'xymon-client-*0.preview*.rpm' ! -name '*debuginfo*' | head -1)
-[ -n "$built" ] || { echo "NOT OK   no snapshot- or preview-versioned rpm in $rpmdir"; exit 1; }
+# The build's own xymon-client package, renamed below to synthetic snapshot
+# and preview markers, so both channels are exercised whatever kind of build
+# produced it -- a snapshot (main), a preview, or a release (rel-* tag). It
+# used to require a snapshot or preview here and so could not run on a release
+# build. publish.sh files by file name, so the Release field the real package
+# carries does not matter; the names it is given do.
+built=$(find "$rpmdir" -name 'xymon-client-*.rpm' ! -name '*debuginfo*' ! -name '*.src.rpm' | head -1)
+[ -n "$built" ] || { echo "NOT OK   no xymon-client rpm in $rpmdir"; exit 1; }
 # Absolute, because publish.sh is handed a temporary directory to work in.
 built=$(cd "$(dirname "$built")" && pwd)/$(basename "$built")
+b=$(basename "$built")
+
+# Split xymon-client-<version>-<release>.<dist>.<arch>.rpm. The <release> is
+# discarded and replaced below, so a release build ("-1") starts this off as
+# readily as a snapshot or preview.
+nevra=$(printf '%s\n' "$b" | sed -E 's/^xymon-client-([0-9][0-9.]*)-.+\.((el|fc)[0-9]+)\.([^.]+)\.rpm$/\1|\2|\4/')
+case "$nevra" in
+*\|*\|*) ;;
+*) echo "NOT OK   cannot read version, dist and arch from $b"; exit 1 ;;
+esac
+ver=${nevra%%\|*}; arch=${nevra##*\|}; dist=${nevra#*\|}; dist=${dist%%\|*}
 
 repo=$work/repo
 art=$work/artifacts/target
 mkdir -p "$repo" "$art"
-b=$(basename "$built")
-snapname=$(printf '%s\n' "$b" | sed -E 's/-0\.preview[0-9]+\./-0.20991231git0000000./')
-prevname=$(printf '%s\n' "$snapname" | sed -E 's/-0\.[0-9]{8}git[0-9a-f]+\./-0.preview1./')
+snapname="xymon-client-$ver-0.20991231git0000000.202612312359p0000000.$dist.$arch.rpm"
+prevname="xymon-client-$ver-0.preview1.202612312359p0000000.$dist.$arch.rpm"
 cp "$built" "$art/$snapname"
 cp "$built" "$art/$prevname"
 snap=$art/$snapname
