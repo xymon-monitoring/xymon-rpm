@@ -86,7 +86,7 @@ ver=${nevra%%\|*}; arch=${nevra##*\|}; dist=${nevra#*\|}; dist=${dist%%\|*}
 repo=$work/repo
 art=$work/artifacts/target
 mkdir -p "$repo" "$art"
-snapname="xymon-client-$ver-0.20991231git0000000.202612312359pfffffff.$dist.$arch.rpm"
+snapname="xymon-client-$ver-0.209912312359git0000000.202612312359pfffffff.$dist.$arch.rpm"
 prevname="xymon-client-$ver-0.preview1.202612312359pfffffff.$dist.$arch.rpm"
 cp "$built" "$art/$snapname"
 cp "$built" "$art/$prevname"
@@ -147,7 +147,7 @@ dir=$(find "$repo/xymon-snapshot" -name '*.rpm' -printf '%h\n' | head -1)
 base=$(basename "$snap")
 upstream_ids() {
 	find "$dir" -name '*.rpm' -printf '%f\n' |
-		sed -nE 's/.*-(0\.[0-9]{8}git[0-9a-f]+)\..*/\1/p' | sort -u
+		sed -nE 's/.*-(0\.([0-9]{8}|[0-9]{12})git[0-9a-f]+)\..*/\1/p' | sort -u
 }
 # three more packaging rebuilds of the commit just published
 i=1
@@ -159,11 +159,11 @@ done
 i=1
 while [ $i -le 4 ]; do
 	cp "$dir/$base" \
-		"$dir/$(echo "$base" | sed "s/0\.[0-9]\{8\}git[0-9a-f]*\./0.2026010${i}git000000${i}./")" \
+		"$dir/$(echo "$base" | sed "s/0\.[0-9]\{12\}git[0-9a-f]*\./0.2026010${i}0000git000000${i}./")" \
 		2>/dev/null || :
 	i=$((i + 1))
 done
-published=$(printf '%s\n' "$base" | sed -nE 's/.*-(0\.[0-9]{8}git[0-9a-f]+)\..*/\1/p')
+published=$(printf '%s\n' "$base" | sed -nE 's/.*-(0\.([0-9]{8}|[0-9]{12})git[0-9a-f]+)\..*/\1/p')
 total_before=$(find "$dir" -name '*.rpm' | wc -l)
 XYMON_SNAPSHOT_KEEP=3 ./build/publish.sh "$art/.." "$repo" > "$work/prune.log" 2>&1
 kept=$(find "$dir" -name '*.rpm' | wc -l)
@@ -175,12 +175,25 @@ check "the newest upstream commit survived the packaging churn" \
 	"upstream_ids | grep -qxF '$published'"
 check "and it kept one packaging rebuild of it, not four" \
 	"test \$(find $dir -name \"*$published*\" -printf '%f\\n' |
-		 sed -nE 's/.*-(0\\.[0-9]{8}git[0-9a-f]+\\.[0-9]{12}p[0-9a-f]+)\\..*/\\1/p' |
+		 sed -nE 's/.*-(0\\.([0-9]{8}|[0-9]{12})git[0-9a-f]+\\.[0-9]{12}p[0-9a-f]+)\\..*/\\1/p' |
 		 sort -u | grep -c .) -eq 1"
 check "a superseded packaging rebuild says why it went" \
 	"grep -q 'superseded packaging of' $work/prune.log"
 check "an upstream commit past the window says why it went" \
 	"grep -q 'upstream build past the newest' $work/prune.log"
+
+echo "== retention orders the date-only upstream form by its date, not as text =="
+# The upstream half was 0.<date>git until Nov 2026 and is 0.<datetime>git
+# now. As text, "0.20991231g" sorts above "0.209912312359", so an old build
+# would outrank every new one of the same day and push them out.
+olddate=$(echo "$base" | sed "s/0\.[0-9]\{12\}git[0-9a-f]*\./0.20991231gitaaaaaaa./")
+noon=$(echo "$base" | sed "s/0\.[0-9]\{12\}git[0-9a-f]*\./0.209912311200gitbbbbbbb./")
+cp "$dir/$base" "$dir/$olddate"
+cp "$dir/$base" "$dir/$noon"
+XYMON_SNAPSHOT_KEEP=2 ./build/publish.sh "$art/.." "$repo" > "$work/oprune.log" 2>&1
+check "it kept the newest build" "test -e '$dir/$base'"
+check "and the same day's noon build, of the new form" "test -e '$dir/$noon'"
+check "and let the date-only build of that day go, as its midnight" "test ! -e '$dir/$olddate'"
 
 echo "== preview retention keeps the newest two previews of a milestone =="
 pdir=$(find "$repo/xymon-preview" -name '*.rpm' -printf '%h\n' | head -1)

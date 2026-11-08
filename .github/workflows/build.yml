@@ -206,7 +206,7 @@ jobs:
 
       # A tag builds as X.Y.Z-1; a preview-X.Y.Z-N as X.Y.Z-0.previewN.
       # <pkgdate>p<pkgsha>; anything else as a pre-release of the
-      # upcoming version, X.Y.Z-0.<date>git<sha>.<pkgdate>p<pkgsha>, which
+      # upcoming version, X.Y.Z-0.<datetime>git<sha>.<pkgdate>p<pkgsha>, which
       # sorts below the eventual -1. First pair: the upstream commit.
       # Second: the packaging commit -- a published NEVRA is immutable, so
       # without it a packaging-only change rebuilds the previous run's
@@ -243,7 +243,11 @@ jobs:
             # the spec never has to guess how a release is named.
             echo "gitref=${tag}" >> "$GITHUB_OUTPUT"
           else
-            date=$(git -C src log -1 --format=%cd --date=format:%Y%m%d)
+            # Date AND time, in UTC: two upstream commits of the same day
+            # otherwise tie on the date and are ordered by their shas, at
+            # random. Twelve digits also sort above every eight-digit
+            # date of the format before, so no snapshot is stranded.
+            date=$(TZ=UTC git -C src log -1 --format=%cd --date=format-local:%Y%m%d%H%M)
             echo "snapshot=0.${date}git${ref}.${pkgdate}p${pkgref}" >> "$GITHUB_OUTPUT"
             echo "gitref=${ref}" >> "$GITHUB_OUTPUT"
           fi
