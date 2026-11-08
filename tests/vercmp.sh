@@ -53,6 +53,18 @@ below "4.3.31-0.20260818gitcb9fede.202608191459pcf991fe.el10" \
 below "4.3.31-0.20260818gitcb9fede.202608302359pfffffff.el10" \
       "4.3.31-0.20260819gitaaaaaaa.202608190000p1111111.el10"
 
+# Two upstream commits of the same day advance by their UTC time, whatever
+# their shas. With the date alone they tied, and rpm put 2bb018e above
+# fd64efe ("2" is a digit segment, "fd" an alpha one): the evening build
+# of 8 Nov 2026 sorted below the morning's and did not upgrade it.
+below "4.3.32-0.202611080027git2bb018e.202611062050p716899b.el10" \
+      "4.3.32-0.202611082105gitfd64efe.202611082105pe9bae24.el10"
+
+# The upstream datetime was a date alone before; twelve digits outrank
+# eight, so every build of the old form upgrades to one of the new.
+below "4.3.32-0.20261108git2bb018e.202611062050p716899b.el10" \
+      "4.3.32-0.202611080027git2bb018e.202611082105pe9bae24.el10"
+
 # The real release supersedes every snapshot of itself. This is the one
 # that a naive "Release: 1 + snapshot suffix" scheme gets backwards.
 below "4.3.31-0.20260731gitdeadbee.el10" "4.3.31-1.el10"

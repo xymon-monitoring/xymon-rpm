@@ -3,7 +3,7 @@
 # patches at all; fixes belong upstream.
 #
 #   release   --define 'baseversion 4.3.31'
-#   snapshot  ... --define 'gitsnapshot 0.20260730git3a07523.202607301210pab12cd3'
+#   snapshot  ... --define 'gitsnapshot 0.202607300915git3a07523.202607301210pab12cd3'
 #
 # CI computes the snapshot string (see build.yml); only its leading 0.
 # matters here, and that is what sorts it below the eventual -1 so

@@ -129,7 +129,7 @@ publishes it once its test lanes pass. For testing, not production.
 | | Built from | Channel | Version, e.g. |
 | --- | --- | --- | --- |
 | release | an upstream `rel-X.Y.Z` tag | `xymon` (enabled) | `4.3.31-1` |
-| snapshot | upstream `main`, nightly | `xymon-snapshot` | `4.3.31-0.20261103git2f4f14d.…` |
+| snapshot | upstream `main`, nightly | `xymon-snapshot` | `4.3.32-0.202611082105gitfd64efe.…` |
 | preview | a xymon-experimental preview | `xymon-preview-next`, `xymon-preview` | `4.3.31-0.preview4.…` |
 
 Two preview channels, both shipped disabled. Enable **one**, and **not together
@@ -266,7 +266,7 @@ Four channels, which must sort correctly or dnf does the wrong thing silently;
 | Built from | Version | Release |
 | --- | --- | --- |
 | tag `rel-X.Y.Z` | `X.Y.Z` | `<n>%{?dist}`, default `1` |
-| `main` | contents of `rpm/baseversion` | `0.<date>git<sha>.<pkgdate>p<pkgsha>%{?dist}` |
+| `main` | contents of `rpm/baseversion` | `0.<datetime>git<sha>.<pkgdate>p<pkgsha>%{?dist}` |
 | tag `preview-X.Y.Z-N` (xymon-experimental) | `X.Y.Z` | `0.preview<N>.<pkgdate>p<pkgsha>%{?dist}` |
 
 A snapshot is a *pre-release of the next version* (`Release` starts with
@@ -275,14 +275,17 @@ change a package — one touching `rpm/`, `build/` or `.github/`. That second
 pair matters because a published NEVRA is immutable: without it a
 packaging-only fix rebuilds the same NEVRA and never ships. Keying on `HEAD`
 instead would mint a new NEVRA for every docs commit, so docs-only pushes
-skip the build. The packaging datetime (UTC) does the ordering.
+skip the build. The two datetimes (UTC, to the minute) do the ordering:
+rpm compares the shas as text, which means nothing. Until Nov 2026 the
+upstream half was a date alone, so two commits of one day were ordered by
+their shas; twelve digits outrank those eight, so the old builds upgrade.
 
 ```
 4.3.30-1
- -> 4.3.31-0.20260730git3a07523.202607301210pab12cd3   upgrade
- -> 4.3.31-0.20260731gitdeadbee.202607301210pab12cd3   upgrade (upstream moved)
- -> 4.3.31-0.20260731gitdeadbee.202608011535p9f8e7d6   upgrade (packaging moved)
- -> 4.3.31-1                                           upgrade (release lands)
+ -> 4.3.31-0.202607300915git3a07523.202607301210pab12cd3   upgrade
+ -> 4.3.31-0.202607301640gitdeadbee.202607301210pab12cd3   upgrade (upstream moved)
+ -> 4.3.31-0.202607301640gitdeadbee.202608011535p9f8e7d6   upgrade (packaging moved)
+ -> 4.3.31-1                                               upgrade (release lands)
 ```
 
 Snapshot users are absorbed into the stable channel when the release lands.

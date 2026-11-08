@@ -112,19 +112,26 @@ done
 keep=${XYMON_SNAPSHOT_KEEP:-10}
 
 # The build id is the Release field minus the dist tag: the upstream half
-# 0.<date>git<sha>, plus the packaging half .<datetime>p<sha> when there
-# is one. Fixed-width datetimes lead both halves, so a reverse sort is
-# newest-first, and an id with no packaging half sorts below every
-# rebuild of the same commit.
+# 0.<datetime>git<sha>, plus the packaging half .<datetime>p<sha> when
+# there is one. Fixed-width datetimes lead both halves, so a reverse sort
+# is newest-first, and an id with no packaging half sorts below every
+# rebuild of the same commit. The upstream datetime was a date alone
+# (eight digits) until Nov 2026; sortkey() reads such a date as its
+# midnight, so the two formats sort together rather than as text, where
+# "g" after eight digits would rank every old build above the new ones.
 buildid() {
 	printf '%s\n' "${1##*/}" \
-	| sed -nE 's/.*-(0\.[0-9]{8}git[0-9a-f]+(\.[0-9]{12}p[0-9a-f]+)?)\..*/\1/p'
+	| sed -nE 's/.*-(0\.([0-9]{8}|[0-9]{12})git[0-9a-f]+(\.[0-9]{12}p[0-9a-f]+)?)\..*/\1/p'
 }
 
 # The upstream half alone -- the grouping key.
 upstreamid() {
 	printf '%s\n' "${1##*/}" \
-	| sed -nE 's/.*-(0\.[0-9]{8}git[0-9a-f]+)(\.[0-9]{12}p[0-9a-f]+)?\..*/\1/p'
+	| sed -nE 's/.*-(0\.([0-9]{8}|[0-9]{12})git[0-9a-f]+)(\.[0-9]{12}p[0-9a-f]+)?\..*/\1/p'
+}
+
+sortkey() {
+	printf '%s\n' "$1" | sed -E 's/^0\.([0-9]{8})git/0.\10000git/'
 }
 
 if [ -d "$repodir/xymon-snapshot" ]; then
@@ -132,8 +139,9 @@ if [ -d "$repodir/xymon-snapshot" ]; then
 	find "$repodir/xymon-snapshot" -name '*.rpm' -printf '%h\n' | sort -u | while read -r dir; do
 		all=$(for f in "$dir"/*.rpm; do
 			[ -e "$f" ] || continue
-			printf '%s\t%s\n' "$(upstreamid "$f")" "$(buildid "$f")"
-		done | sort -ru)
+			u=$(upstreamid "$f") b=$(buildid "$f")
+			printf '%s\t%s\t%s\n' "$(sortkey "$b")" "$u" "$b"
+		done | sort -ru | cut -f2-)
 		# Newest first, so the first row of each upstream id is its newest
 		# packaging rebuild. Everything not in this set goes, whether it is
 		# a superseded rebuild or an upstream commit past the window.
