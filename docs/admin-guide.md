@@ -167,12 +167,10 @@ Before this design, `xymon` required `xymon-client` and a separate
 - **Client-only hosts** upgrade normally: the client package's `%post`
   carries enablement and any running instance over to
   `xymonlaunch.service`.
-- **Server hosts** have both packages, which the new `xymon` conflicts
-  with, so the upgrade is one explicit `dnf swap xymon-client xymon`.
-  Until it runs the conflict makes the whole `dnf upgrade` unsolvable,
-  so an unattended updater silently stops. Acceptable only because this
-  packaging is experimental; a stable release would need a `%triggerun`
-  migration or a transitional package.
+- **Server hosts** have both packages. The new `xymon` obsoletes the old
+  `xymon-client` (every old-layout build is `4.3.31-0.<date>`), so
+  `dnf upgrade` replaces the pair with the server alone; the running
+  server and the configuration carry over.
 
 ## When something is wrong
 
@@ -186,7 +184,6 @@ Before this design, `xymon` required `xymon-client` and a separate
 | Web UI loads on the server but not from elsewhere | firewalld service `http` (or `https`) on the server |
 | Web pages 500 | `xymonpasswd` missing or not `apache`-owned; httpd error log |
 | Nothing running after a swap | `systemctl restart xymonlaunch` |
-| `dnf upgrade` fails on a server | pre-conflict layout: `dnf swap xymon-client xymon` |
 
 ## Package versions: snapshots, previews and releases
 

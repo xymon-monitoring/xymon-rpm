@@ -137,10 +137,6 @@ to a GitHub issue.
 - **Validate on genuine RHEL and OracleLinux.** CI builds on AlmaLinux (a RHEL
   rebuild), which cannot surface a symbol RHEL lacks; real RHEL/OL testing is a
   standing gap. Recruit downstream testers.
-- **A stable-release upgrade path.** A server upgrade currently needs a manual
-  `dnf swap` — the package conflict makes `dnf upgrade` stop otherwise. A stable
-  release needs a `%triggerun` migration or a transitional package
-  ([admin-guide.md](admin-guide.md) *Migrating from the old layout*).
 - **The server's identity is pinned too early, and every packaging works
   around it.** *Not ours to fix; worth sending upstream.* `configure.server`
   asks for `XYMONHOSTNAME` and bakes it into `xymonserver.cfg` at **configure**

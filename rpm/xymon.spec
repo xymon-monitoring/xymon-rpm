@@ -228,6 +228,14 @@ Requires(pre):  shadow-utils
 # makes the two mutually exclusive. Role changes are one dnf swap; the
 # recipe is in README.md.
 Conflicts:      xymon-client
+# Until 20 Aug 2026 this package required xymon-client, so a server from
+# then has both installed; every such build is 4.3.31-0.<date>. Obsoleting
+# them lets dnf upgrade turn that pair into this package in one step,
+# instead of stopping on the conflict above. A client-only host still
+# upgrades to xymon-client: dnf prefers a same-name upgrade over an
+# obsoleter, which holds only while every channel publishes both packages,
+# as one spec does. Goes with the %%pretrans migration it completes.
+Obsoletes:      xymon-client < 4.3.31-1
 # The embedded client's collectors shell out to these, same as the
 # standalone client's (see the client package's net-tools comment).
 Requires:       net-tools
