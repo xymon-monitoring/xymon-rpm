@@ -348,14 +348,11 @@ with the build and install gaps this packaging compensates for.
   half closed with
   [xymon#163](https://github.com/xymon-monitoring/xymon/pull/163); the spec's
   `%build` says how.
-- `xymon-tmpfiles.conf` creates `/run/xymon`, which nothing uses yet: the
-  pidfiles and control sockets that would fill it arrive with xymon#172 (the
-  next gap), stacked on this one — the two land together,
-  `xymon#219 → xymon#172`.
-  [xymon#219](https://github.com/xymon-monitoring/xymon/pull/219) adds
-  `XYMONRUNDIR` but defaults it to `$XYMONLOGDIR`, so the spec must also pass
-  `XYMONRUNDIR=/run/xymon` — and ship the tmpfiles snippet in the client
-  package, which currently lacks it.
+- `/run/xymon`, which `xymon-tmpfiles.conf` creates, holds the server's
+  pidfiles and `xymond_rrd`'s control sockets only from 4.3.32:
+  [xymon#219](https://github.com/xymon-monitoring/xymon/pull/219) added
+  `XYMONRUNDIR`, which the spec sets. Builds of 4.3.31 keep them in the log
+  directory and `/var/lib/xymon/tmp`. The client does not use it.
 - `ExecReload` sends `SIGHUP`, which `xymonlaunch` acts on itself but does not
   relay to its children until
   [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172), so use

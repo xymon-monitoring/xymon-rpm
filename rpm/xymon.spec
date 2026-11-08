@@ -379,6 +379,11 @@ export CFLAGS="%{optflags}"
 # probes for fping by *running* it and re-prompts on failure, and with stdin
 # at EOF that loop never ends -- the build hangs instead of failing. Setting
 # it skips the probe. Ignored when USEXYMONPING=y, so it needs no condition.
+#
+# XYMONRUNDIR (xymon#219, from 4.3.32): pidfiles and xymond_rrd's control
+# sockets, in the directory xymon-tmpfiles.conf creates. Left unset, they go
+# to the log directory, which the CGIs may not reach under SELinux. The
+# 4.3.31 configure does not ask for it and ignores it.
 USEXYMONPING=%{?with_xymonping:y}%{!?with_xymonping:n} \
 USERFPING=%{_sbindir}/fping \
 ENABLESSL=y \
@@ -388,6 +393,7 @@ XYMONUSER=xymon \
 XYMONTOPDIR=%{xymonhome} \
 XYMONVAR=%{_sharedstatedir}/xymon \
 XYMONLOGDIR=%{_localstatedir}/log/xymon \
+XYMONRUNDIR=/run/xymon \
 XYMONHOSTNAME=localhost \
 XYMONHOSTIP=127.0.0.1 \
 XYMONHOSTURL=/xymon \
@@ -643,8 +649,9 @@ done
 #  - cgiwrap back to httpd_sys_script_exec_t, after bin/: every CGI in
 #    cgi-bin and cgi-secure is a hard link to it, one inode, so bin_t
 #    there would relabel all of them and they would run as httpd_t.
-#  - rrd/ readable and tmp/ writable by the CGIs: showgraph reads the RRD
-#    files and writes xymond_rrd's rrdctl sockets to flush them.
+#  - rrd/ readable, and tmp/ and /run/xymon writable, by the CGIs: showgraph
+#    reads the RRD files and writes xymond_rrd's rrdctl sockets to flush
+#    them -- in tmp/ up to 4.3.31, in XYMONRUNDIR from 4.3.32.
 #  - port 1984 as xymon_port_t, which the module lets only the CGIs reach.
 # Best-effort by design -- semanage only exists where the SELinux tooling
 # is installed, and a container or disabled-SELinux host needs none of
@@ -661,10 +668,11 @@ if command -v semanage >/dev/null 2>&1; then
     semanage fcontext -a -t httpd_sys_script_exec_t '%{xymonhome}/server/bin/cgiwrap' 2>/dev/null || :
     semanage fcontext -a -t httpd_sys_content_t '%{_sharedstatedir}/xymon/rrd(/.*)?'    2>/dev/null || :
     semanage fcontext -a -t httpd_sys_rw_content_t '%{_sharedstatedir}/xymon/tmp(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_rw_content_t '/run/xymon(/.*)?' 2>/dev/null || :
     restorecon -R %{xymonhome}/cgi-bin %{xymonhome}/cgi-secure \
         %{xymonhome}/server/bin %{xymonhome}/client/bin \
         %{_sharedstatedir}/xymon/www %{_sharedstatedir}/xymon/rrd \
-        %{_sharedstatedir}/xymon/tmp %{_datadir}/xymon 2>/dev/null || :
+        %{_sharedstatedir}/xymon/tmp %{_datadir}/xymon /run/xymon 2>/dev/null || :
 %if %{with selinux}
     semanage port -a -t xymon_port_t -p tcp 1984 2>/dev/null || :
 %endif
@@ -722,6 +730,7 @@ if [ $1 -eq 0 ] && command -v semanage >/dev/null 2>&1; then
     semanage fcontext -d '%{xymonhome}/server/bin/cgiwrap'         2>/dev/null || :
     semanage fcontext -d '%{_sharedstatedir}/xymon/rrd(/.*)?'      2>/dev/null || :
     semanage fcontext -d '%{_sharedstatedir}/xymon/tmp(/.*)?'      2>/dev/null || :
+    semanage fcontext -d '/run/xymon(/.*)?'                         2>/dev/null || :
     # Shared with the client package: in a demotion it is installed by
     # now (see %%preun), and its client/bin still needs the rule.
     if [ ! -e %{clientconf} ]; then
