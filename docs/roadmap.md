@@ -185,7 +185,7 @@ to a GitHub issue.
   nothing, and an example nothing runs is an example that rots.
 
 - **Tests the last changes lack.** The old-layout upgrade through
-  `Obsoletes` (#119) and the pidfiles and sockets in `/run/xymon` (#121) were
+  `Obsoletes` ([xymon-rpm#119](https://github.com/xymon-monitoring/xymon-rpm/pull/119)) and the pidfiles and sockets in `/run/xymon` ([xymon-rpm#121](https://github.com/xymon-monitoring/xymon-rpm/pull/121)) were
   checked by hand only. `tests/upgrade.sh` upgrades from the snapshot
   channel even on a release build, so a `4.3.31-2` re-release would be
   tested against a newer 4.3.32 snapshot. Two upstream commits in the same
