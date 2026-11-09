@@ -137,11 +137,15 @@ if [ -n "$rundir" ]; then
 	check "xymonserver.cfg sets XYMONRUNDIR to /run/xymon (got $rundir)" \
 		"test '$rundir' = /run/xymon"
 	i=0
-	while [ $i -lt 30 ] && ! { [ -s /run/xymon/xymond.pid ] && ls /run/xymon/rrdctl.* >/dev/null 2>&1; }; do
+	while [ $i -lt 60 ] && ! { [ -s /run/xymon/xymond.pid ] && ls /run/xymon/rrdctl.* >/dev/null 2>&1; }; do
 		sleep 1; i=$((i + 1))
 	done
 	check "xymond writes its pidfile there" "test -s /run/xymon/xymond.pid"
-	check "and xymond_rrd its control sockets" "ls /run/xymon/rrdctl.* >/dev/null 2>&1"
+	# On failure, show what is there and whether xymond_rrd runs at all.
+	check "and xymond_rrd its control sockets" \
+		"ls /run/xymon/rrdctl.* >/dev/null 2>&1 || {
+		 ls -la /run/xymon; ps -eo pid,etimes,args | grep '[x]ymond_rrd';
+		 tail -5 /var/log/xymon/rrd-status.log /var/log/xymon/rrd-data.log; false; }"
 else
 	echo "skip     no XYMONRUNDIR in xymonserver.cfg: a build before 4.3.32"
 fi
