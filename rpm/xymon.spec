@@ -249,7 +249,7 @@ Obsoletes:      xymon-client < 4.3.31-1
 Requires:       net-tools
 # This package ships /etc/logrotate.d/xymon; nothing rotates it otherwise.
 Recommends:     logrotate
-# Owns the apache group that www/rep and www/snap are chgrp'd to, and the
+# Owns the apache group that rep and snap are chgrp'd to, and the
 # /etc/httpd/conf.d directory the web config drops into. rpm >= 4.19
 # generates a group(apache) requirement from the %%attr on its own, but
 # EL8/EL9 rpm does not, and there the dirs would silently fall back to
@@ -504,6 +504,22 @@ for d in gifs help menu; do
     ln -sf %{_datadir}/xymon/$d %{buildroot}%{_sharedstatedir}/xymon/www/$d
 done
 
+# rep and snap, the on-demand reports and snapshots, are the third kind:
+# regenerable, safe to delete, so the FHS puts them in /var/cache. Moved
+# and symlinked back like the static three, so the URLs and any
+# xymonserver.cfg kept from an older install still land there. From 4.3.32
+# XYMONCACHEWWWDIR (xymon#443) names the new place, so the shipped config
+# points at it directly; 4.3.31's has no such line and the sed changes
+# nothing. xymon-tmpfiles.conf recreates the directories if /var/cache is
+# cleared: snapshot.cgi does not make its own (xymon#443).
+install -d %{buildroot}%{_localstatedir}/cache/xymon/www
+for d in rep snap; do
+    mv %{buildroot}%{_sharedstatedir}/xymon/www/$d %{buildroot}%{_localstatedir}/cache/xymon/www/$d
+    ln -sf %{_localstatedir}/cache/xymon/www/$d %{buildroot}%{_sharedstatedir}/xymon/www/$d
+done
+sed -i 's|^XYMONCACHEWWWDIR="[^"]*"|XYMONCACHEWWWDIR="%{_localstatedir}/cache/xymon/www"|' \
+    %{buildroot}%{_sysconfdir}/xymon/xymonserver.cfg
+
 # That config points AuthUserFile/AuthGroupFile at these; the build never
 # creates them, and without the password file every /xymon-seccgi request
 # is a 500. Shipped empty: no user can authenticate until the admin adds
@@ -596,6 +612,8 @@ movetree("%{xymonhome}/client/etc", "%{_sysconfdir}/xymon-client")
 movetree("%{_sharedstatedir}/xymon/www/gifs", "%{_datadir}/xymon/gifs")
 movetree("%{_sharedstatedir}/xymon/www/help", "%{_datadir}/xymon/help")
 movetree("%{_sharedstatedir}/xymon/www/menu", "%{_datadir}/xymon/menu")
+movetree("%{_sharedstatedir}/xymon/www/rep", "%{_localstatedir}/cache/xymon/www/rep")
+movetree("%{_sharedstatedir}/xymon/www/snap", "%{_localstatedir}/cache/xymon/www/snap")
 
 %pretrans client -p <lua>
 -- The client package ships no www tree, so it has only the one move.
@@ -669,8 +687,13 @@ if command -v semanage >/dev/null 2>&1; then
     semanage fcontext -a -t httpd_sys_script_exec_t '%{xymonhome}/cgi-secure(/.*)?' 2>/dev/null || :
     semanage fcontext -a -t httpd_sys_content_t '%{_sharedstatedir}/xymon/www(/.*)?' 2>/dev/null || :
     semanage fcontext -a -t httpd_sys_content_t '%{_datadir}/xymon(/.*)?' 2>/dev/null || :
-    semanage fcontext -a -t httpd_sys_rw_content_t '%{_sharedstatedir}/xymon/www/rep(/.*)?'  2>/dev/null || :
-    semanage fcontext -a -t httpd_sys_rw_content_t '%{_sharedstatedir}/xymon/www/snap(/.*)?' 2>/dev/null || :
+    # rep and snap moved to /var/cache; the rules an older package added
+    # for their /var/lib paths would otherwise outlive it.
+    semanage fcontext -d '%{_sharedstatedir}/xymon/www/rep(/.*)?'  2>/dev/null || :
+    semanage fcontext -d '%{_sharedstatedir}/xymon/www/snap(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_content_t '%{_localstatedir}/cache/xymon(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_rw_content_t '%{_localstatedir}/cache/xymon/www/rep(/.*)?'  2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_rw_content_t '%{_localstatedir}/cache/xymon/www/snap(/.*)?' 2>/dev/null || :
     semanage fcontext -a -t bin_t '%{xymonhome}/server/bin(/.*)?' 2>/dev/null || :
     semanage fcontext -a -t bin_t '%{xymonhome}/client/bin(/.*)?' 2>/dev/null || :
     semanage fcontext -a -t httpd_sys_script_exec_t '%{xymonhome}/server/bin/cgiwrap' 2>/dev/null || :
@@ -680,7 +703,8 @@ if command -v semanage >/dev/null 2>&1; then
     restorecon -R %{xymonhome}/cgi-bin %{xymonhome}/cgi-secure \
         %{xymonhome}/server/bin %{xymonhome}/client/bin \
         %{_sharedstatedir}/xymon/www %{_sharedstatedir}/xymon/rrd \
-        %{_sharedstatedir}/xymon/tmp %{_datadir}/xymon /run/xymon 2>/dev/null || :
+        %{_sharedstatedir}/xymon/tmp %{_datadir}/xymon /run/xymon \
+        %{_localstatedir}/cache/xymon 2>/dev/null || :
 %if %{with selinux}
     semanage port -a -t xymon_port_t -p tcp 1984 2>/dev/null || :
 %endif
@@ -732,8 +756,9 @@ if [ $1 -eq 0 ] && command -v semanage >/dev/null 2>&1; then
     semanage fcontext -d '%{xymonhome}/cgi-secure(/.*)?' 2>/dev/null || :
     semanage fcontext -d '%{_sharedstatedir}/xymon/www(/.*)?'      2>/dev/null || :
     semanage fcontext -d '%{_datadir}/xymon(/.*)?'                 2>/dev/null || :
-    semanage fcontext -d '%{_sharedstatedir}/xymon/www/rep(/.*)?'  2>/dev/null || :
-    semanage fcontext -d '%{_sharedstatedir}/xymon/www/snap(/.*)?' 2>/dev/null || :
+    semanage fcontext -d '%{_localstatedir}/cache/xymon(/.*)?'          2>/dev/null || :
+    semanage fcontext -d '%{_localstatedir}/cache/xymon/www/rep(/.*)?'  2>/dev/null || :
+    semanage fcontext -d '%{_localstatedir}/cache/xymon/www/snap(/.*)?' 2>/dev/null || :
     semanage fcontext -d '%{xymonhome}/server/bin(/.*)?'           2>/dev/null || :
     semanage fcontext -d '%{xymonhome}/server/bin/cgiwrap'         2>/dev/null || :
     semanage fcontext -d '%{_sharedstatedir}/xymon/rrd(/.*)?'      2>/dev/null || :
@@ -805,8 +830,10 @@ fi
 %exclude %{_sysconfdir}/xymon-client/clientlaunch.d
 %attr(0755,xymon,xymon) %dir %{_localstatedir}/log/xymon
 %attr(-,xymon,xymon) %{_sharedstatedir}/xymon
-%attr(0775,xymon,apache) %dir %{_sharedstatedir}/xymon/www/rep
-%attr(0775,xymon,apache) %dir %{_sharedstatedir}/xymon/www/snap
+%attr(0755,xymon,xymon) %dir %{_localstatedir}/cache/xymon
+%attr(0755,xymon,xymon) %dir %{_localstatedir}/cache/xymon/www
+%attr(0775,xymon,apache) %dir %{_localstatedir}/cache/xymon/www/rep
+%attr(0775,xymon,apache) %dir %{_localstatedir}/cache/xymon/www/snap
 %if %{with xymonping}
 %attr(4750,root,xymon) %{xymonhome}/server/bin/xymonping
 %endif

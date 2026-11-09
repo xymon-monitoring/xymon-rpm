@@ -377,8 +377,9 @@ with the build and install gaps this packaging compensates for.
   port 1984. The labeling runs only when `semanage` is installed: a default
   `dnf install` brings it as a weak dependency, an `rpm -i` does not.
   Validated on AlmaLinux 8, 9 and 10 and Fedora 44; CI runs nothing
-  enforcing. Xymon does not run under the `mls` policy. The modules' rules
-  still reference `/var/cache/xymon`, which this layout does not use.
+  enforcing. Xymon does not run under the `mls` policy. The modules
+  still carry unused `httpd_cache_t` rules for `/var/cache/xymon`: `rep` and
+  `snap` live there but are labeled `httpd_sys_rw_content_t`.
   Details, and how to report a denial, in [docs/selinux.md](docs/selinux.md).
 - `XYMONSERVERHOSTNAME` is baked as `localhost` and rewritten from `uname -n`
   in `%post`, because a package must not carry the build host's name.
