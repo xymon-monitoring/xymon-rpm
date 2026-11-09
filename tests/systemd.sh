@@ -137,22 +137,28 @@ if [ -n "$rundir" ]; then
 	check "xymonserver.cfg sets XYMONRUNDIR to /run/xymon (got $rundir)" \
 		"test '$rundir' = /run/xymon"
 	# xymond_channel starts its worker only when a first message arrives on
-	# its channel, so xymond_rrd may not run yet on a quiet host. One status
-	# for the server's own host (%post names it uname -n in hosts.cfg)
-	# feeds the status channel, xymond_rrd's.
+	# its channel, so xymond_rrd may not run yet on a quiet host. A status
+	# for the server's own host feeds the status channel, xymond_rrd's: under
+	# the name hosts.cfg gives 127.0.0.1, as xymond drops one for a host it
+	# does not know. Sent again every 5 s while waiting, as one sent before
+	# xymond is ready to take it is lost.
 	i=0
 	while [ $i -lt 30 ] && ! [ -s /run/xymon/xymond.pid ]; do sleep 1; i=$((i + 1)); done
-	/usr/lib/xymon/server/bin/xymon 127.0.0.1 "status $(uname -n).rundir green the runtime directory test" || :
+	self=$(awk '$1 == "127.0.0.1" { print $2; exit }' /etc/xymon/hosts.cfg)
+	self=${self:-$(uname -n)}
 	i=0
 	while [ $i -lt 60 ] && ! ls /run/xymon/rrdctl.* >/dev/null 2>&1; do
+		[ $((i % 5)) -eq 0 ] && /usr/lib/xymon/server/bin/xymon 127.0.0.1 \
+			"status $self.rundir green the runtime directory test" >/dev/null 2>&1
 		sleep 1; i=$((i + 1))
 	done
 	check "xymond writes its pidfile there" "test -s /run/xymon/xymond.pid"
 	# On failure, show what is there and whether xymond_rrd runs at all.
 	check "and xymond_rrd its control sockets" \
 		"ls /run/xymon/rrdctl.* >/dev/null 2>&1 || {
-		 ls -la /run/xymon; systemctl status $unit --no-pager -l | tail -n 15;
-		 tail -n 8 /var/log/xymon/xymonlaunch.log /var/log/xymon/history.log /var/log/xymon/rrd-status.log; false; }"
+		 echo \"status sent for host $self\"; ls -la /run/xymon;
+		 systemctl status $unit --no-pager -l | tail -n 15;
+		 tail -n 8 /var/log/xymon/xymond.log /var/log/xymon/rrd-status.log; false; }"
 else
 	echo "skip     a 4.3.31 build: its pidfiles and sockets stay in /var/log/xymon and tmp/ (no XYMONRUNDIR)"
 fi
