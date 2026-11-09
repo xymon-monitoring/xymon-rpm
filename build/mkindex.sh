@@ -129,7 +129,8 @@ relrpm=${relrpm:-xymon-release-1-1.noarch.rpm}
 	dnf config-manager setopt xymon-snapshot.enabled=1   # dnf5: Fedora</pre>
 
 	<p>Previews are test builds of an upcoming release: <code>main</code> plus
-	the pull requests planned for a milestone, most of them not reviewed yet.
+	the pull requests of a milestone and the unreleased ones before it, most of
+	them not reviewed yet.
 	For testing, not production. Enable <em>one</em> preview channel, and not
 	together with <code>xymon-snapshot</code>: a snapshot of the same version
 	sorts above a preview, so dnf would install the snapshot.</p>

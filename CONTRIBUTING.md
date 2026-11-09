@@ -63,7 +63,8 @@ classify once and for all — it records where the line runs now.
 Two checks watch that, nightly, from opposite ends. `tests/docs.sh` reads the
 tracking issue's table and checks each pull request's real state: when
 one merges, the drift check goes red — not because something broke, but because
-a compensation just stopped being one. `tests/compensations.sh` takes the
+a compensation just stopped being one. Its row is then marked `merged`, and
+goes with the change that consumes it. `tests/compensations.sh` takes the
 condition above and checks it the other way, that every `xymon#NNN` the spec
 cites is still held by a tracker — so a citation the merged proposal left
 behind is named rather than waiting for someone to read the spec.

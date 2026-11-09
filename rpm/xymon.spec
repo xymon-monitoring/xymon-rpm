@@ -73,14 +73,17 @@ URL:            https://github.com/xymon-monitoring/xymon
 #
 # gitref is what the build was made from -- the upstream commit for a
 # snapshot, the tag itself for a release -- and the build passes it because
-# only the build knows. Guessing it here would mean guessing a tag naming
-# convention: upstream carries rel_4_2_0 from 2006 and 4.3.31-root, no
-# release has been cut under this project yet, and the shape of the first
-# one is not decided. Undefined, for the hand build in README *Building
-# locally*, it falls back to the version, which is a guess -- but that
-# build publishes nothing and its reader knows what they checked out.
+# only the build knows: a release tag is rel-X.Y.Z (xymon's RELEASING.md),
+# a snapshot names a commit, a preview its preview-X.Y.Z-N tag. Undefined,
+# for the hand build in README *Building locally*, it falls back to the
+# version, which is a guess -- but that build publishes nothing and its
+# reader knows what they checked out.
+#
+# A preview's tag lives in xymon-experimental, not in xymon, so its source
+# URL names that repository.
 %{!?gitref: %global gitref %{version}}
-Source0:        %{url}/archive/%{gitref}/%{name}-%{version}.tar.gz
+%global srcrepo %{lua: if string.find(rpm.expand("%{gitref}"), "^preview%-") then print("https://github.com/xymon-monitoring/xymon-experimental") else print(rpm.expand("%{url}")) end}
+Source0:        %{srcrepo}/archive/%{gitref}/%{name}-%{version}.tar.gz
 
 # Runtime integration files; docs/upstream.md tables their provenance and why.
 #   ONE unit for both roles, shipped identically by both packages;
@@ -393,7 +396,6 @@ USEXYMONPING=%{?with_xymonping:y}%{!?with_xymonping:n} \
 USERFPING=%{_sbindir}/fping \
 ENABLESSL=y \
 ENABLELDAP=y \
-ENABLELDAPSSL=y \
 XYMONUSER=xymon \
 XYMONTOPDIR=%{xymonhome} \
 XYMONVAR=%{_sharedstatedir}/xymon \
@@ -494,7 +496,8 @@ mv %{buildroot}%{_sysconfdir}/xymon/xymon-apache.conf \
 # second location. httpd needs no extra config: the generated one sets
 # FollowSymLinks on the www directory, which is what lets it cross into
 # /usr/share (verified -- without it the same request is a 403).
-# xymon#414 (INSTALLSTATICWWWDIR) would remove the move.
+# xymon#414 (INSTALLSTATICWWWDIR, 4.3.32) removes the move; it stays while
+# the stable channel builds 4.3.31, which lacks it.
 install -d %{buildroot}%{_datadir}/xymon
 for d in gifs help menu; do
     mv %{buildroot}%{_sharedstatedir}/xymon/www/$d %{buildroot}%{_datadir}/xymon/$d

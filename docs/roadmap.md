@@ -191,6 +191,11 @@ to a GitHub issue.
   tested against a newer 4.3.32 snapshot. Two upstream commits in the same
   minute still order by sha; `tests/publish.sh` copies a single package, so
   it cannot see half a build pruned.
+- **A milestone closed without a release keeps its previews.** Retention
+  drops a milestone's previews once its release is in the stable channel;
+  xymon-experimental retires a closed milestone's branches but not its
+  preview releases, so one closed unreleased stays in `xymon-preview` (and in
+  Homebrew) until removed by hand, as 4.3.33's were in Nov 2026.
 - **Watch the signing key expiry** ([signing.md](signing.md) *Renewing before
   expiry*).
 
@@ -203,4 +208,5 @@ to a GitHub issue.
   *Known gaps*); `/run/xymon` itself is in use since xymon#219 merged
 - Consuming a merged upstream feature — one spec PR each, e.g.
   [xymon-rpm#4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) once
-  [xymon#414](https://github.com/xymon-monitoring/xymon/pull/414) lands
+  4.3.32, which carries
+  [xymon#414](https://github.com/xymon-monitoring/xymon/pull/414), is released
