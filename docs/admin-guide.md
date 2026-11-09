@@ -2,10 +2,10 @@
 
 A host is either a **server** (`xymon`) or a **client** (`xymon-client`);
 the packages conflict, so nothing is ever both. Both run the same service,
-`xymonlaunch.service`, so every command below is identical everywhere —
-only the files differ. A server also monitors *itself* through an embedded
-client tree driven from its own `tasks.cfg`, so finding client files on a
-server is normal.
+`xymonlaunch.service`, so every command below is identical everywhere; only
+the files differ. A server also monitors *itself* through an embedded client
+tree driven from its own `tasks.cfg`, so client files on a server are
+normal.
 
 ## The layout
 
@@ -47,7 +47,7 @@ A **client host** (`xymon-client`) has only the client half:
 /etc/logrotate.d/xymon          (both roles ship this)
 /usr/lib/xymon/client/bin/      xymonclient.sh, logfetch, clientupdate, xymonlaunch …
 /usr/lib/xymon/client/ext/  local/   your own extension scripts
-/var/log/xymon/                 clientlaunch.log …
+/var/log/xymon/                 xymonclient.log …
 ```
 
 The service and its role drop-in, on both:
@@ -58,9 +58,10 @@ The service and its role drop-in, on both:
 ```
 
 Nothing writes inside `/usr/lib`: symlinks redirect everything mutable into
-`/etc`, `/var` and `/tmp`. `/run/xymon`, created by tmpfiles, holds the
-server's pidfiles and `xymond_rrd`'s control sockets from 4.3.32; a 4.3.31
-server keeps them in `/var/log/xymon` and `/var/lib/xymon/tmp`.
+`/etc` and `/var` (the client's `tmp` into `/var/tmp`). `/run/xymon`, created
+by tmpfiles, holds the server's pidfiles and `xymond_rrd`'s control sockets
+from 4.3.32 (snapshots built since 8 Nov 2026). A 4.3.31 server keeps them in
+`/var/log/xymon` and `/var/lib/xymon/tmp`.
 
 ## Running the service
 
@@ -70,19 +71,20 @@ systemctl start|stop|restart xymonlaunch
 journalctl -u xymonlaunch -f
 ```
 
-The real logs are files under `/var/log/xymon/`, not the journal: start with
-`xymonlaunch.log`, `xymond.log`, `xymonclient.log` on a server;
-`clientlaunch.log` on a client.
+The real logs are files under `/var/log/xymon/`: on a server, start with
+`xymonlaunch.log`, `xymond.log` and `xymonclient.log`; on a client,
+`xymonclient.log`. A client's `xymonlaunch` runs without `--log`, so its own
+messages go to the journal.
 
-`systemctl reload` sends `SIGHUP`, which `xymonlaunch` acts on (rereads
-`tasks.cfg`, reopens its log) but does not pass to the daemons it started —
-so use `restart` to reach those until upstream
+`systemctl reload` sends `SIGHUP`. `xymonlaunch` acts on it (rereads
+`tasks.cfg`, reopens its log) but does not pass it to the daemons it started.
+Use `restart` to reach those until upstream
 [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172) merges.
 
 To tell which role is running (only the client names `clientlaunch.cfg`):
 
 ```sh
-systemctl show -p MainPID --value xymonlaunch | xargs -I{} tr '\0' ' ' < /proc/{}/cmdline
+tr '\0' ' ' < /proc/"$(systemctl show -p MainPID --value xymonlaunch)"/cmdline; echo
 ```
 
 ## Client tasks
@@ -98,11 +100,11 @@ systemctl show -p MainPID --value xymonlaunch | xargs -I{} tr '\0' ' ' < /proc/{
   `SERVEROSTYPE` overrides the OS collector. Both default from `uname` when
   unset.
 - **Add a check.** A script in `/usr/lib/xymon/client/ext/` plus a `[name]`
-  stanza in a file of your own under `/etc/xymon-client/clientlaunch.d/` —
-  not in `clientlaunch.cfg`. That file is `%config(noreplace)`: edit it and rpm
-  keeps your copy from then on, so nothing upstream changes in it ever reaches
-  the host, and the day it does change you get a `.rpmnew` to merge by hand. A
-  drop-in belongs to you, and the shipped file keeps upgrading.
+  stanza in a file of your own under `/etc/xymon-client/clientlaunch.d/`,
+  not in `clientlaunch.cfg`. That file is `%config(noreplace)`: once you edit
+  it, rpm keeps your copy, so nothing upstream changes in it reaches the host.
+  The day it does change, you get a `.rpmnew` to merge by hand. A drop-in
+  belongs to you, and the shipped file keeps upgrading.
 - **Analyse locally.** Install `xymon-client-local`, put rules in
   `localclient.cfg`, add `--local` to the client's entry in `clientlaunch.cfg`.
 
@@ -110,29 +112,29 @@ systemctl show -p MainPID --value xymonlaunch | xargs -I{} tr '\0' ' ' < /proc/{
 
 - **Add a host.** Edit `/etc/xymon/hosts.cfg` (or a file in `hosts.d/`), then
   restart. The name must match what the client reports, and **the address must
-  be unique** — Xymon keys hosts by address, so a second entry for an
-  address already listed is ignored (rename the existing entry instead). An
-  unmatched host still shows green from network tests while its client data is
-  never analysed.
+  be unique**: Xymon keys hosts by address, so a second entry for an address
+  already listed is ignored. Rename the existing entry instead. An unmatched
+  host still shows green from network tests while its client data is never
+  analysed.
 - **Web access.** The UI is `http://<server>/xymon/`. firewalld's default
-  zone does not admit HTTP, so with firewalld running, let browsers in — and
-  add `--add-service=https` if httpd serves the UI over TLS (`mod_ssl`, which
-  these packages do not pull in):
+  zone does not admit HTTP, so with firewalld running, let browsers in. If
+  httpd serves the UI over TLS, add `--add-service=https` too; `mod_ssl` is
+  not pulled in by these packages.
 
   ```sh
   firewall-cmd --permanent --add-service=http && firewall-cmd --reload
   ```
 
   The authenticated CGIs read `/etc/xymon/xymonpasswd`, which ships empty and
-  `apache`-owned, so add a user before anyone can log in:
+  `apache`-owned. Add a user before anyone can log in:
 
   ```sh
   htpasswd /etc/xymon/xymonpasswd alice     # -c only for the first user
   ```
 
 - **Let clients in.** Clients report to port 1984. firewalld ships a service
-  for it, `bb`, on every release these packages are built for, so with
-  firewalld running:
+  for it, `bb`, on every release these packages are built for. With firewalld
+  running:
 
   ```sh
   firewall-cmd --permanent --add-service=bb && firewall-cmd --reload
@@ -141,12 +143,13 @@ systemctl show -p MainPID --value xymonlaunch | xargs -I{} tr '\0' ' ' < /proc/{
 - **Config files.** Alerts in `alerts.cfg`, thresholds in `analysis.cfg`,
   graphs in `graphs.cfg` / `rrddefinitions.cfg`; each has a `.d/` directory for
   drop-ins.
-- **Server identity.** `xymonserver.cfg`. `%post` rewrites
-  `XYMONSERVERHOSTNAME` to the real hostname on first install; change it there
-  if you rename the host.
+- **Server identity.** `xymonserver.cfg`. On first install, `%post` rewrites
+  `XYMONSERVERHOSTNAME` and `XYMONSERVERWWWNAME` to the real hostname, and
+  renames the `localhost` entry in `hosts.cfg` to it. Change them if you
+  rename the host.
 - **Its own monitoring.** The `[xymonclient]` stanza in `tasks.cfg` runs the
   embedded client against `/etc/xymon-client/xymonclient.cfg`. That is why a
-  server's `XYMSRV` stays `127.0.0.1` — do not "fix" it.
+  server's `XYMSRV` stays `127.0.0.1`. Do not "fix" it.
 
 ## Changing a host's role
 
@@ -157,7 +160,7 @@ systemctl restart xymonlaunch
 ```
 
 The swap stops the old role cleanly and keeps the unit enabled; the restart
-brings the new one up. **After a demotion, set `XYMSRV`** — the former
+brings the new one up. **After a demotion, set `XYMSRV`**: the former
 server's config still says `127.0.0.1`.
 
 ## Migrating from the old layout
@@ -180,8 +183,8 @@ Before this design, `xymon` required `xymon-client` and a separate
 | Host missing from the web UI | in `hosts.cfg`? `MACHINEDOTS` matching? unit running? |
 | Host shows as a "ghost" | reported name differs from `hosts.cfg` |
 | Host green but no cpu/disk/memory | not matched in `hosts.cfg` — check for a duplicate address |
-| Client runs, no data arrives | `XYMSRV`; port 1984 reachable (firewalld service `bb` on the server); `clientlaunch.log` |
-| Sections empty (disk, ports, ifstat) | `net-tools` missing, or the collector failed — `clientlaunch.log` |
+| Client runs, no data arrives | `XYMSRV`; port 1984 reachable (firewalld service `bb` on the server); `xymonclient.log` |
+| Sections empty (ifstat, ports, route) | `net-tools` missing, or the collector failed: `xymonclient.log` |
 | Web UI loads on the server but not from elsewhere | firewalld service `http` (or `https`) on the server |
 | Web pages 500 | `xymonpasswd` missing or not `apache`-owned; httpd error log |
 | Nothing running after a swap | `systemctl restart xymonlaunch` |
@@ -190,21 +193,17 @@ Before this design, `xymon` required `xymon-client` and a separate
 
 Three kinds of package come from the same spec:
 
-- **Snapshots** track upstream `main`, rebuilt nightly when upstream or the
-  packaging has moved — the bleeding edge, in the `xymon-snapshot` channel
-  (off by default).
-- **Previews** are test builds of an upcoming release from xymon-experimental:
-  `main` plus the pull requests of a milestone and the unreleased ones before
-  it, mostly unreviewed — in
-  `xymon-preview-next` (the next release) and `xymon-preview` (every unreleased milestone),
-  both off by default. Enable one, not together with the snapshot channel; the
-  README's *Previews* has the commands.
-- **Releases** are cut from a `rel-*` tag — the stable channel, enabled by the
-  repo file. 4.3.31 is the first; the stable channel carries it.
+| Kind | Built from | Channel |
+| --- | --- | --- |
+| **Release** | a `rel-*` tag; 4.3.31 is the first | stable, enabled by the repo file |
+| **Snapshot** | upstream `main`, nightly when it or the packaging has moved | `xymon-snapshot`, off by default |
+| **Preview** | xymon-experimental: `main` plus the pull requests of a milestone and those before it, mostly unreviewed | `xymon-preview-next` (the next release) or `xymon-preview` (every unreleased milestone), off by default |
 
-A snapshot or preview sorts below the eventual release, so a snapshot host is absorbed
-into the stable channel cleanly when the release lands. How the version
-strings are built, and why, is in the README's *Versioning*.
+Enable one preview channel, not together with the snapshot channel; the
+README's *Previews* has the commands. A snapshot or preview sorts below the
+eventual release, so a snapshot host is absorbed into the stable channel
+cleanly when the release lands. How the version strings are built, and why,
+is in the README's *Versioning*.
 
 How this packaging compares with Debian's, Terabithia's and FreeBSD's:
 [deployment-strategies.md](deployment-strategies.md).

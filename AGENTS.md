@@ -4,9 +4,9 @@ For agents working in a checkout of this repository. `CLAUDE.md` imports this
 file for Claude Code; other tools should read this one directly.
 
 This file governs work in this tree, which is packaging only. The source it
-packages lives in `xymon-monitoring/xymon` and carries its own `AGENTS.md` —
-read that one when you work there, not this one. What applies across the
-organisation's other repositories is on the wiki:
+packages lives in `xymon-monitoring/xymon`, which has its own `AGENTS.md` for
+work there. What applies across the organisation's other repositories is on
+the wiki:
 [ai-agent-contribution-directives.md](https://github.com/xymon-monitoring/xymon-wiki/blob/main/docs/contributing/ai-agent-contribution-directives.md).
 
 ## Attribution
@@ -51,10 +51,10 @@ el8" sends a reviewer to the place that needs checking; an invented suite
 count sends them away from it, and nothing on the page tells them which one
 they are reading.
 
-This repository makes that easy to get wrong in one specific way: CI builds on
-AlmaLinux and Fedora containers, which is not RHEL. A package that installed
-in the matrix has not been shown to install on RHEL, and saying so is part of
-the result.
+The trap specific to this repository: CI builds in containers, which are not
+RHEL (`CONTRIBUTING.md` *Pull requests*). A package that installed in the
+matrix has not been shown to install on RHEL, and saying so is part of the
+result.
 
 ## Where things are
 
@@ -62,25 +62,24 @@ README *Layout* is the map of the tree, and is not repeated here. What it does
 not say is which document answers which question:
 
 - **why the spec does something** — the inline comments, which are dense.
-  [docs/spec-structure.md](docs/spec-structure.md) says *where* to look; the
-  comments say *why*, and a comment that restates the map is a bug in both.
+  [docs/spec-structure.md](docs/spec-structure.md) says *where* to look;
+  `CONTRIBUTING.md` *Style* says why a comment does not restate it.
 - **where a file in `rpm/sources/` came from, and what would delete it** —
   [docs/upstream.md](docs/upstream.md).
 - **which suite covers what, and how to run one** —
-  [docs/testing.md](docs/testing.md). They are layered cheap to expensive; a
-  break should fail at the cheapest one that can see it.
+  [docs/testing.md](docs/testing.md). A break should fail at the cheapest
+  suite that can see it.
 - **what the pipeline does, job by job** —
   [docs/build-pipeline.md](docs/build-pipeline.md).
 
 A tool's private memory holds only what does not belong to the project:
-private data such as non-secret access details, one person's working
-preferences, and facts about that person's own machine that would change
-nothing another contributor does or decides. A secret — a password, a token, a
-private key — is not written there unless the person asks for it: tool memory
-is plain text, not a secret store. Project facts — decisions, conventions, how
-a distribution or the pipeline behaves — live in this tree, the wiki, or the
-issue or pull request that decided them. A private copy of one is a second
-place that goes stale.
+non-secret access details, one person's working preferences, and facts about
+that person's machine that change nothing another contributor does or decides.
+A secret (a password, a token, a private key) is not written there unless the
+person asks: tool memory is plain text, not a secret store. Project facts
+(decisions, conventions, how a distribution or the pipeline behaves) live in
+this tree, the wiki, or the issue or pull request that decided them. A private
+copy of one is a second place that goes stale.
 
 ## Do not
 
@@ -91,23 +90,22 @@ place that goes stale.
   What may legitimately live here is activation and policy — a service name, a
   scriptlet, a distribution's file layout. Which side a change falls on goes in
   the pull request; `CONTRIBUTING.md` *Descriptions* says when it is required.
-- **Do not fix RPM packaging in the `xymon` repository.** That tree still
-  carries an old `rpm/xymon.spec` from before this repository existed. It is
-  unmaintained, it builds a different layout, and it is not what these packages
-  come from. A change to the packaging belongs here; sent there it is reviewed
-  by nobody and shipped to nobody.
+- **Do not fix RPM packaging in the `xymon` repository.** Its
+  `rpm/xymon.spec` predates this repository, builds a different layout, and is
+  not what these packages come from. `CONTRIBUTING.md` *Which repository* has
+  the rule and what a change sent there costs.
 - **Do not touch `Version`, `Release` or `%changelog`.** `CONTRIBUTING.md`
-  *Versioning* has the three prohibitions and what each costs. It is worth
-  naming here at all only because a generator reaches for a `%changelog` entry
-  by default, the way it reaches for an attribution trailer.
+  *Versioning* has the three prohibitions and what each costs. They are named
+  here because a generator reaches for a `%changelog` entry by default, the way
+  it reaches for an attribution trailer.
 - **Do not edit `rpm/terabithia/`.** It archives the reference spec and its
   documentation from <https://repo.terabithia.org/rpms/xymon/> for provenance
   only. Nothing there is built. Bringing one of its ideas across means writing
   it into `rpm/xymon.spec`, and saying in the pull request that is where it
   came from.
 - **Do not `git add -A` or `git add .`.** A tree that has been built or
-  checked holds things nobody changed: the upstream clone README *Building
-  locally* and `tests/docs.sh` use, packages, a log, a scratch file.
+  checked holds things nobody changed: packages, a log, a scratch file, and the
+  upstream clone that README *Building locally* and `tests/docs.sh` use.
   `.gitignore` covers the outputs it knows about and nothing else, and a
   nested clone it misses is staged as an embedded repository. Stage the paths
   you changed.
@@ -122,16 +120,15 @@ The pipeline is the specification, and it is cheaper to read than to trigger:
   path needs.
 - `tests/packages.sh`, `tests/publish.sh` and `tests/install.sh` run on every
   build of the container matrix.
-- `tests/systemd.sh` needs a real PID 1, `tests/upgrade.sh` a non-empty root,
-  and `tests/monitoring.sh` starts daemons that would disturb the install test,
-  so they are separate jobs on one EL and one Fedora target. `upgrade.sh` is the only suite that starts from a non-empty root, so
-  the only one that exercises `%pretrans`.
+- `tests/systemd.sh`, `tests/upgrade.sh` and `tests/monitoring.sh` are
+  separate jobs on one EL and one Fedora target; docs/testing.md says why.
+  `upgrade.sh` is the only suite that starts from a non-empty root, so the only
+  one that exercises `%pretrans`.
 - The `lint` job shellchecks every shell script the repository owns, and
   `publish` waits on it. [docs/build-pipeline.md](docs/build-pipeline.md) has
   the level, the discovery rule and why publishing is gated on it.
-- `tests/attribution.sh` reads the attribution rule above on every pull
-  request — its title, its body, and each commit message it carries — and on
-  every push to `main`.
+- `tests/attribution.sh` checks part of *Attribution* above; that section
+  says where it runs and what it cannot see.
 - `tests/compensations.sh` asserts, nightly, that every `xymon#NNN` the spec
   cites is still held by a tracker. It is what stops a workaround outliving
   the proposal that justified it.
@@ -155,8 +152,8 @@ person working with you, not your own judgement about the case at hand.
 
 @CONTRIBUTING.md
 
-Read `CONTRIBUTING.md` — the line above imports it for Claude Code, other tools
-should open it. It has the rules every contributor follows and they apply to
-you as well: which repository a change belongs in, one change per pull request,
-what a title and a description have to carry, and what counts as saying how you
-verified something. This file is only what an agent needs on top of that.
+Read `CONTRIBUTING.md`. The line above imports it for Claude Code; other tools
+should open it. Its rules apply to you as to every contributor: which
+repository a change belongs in, one change per pull request, what a title and
+a description carry, and what counts as saying how you verified something.
+This file is only what an agent needs on top of that.

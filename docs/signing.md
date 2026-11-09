@@ -1,9 +1,9 @@
 # Package signing
 
-Packages and repository metadata are both signed. The shipped `.repo` file
-sets `gpgcheck=1` (packages) and `repo_gpgcheck=1` (the metadata, i.e. the
-package *list*), so `dnf` verifies that both came from this project and were
-not altered in transit.
+Packages and repository metadata are both signed. Every channel in the shipped
+`.repo` file (`build/mkrepofile.sh`) sets `gpgcheck=1` for packages and
+`repo_gpgcheck=1` for the metadata, the package *list*. So `dnf` verifies that
+both came from this project and were not altered in transit.
 
 ## The key
 
@@ -14,22 +14,22 @@ RSA 4096, created 2026-07-31, expires 2029-07-30
 BD24 FB87 154D 561B 66F6  66DF 639D E923 AA08 904A
 ```
 
-The public half is `RPM-GPG-KEY-xymon` in this repository, and the publish
-job copies it into the published tree at `/RPM-GPG-KEY-xymon`. The
-fingerprint above is also recorded in `README.md`: a fingerprint served
-from the same host as the packages proves nothing on its own, so check the
-key you fetch against a copy you trust.
+The public half is `RPM-GPG-KEY-xymon` in this repository. The publish job
+copies it into the published tree at `/RPM-GPG-KEY-xymon`. The fingerprint is
+also recorded in `README.md`, because a fingerprint served from the same host
+as the packages proves nothing on its own. Check the key you fetch against a
+copy you trust.
 
-The user id carries no email on purpose — there is no project mailbox, and
-a wrong address would be baked into a key users trust for years. One can be
+The user id carries no email, on purpose. There is no project mailbox, and a
+wrong address would be baked into a key users trust for years. One can be
 added later with `gpg --edit-key … adduid` without changing the fingerprint.
 
 ## Verifying as a user
 
-The `xymon-release` package installs both the `.repo` file and the key
-(into `/etc/pki/rpm-gpg/`), and is itself signed with this key, so adding
-the repository needs no separate trust decision. Otherwise fetch the
-`.repo` file directly:
+The `xymon-release` package installs both the `.repo` file and the key (into
+`/etc/pki/rpm-gpg/`). It is itself signed with this key, so adding the
+repository needs no separate trust decision. Otherwise fetch the `.repo` file
+directly:
 
 ```sh
 curl -o /etc/yum.repos.d/xymon.repo \
@@ -51,20 +51,22 @@ The `publish` job in `.github/workflows/build.yml` does the signing:
 
 1. It imports the private key from the `GPG_PRIVATE_KEY` repository secret
    and writes `%_gpg_name` (the imported key id) to `~/.rpmmacros`.
-2. `build/publish.sh` runs `rpm --addsign` over every built package, then
-   `createrepo_c` per channel/releasever/arch directory, then
-   `gpg --detach-sign --armor` on each `repomd.xml` (this is what makes
-   `repo_gpgcheck=1` possible).
-3. The `xymon-release` bootstrap rpm is built and signed the same way.
+2. `build/publish.sh` runs `rpm --addsign` over every built package
+   (`build/publish.sh:70`). It then runs `createrepo_c` per
+   channel/releasever/arch directory, and `gpg --detach-sign --armor` on each
+   `repomd.xml` (`:287-292`). That signature is what makes `repo_gpgcheck=1`
+   possible.
+3. The job builds the `xymon-release` bootstrap rpm and signs it with
+   `rpm --addsign`.
 
 The key carries **no passphrase**. CI cannot type one, so it would have to
-live in a second secret beside the key — guarding nothing that reading the
-first secret does not already give away. (Protecting a maintainer's local
-keyring is a separate concern, best solved with a protected primary key and
-an unprotected signing subkey exported to CI.)
+live in a second secret beside the key, guarding nothing that reading the
+first secret does not already give away. Protecting a maintainer's local
+keyring is a separate concern. It is best solved with a protected primary key
+and an unprotected signing subkey exported to CI.
 
-If `GPG_PRIVATE_KEY` is unset, the publish job stops early with a notice
-and publishes nothing, rather than failing.
+If `GPG_PRIVATE_KEY` is unset, the publish job stops early with a notice and
+publishes nothing, rather than failing.
 
 **Who can sign:** anyone who can read the private key or change a workflow
 here. In practice that is the read-access list of the private repository
@@ -74,20 +76,20 @@ below, plus anyone who can already change what gets built.
 
 - `rpm-signing/` in the private org repository
   [xymon-monitoring/private](https://github.com/xymon-monitoring/private),
-  together with the revocation certificate and a copy of the public half —
-  this is the copy that matters for continuity, since a repository secret
-  cannot be read back out to renew, recover, or revoke the key;
+  with the revocation certificate and a copy of the public half. This is the
+  copy that matters for continuity: a repository secret cannot be read back
+  out to renew, recover, or revoke the key;
 - the `GPG_PRIVATE_KEY` secret in this repository, which CI imports;
 - the generating maintainer's GnuPG keyring.
 
 ## Revocation
 
-GnuPG generated a revocation certificate at key creation, stored as
-`rpm-signing/xymon-rpm-signing.revocation.asc` in the private repository
-(the original is under `~/.gnupg/openpgp-revocs.d/` on the generating
-machine). It currently lives beside the key it revokes, which is
-acceptable because reaching that repo already means being able to sign — a
-copy held outside GitHub would still be an improvement.
+GnuPG generated a revocation certificate at key creation. It is stored as
+`rpm-signing/xymon-rpm-signing.revocation.asc` in the private repository. The
+original is under `~/.gnupg/openpgp-revocs.d/` on the generating machine. It
+lives beside the key it revokes, which is acceptable: reaching that repository
+already means being able to sign. A copy held outside GitHub would still be an
+improvement.
 
 **If the key is compromised:** publish the revocation certificate, generate
 a replacement and load it into `GPG_PRIVATE_KEY`, ship an `xymon-release`
@@ -110,13 +112,13 @@ Commit the refreshed public key.
 
 ## Rotating the archive deploy key
 
-Separate from the signing key and far less consequential: it grants write
-access to `xymon-monitoring/xymon-rpm-archive`, whose whole content is
-regenerated by the next publish. Losing control of it lets someone rewrite an
-archive; it signs nothing and cannot put a package in front of a user, because
-what Pages serves is the artifact this workflow uploads.
+This key is separate from the signing key and far less consequential. It
+grants write access to `xymon-monitoring/xymon-rpm-archive`, whose whole
+content the next publish regenerates. Losing control of it lets someone
+rewrite the archive. It signs nothing, and cannot put a package in front of a
+user, because Pages serves the artifact the workflow uploads.
 
-It has no expiry, so rotate it when someone who had access leaves, or on
+It has no expiry. Rotate it when someone who had access leaves, or on
 suspicion:
 
 ```sh
@@ -130,8 +132,8 @@ gh api -X DELETE repos/xymon-monitoring/xymon-rpm-archive/keys/<old id>
 shred -u ./archive-key ./archive-key.pub
 ```
 
-Add the new key before removing the old one: between the two, either works, so
-a publish caught in the middle still succeeds.
+Add the new key before removing the old one. Between the two, either works,
+so a publish caught in the middle still succeeds.
 
 ## Generating a replacement key
 
@@ -152,11 +154,11 @@ gpg --armor --export-secret-keys "Xymon Project" \
   | gh secret set GPG_PRIVATE_KEY --repo xymon-monitoring/xymon-rpm
 ```
 
-RSA rather than ed25519 because EL8's rpm predates reliable EdDSA support
-and EL8 is supported until 2029. Three years rather than never, so a leaked
-key is not a problem forever. Piping the export straight into
-`gh secret set` keeps the private key off disk and off screen.
+RSA rather than ed25519, because EL8's rpm predates reliable EdDSA support
+and EL8 is supported until 2029. Three years rather than never, so a leaked key
+is not a problem forever. Piping the export straight into `gh secret set` keeps
+the private key off disk and off screen.
 
 A replacement changes the fingerprint, so update every copy of it: this file's
-*The key* section, the README's *Installing* block, and `rpm/fingerprint`
-(the value CI checks against).
+*The key* section, the README's *Installing* block, and `rpm/fingerprint`.
+`build/mkindex.sh:16` prints that last one on the published index page.
