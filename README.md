@@ -122,9 +122,9 @@ dnf install xymon-client   # client only
 ### Previews of the next release and of each milestone
 
 A **preview** is a test build of an upcoming release: xymon's `main` plus the
-pull requests of that milestone and of the unreleased milestones before it,
-as far as they merge together — one that does not is left out, and the
-release page says so — most of them not reviewed yet, as
+open pull requests of that milestone and of the unreleased milestones before
+it, as far as they merge together — one that does not is left out, which
+xymon-experimental's build report says — most of them not reviewed yet, as
 [xymon-experimental](https://github.com/xymon-monitoring/xymon-experimental/releases)
 publishes it once its test lanes pass. For testing, not production.
 
@@ -290,7 +290,9 @@ their shas; twelve digits outrank those eight, so the old builds upgrade.
  -> 4.3.31-1                                               upgrade (release lands)
 ```
 
-Snapshot users are absorbed into the stable channel when the release lands.
+Snapshot users are absorbed into the stable channel when the release lands:
+once xymon tags `rel-X.Y.Z`, the nightly `previews` workflow builds it into
+the stable channel.
 A packaging-only fix to a *released* version ships by re-dispatching the same
 tag with `releasenum` bumped, giving `X.Y.Z-2`. `tests/vercmp.sh` asserts all
 of this in CI.
