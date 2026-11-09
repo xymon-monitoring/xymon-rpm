@@ -255,7 +255,6 @@ change the dist tag. Fedora is carried at N and N-1.
 ```
 rpm/xymon.spec      the spec; no patches (map: docs/spec-structure.md)
 rpm/xymon-release.spec  the bootstrap repo/key package (noarch, no dist tag)
-rpm/baseversion     the version main is working toward (see Versioning)
 rpm/sources/        runtime integration (unit, drop-ins, logrotate, sysusers, ...)
 rpm/terabithia/     archived reference material, not built
 build/              publish.sh signs and folds packages into the published tree;
@@ -273,7 +272,7 @@ Four channels, which must sort correctly or dnf does the wrong thing silently;
 | Built from | Version | Release |
 | --- | --- | --- |
 | tag `rel-X.Y.Z` | `X.Y.Z` | `<n>%{?dist}`, default `1` |
-| `main` | contents of `rpm/baseversion` | `0.<datetime>git<sha>.<pkgdate>p<pkgsha>%{?dist}` |
+| `main` | upstream's `include/version.h`, without its `-dev` | `0.<datetime>git<sha>.<pkgdate>p<pkgsha>%{?dist}` |
 | tag `preview-X.Y.Z-N` (xymon-experimental) | `X.Y.Z` | `0.preview<N>.<pkgdate>p<pkgsha>%{?dist}` |
 
 A snapshot is a *pre-release of the next version* (`Release` starts with
@@ -303,10 +302,11 @@ A packaging-only fix to a *released* version ships by re-dispatching the same
 tag with `releasenum` bumped, giving `X.Y.Z-2`. `tests/vercmp.sh` asserts all
 of this in CI.
 
-`rpm/baseversion` names the version `main` is becoming. Upstream's
-`include/version.h` now says it too: `4.3.32-dev` since the 4.3.31 release,
-because xymon's `RELEASING.md` bumps it after each release. `baseversion`
-could be read from there; it stays a file here until that is done.
+A snapshot's `Version` is the one upstream's `include/version.h` names:
+`4.3.32-dev` since the 4.3.31 release, because xymon's `RELEASING.md` bumps it
+after each release. `tests/vercmp.sh` fails a build of `main` whose version is
+not ahead of the newest release tag, so a missed bump cannot strand snapshot
+users below the stable build.
 
 ### Commit documentation separately
 
@@ -454,7 +454,7 @@ dnf -y install epel-release
 dnf config-manager --set-enabled crb || dnf config-manager --set-enabled powertools
 rpmdev-setuptree
 # The 4.3.31 release; for the next version, check out main and use the
-# version in rpm/baseversion instead.
+# version in its include/version.h, without the -dev.
 git clone --branch rel-4.3.31 https://github.com/xymon-monitoring/xymon.git src
 git -C src archive --format=tar --prefix=xymon-4.3.31/ HEAD \
   | gzip -9 > ~/rpmbuild/SOURCES/xymon-4.3.31.tar.gz

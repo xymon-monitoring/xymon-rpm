@@ -218,7 +218,11 @@ jobs:
         id: ver
         run: |
           set -eux
-          base=$(cat rpm/baseversion)
+          # The version upstream's main is becoming: include/version.h says
+          # X.Y.Z-dev from the release before it on (xymon's RELEASING.md);
+          # the suffix goes. A tag or a preview overrides it below.
+          base=$(sed -n 's/^#define VERSION "\([0-9][0-9.]*\).*"$/\1/p' src/include/version.h)
+          [ -n "$base" ] || { echo "::error::no #define VERSION in src/include/version.h"; exit 1; }
           ref=$(git -C src rev-parse --short=7 HEAD)
           # The packaging checkout is owned by the runner user, not the
           # container user, and git refuses mismatched ownership. src is
