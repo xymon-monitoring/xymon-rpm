@@ -140,6 +140,20 @@ tr '\0' ' ' < /proc/"$(systemctl show -p MainPID --value xymonlaunch)"/cmdline; 
   firewall-cmd --permanent --add-service=bb && firewall-cmd --reload
   ```
 
+- **Clients over TLS** (from 4.3.32; snapshots and previews have it now).
+  xymond takes TLS on a port of its own, 1985 by default, once it has a
+  `--tls-listen` address on its `[xymond]` command in `tasks.cfg`, and a
+  certificate and key: `/etc/xymon/tls/xymond.pem` and `xymond.key` unless
+  `xymonserver.cfg` names others. xymon-tls(7) has the steps. firewalld has no
+  service for 1985, so open the port itself:
+
+  ```sh
+  firewall-cmd --permanent --add-port=1985/tcp && firewall-cmd --reload
+  ```
+
+  Without it, a client moved to `xymons://` reports nothing and its columns go
+  purple. SELinux needs nothing for 1985: [selinux.md](selinux.md) says why.
+
 - **Config files.** Alerts in `alerts.cfg`, thresholds in `analysis.cfg`,
   graphs in `graphs.cfg` / `rrddefinitions.cfg`; each has a `.d/` directory for
   drop-ins.
