@@ -136,8 +136,15 @@ rundir=$(sed -n 's/^XYMONRUNDIR="\([^"]*\)".*/\1/p' /etc/xymon/xymonserver.cfg)
 if [ -n "$rundir" ]; then
 	check "xymonserver.cfg sets XYMONRUNDIR to /run/xymon (got $rundir)" \
 		"test '$rundir' = /run/xymon"
+	# xymond_channel starts its worker only when a first message arrives on
+	# its channel, so xymond_rrd may not run yet on a quiet host. One status
+	# for the server's own host (%post names it uname -n in hosts.cfg)
+	# feeds the status channel, xymond_rrd's.
 	i=0
-	while [ $i -lt 60 ] && ! { [ -s /run/xymon/xymond.pid ] && ls /run/xymon/rrdctl.* >/dev/null 2>&1; }; do
+	while [ $i -lt 30 ] && ! [ -s /run/xymon/xymond.pid ]; do sleep 1; i=$((i + 1)); done
+	/usr/lib/xymon/server/bin/xymon 127.0.0.1 "status $(uname -n).rundir green the runtime directory test" || :
+	i=0
+	while [ $i -lt 60 ] && ! ls /run/xymon/rrdctl.* >/dev/null 2>&1; do
 		sleep 1; i=$((i + 1))
 	done
 	check "xymond writes its pidfile there" "test -s /run/xymon/xymond.pid"
@@ -147,7 +154,7 @@ if [ -n "$rundir" ]; then
 		 ls -la /run/xymon; systemctl status $unit --no-pager -l | tail -n 15;
 		 tail -n 8 /var/log/xymon/xymonlaunch.log /var/log/xymon/history.log /var/log/xymon/rrd-status.log; false; }"
 else
-	echo "skip     no XYMONRUNDIR in xymonserver.cfg: a build before 4.3.32"
+	echo "skip     a 4.3.31 build: its pidfiles and sockets stay in /var/log/xymon and tmp/ (no XYMONRUNDIR)"
 fi
 
 echo "== a deliberately disabled unit must stay disabled across a swap =="
