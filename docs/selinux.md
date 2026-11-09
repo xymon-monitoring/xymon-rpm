@@ -31,6 +31,12 @@ labeled.
 | `/run/xymon` | `httpd_sys_rw_content_t` | graphs cannot flush pending updates (from 4.3.32, where `xymond_rrd`'s sockets moved) |
 | TCP port 1984 | `xymon_port_t` | the CGIs cannot query xymond |
 
+TCP port 1985, xymond's TLS port from 4.3.32, gets no label. Only the CGIs
+are confined, and they keep querying xymond on 1984: xymon-tls(7) keeps the
+server's own tools on plaintext, over loopback once the network must use TLS.
+xymond and the clients run as `unconfined_service_t`, which may listen on and
+connect to any port.
+
 The client package labels `client/bin` itself. Erasing either package removes
 its rules, except `client/bin`'s while the other package is installed.
 
