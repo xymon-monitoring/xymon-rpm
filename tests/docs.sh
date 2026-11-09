@@ -197,6 +197,7 @@ if [ "$fail" -eq 0 ]; then
 	echo "docs.sh: all assertions passed"
 else
 	echo "docs.sh: docs/upstream.md or its tracking issue no longer matches the"
-	echo "  source -- update the doc, or the issue's row (drop it once merged)"
+	echo "  source -- update the doc, or the issue's row (mark it merged; it goes"
+	echo "  with the change that consumes it)"
 fi
 exit "$fail"

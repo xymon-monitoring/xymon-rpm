@@ -7,8 +7,13 @@ name: previews
 # xymon_ref=preview-<milestone>-<n>, which builds, tests and publishes it as
 # it would main. Drafts are not published previews, so they are not seen.
 #
-# A preview whose build fails is dispatched again the next day: the archive
-# is the only record of what was built, and it holds successes alone.
+# A milestone that has its rel-<milestone> tag gets no more previews; its
+# release is built instead, as xymon_ref=rel-<milestone>, until the stable
+# channel holds a package of it. Nothing else starts that build: xymon's
+# release flow does not reach this repository.
+#
+# A build that fails is dispatched again the next day: the archive is the
+# only record of what was built, and it holds successes alone.
 
 on:
   schedule:
@@ -23,7 +28,7 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch the build of each new preview
+      - name: Dispatch the build of each new preview, and of each new release
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -31,15 +36,21 @@ jobs:
           set -euo pipefail
           released=$(git ls-remote --tags --refs https://github.com/xymon-monitoring/xymon 'refs/tags/rel-*' \
                        | sed 's|.*refs/tags/rel-||')
-          published=$(gh api 'repos/xymon-monitoring/xymon-rpm-archive/git/trees/main?recursive=1' \
-                        -q '.tree[].path' | grep '^xymon-preview/' || true)
+          tree=$(gh api 'repos/xymon-monitoring/xymon-rpm-archive/git/trees/main?recursive=1' -q '.tree[].path')
+          published=$(printf '%s\n' "$tree" | grep '^xymon-preview/' || true)
+          stable=$(printf '%s\n' "$tree" | grep '^xymon/' || true)
           gh release list -R xymon-monitoring/xymon-experimental --exclude-drafts --limit 200 \
               --json tagName -q '.[].tagName' \
             | sed -n 's/^preview-\([0-9][0-9.]*\)-\([0-9][0-9]*\)$/\1 \2/p' \
             | sort -k1,1V -k2,2nr | awk '!seen[$1]++' \
             | while read -r m n; do
                 if printf '%s\n' "$released" | grep -qxF "$m"; then
-                  echo "$m: released, no preview built"
+                  if printf '%s\n' "$stable" | grep -qE "/xymon-$m-[1-9][0-9]*\."; then
+                    echo "$m: released, and in the stable channel"
+                  else
+                    gh workflow run build.yml -R "$REPO" --ref main -f xymon_ref="rel-$m"
+                    echo "$m: released, not in the stable channel yet: rel-$m dispatched" | tee -a "$GITHUB_STEP_SUMMARY"
+                  fi
                 elif printf '%s\n' "$published" | grep -q "/xymon-$m-0\.preview$n\."; then
                   echo "$m: preview$n already published"
                 else

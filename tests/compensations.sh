@@ -13,10 +13,11 @@
 # README *Known gaps* (what a runtime shortfall means on a host). A citation
 # in neither is a workaround nobody will ever remove.
 #
-# It has teeth at the moment it matters. A row leaves the issue once its pull
-# request merges, so when one does, the citation left in the spec becomes
-# untracked -- and this goes red, saying the compensation should now be
-# deleted, on the day that becomes true.
+# A merged pull request's row stays, marked merged, until the change that
+# consumes it -- for a build feature, once the stable channel builds a
+# release that has it -- and goes with that change. A citation whose row is
+# gone while the spec still cites it is a workaround left behind: this goes
+# red then.
 #
 # Needs gh authenticated against GitHub, to read the issue.
 #
@@ -126,7 +127,9 @@ if [ "$fail" -eq 0 ]; then
 else
 	echo "compensations.sh: the spec cites something no tracker holds, or the"
 	echo "  spec or a document cites it in a form this cannot follow."
-	echo "  A pull request that merged: delete the workaround it justified."
+	echo "  A merged pull request whose row was dropped: delete the workaround it"
+	echo "  justified, or keep the row, marked merged, until the stable channel"
+	echo "  builds a release that has it."
 	echo "  A compensation that is new: add a row for it to xymon-rpm#$issue."
 	echo "  A bare #NNN: write it xymon#NNN, so a reader knows which repository"
 	echo "  -- in a document a bare one renders as a link to this repository's"
