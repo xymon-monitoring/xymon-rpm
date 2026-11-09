@@ -319,10 +319,11 @@ GitHub Pages limits; the **build** workflow can override the number for one
 run with `snapshot_keep`, or republish the channel from that run alone with
 `snapshot_reset`.
 
-The preview channel keeps the newest **2 previews** of each milestone per
-directory, each in its newest packaging rebuild only (`XYMON_PREVIEW_KEEP` in
-`build/publish.sh`), and `xymon-preview-next` is rebuilt from those on every
-publish.
+The preview channel keeps the newest **2 previews** of each unreleased
+milestone per directory, each in its newest packaging rebuild only
+(`XYMON_PREVIEW_KEEP` in `build/publish.sh`); a milestone's previews go once
+its release is in the stable channel. `xymon-preview-next` is rebuilt from
+those on every publish.
 
 Counting upstream commits rather than published runs is what makes those slots
 worth having. Rolling back on a snapshot channel means going back to a different
