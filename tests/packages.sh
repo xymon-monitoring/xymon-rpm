@@ -166,10 +166,22 @@ done
 # xymongen writes the generated pages into www itself, and these
 # subdirectories are written by the daemons, so they must stay real
 # directories in /var/lib -- moving them would break a running server.
-for d in html notes rep snap; do
+for d in html notes; do
 	check "www/$d stays a real directory in /var/lib" \
 		"test -d $work/server/var/lib/xymon/www/$d &&
 		 ! test -L $work/server/var/lib/xymon/www/$d"
+done
+
+# rep and snap are regenerable, so they ship in /var/cache, and the
+# symlinks keep the /xymon/rep and /xymon/snap URLs and any older
+# xymonserver.cfg pointing at www/rep and www/snap working.
+for d in rep snap; do
+	check "$d ships in /var/cache/xymon/www" \
+		"test -d $work/server/var/cache/xymon/www/$d &&
+		 ! test -L $work/server/var/cache/xymon/www/$d"
+	check "www/$d is a symlink to it" \
+		"test -L $work/server/var/lib/xymon/www/$d &&
+		 readlink $work/server/var/lib/xymon/www/$d | grep -qx /var/cache/xymon/www/$d"
 done
 
 # FollowSymLinks on the www directory is what lets httpd cross into

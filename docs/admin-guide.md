@@ -32,7 +32,8 @@ A **server host** (`xymon`):
 └── client/                     the embedded client
 /usr/share/xymon/               gifs/ help/ menu/ — static web content
 /var/lib/xymon/                 rrd/ hist/ histlogs/ hostdata/ acks/ …
-└── www/                        what xymongen writes, + symlinks to the static content
+└── www/                        what xymongen writes, + symlinks to the static content and to rep/ snap/
+/var/cache/xymon/www/           rep/ snap/ — on-demand reports and snapshots, safe to delete
 /var/log/xymon/                 xymonlaunch.log xymond.log xymonclient.log …
 /usr/bin/xymon  /usr/bin/xymoncmd  /usr/sbin/xymonlaunch   for typing by hand
 ```

@@ -78,7 +78,10 @@ printf '\n[mycheck]\n\tCMD /bin/true\n' >> /usr/lib/xymon/client/etc/clientlaunc
 touch /var/lib/xymon/www/gifs/mine.gif
 mkdir -p /var/lib/xymon/www/help/mydocs
 echo 'local note' > /var/lib/xymon/www/help/mydocs/note.txt
-echo "         XYMSRV edited, a task added, a gif and a help subdir dropped in"
+mkdir -p /var/lib/xymon/www/rep/r1 /var/lib/xymon/www/snap
+echo 'old report' > /var/lib/xymon/www/rep/r1/index.html
+echo 'old snapshot' > /var/lib/xymon/www/snap/s1.html
+echo "         XYMSRV edited, a task added, a gif, a help subdir, a report and a snapshot dropped in"
 
 echo "== upgrading to the build under test =="
 set -- $(find "$rpmdir" -name '*.rpm' \
@@ -141,6 +144,12 @@ check "the custom gif survived" \
 check "the nested help directory survived" \
 	"grep -qx 'local note' /usr/share/xymon/help/mydocs/note.txt"
 
+check "the report moved to /var/cache" \
+	"grep -qx 'old report' /var/cache/xymon/www/rep/r1/index.html"
+
+check "the snapshot moved to /var/cache" \
+	"grep -qx 'old snapshot' /var/cache/xymon/www/snap/s1.html"
+
 # The migration keeps anything it could not move rather than deleting
 # it. Nothing here should have been unmovable, so a leftover means the
 # move went wrong even though the transaction succeeded.
@@ -158,8 +167,13 @@ for d in gifs help menu; do
 		"readlink /var/lib/xymon/www/$d | grep -qx /usr/share/xymon/$d"
 done
 
-check "the generated directories are still real and writable" \
-	"test -d /var/lib/xymon/www/rep -a ! -L /var/lib/xymon/www/rep"
+for d in rep snap; do
+	check "www/$d points at /var/cache" \
+		"readlink /var/lib/xymon/www/$d | grep -qx /var/cache/xymon/www/$d"
+done
+
+check "the generated pages are still a real directory" \
+	"test -d /var/lib/xymon/www/html -a ! -L /var/lib/xymon/www/html"
 
 check "the shipped content is reachable through the symlinks" \
 	"test -f /var/lib/xymon/www/gifs/green.gif"

@@ -138,9 +138,10 @@ The `www` tree holds three lifecycles, not two:
 | `html`, `notes`, `wml` | **persistent** state the daemons write | the writable docroot under `/var/lib` |
 | `rep`, `snap` | **regenerable**: on-demand availability reports and snapshots, safe to delete, recreated on the next request | `/var/cache` (FHS) |
 
-This spec moves only the static three, symlinking them back so every
-`/xymon/` URL and on-disk path still works and nothing in `xymonserver.cfg`
-or the CGIs learns a second location. httpd needs no extra config: the
+This spec moves the static three to `/usr/share/xymon` and `rep`/`snap` to
+`/var/cache/xymon/www`, symlinking each back so every `/xymon/` URL and
+on-disk path still works, including in a `xymonserver.cfg` kept from an older
+install. httpd needs no extra config: the
 generated one already sets `FollowSymLinks` on the www directory. The `help`
 symlink is load-bearing: up to 4.3.31 the web pages derive the help
 directory from `XYMONNOTESDIR` at runtime (`lib/links.c:147`), a coupling
@@ -149,9 +150,10 @@ xymon#414 removes.
 Each hand-made move has an opt-in upstream equivalent, no-op by default:
 `INSTALLSTATICWWWDIR` + `XYMONSTATICWWWDIR`
 ([xymon#414](https://github.com/xymon-monitoring/xymon/pull/414)) for the
-static three and `XYMONCACHEWWWDIR`
+static three, merged for 4.3.32 and not yet adopted here, and
+`XYMONCACHEWWWDIR`
 ([xymon#443](https://github.com/xymon-monitoring/xymon/pull/443)) for
-`rep`/`snap`, both merged for 4.3.32 and not yet adopted here;
+`rep`/`snap`, merged for 4.3.32 and set in the shipped `xymonserver.cfg`;
 `INSTALLCLIENT*DIR`
 ([xymon#411](https://github.com/xymon-monitoring/xymon/pull/411), open)
 for the client tree.
@@ -192,5 +194,4 @@ free for non-web data the package might add later.
 The regenerable third's target is **`/var/cache/xymon/www`** (FHS §5.5,
 "data that can be regenerated" and "deleted without loss"), reached by
 pointing `XYMONCACHEWWWDIR` there and symlinking `www/rep` and `www/snap`
-back, as the static three are. This spec keeps them in the `/var/lib`
-docroot today.
+back, as the static three are. This spec does both.

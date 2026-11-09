@@ -175,9 +175,10 @@ check "static web content resolves through the www symlinks" \
 	 test -f /usr/share/xymon/gifs/green.gif &&
 	 test -L /var/lib/xymon/www/gifs"
 
-check "the generated page directories are still writable state" \
-	"test -d /var/lib/xymon/www/rep -a ! -L /var/lib/xymon/www/rep &&
-	 test -d /var/lib/xymon/www/snap -a ! -L /var/lib/xymon/www/snap"
+check "rep and snap are writable state in /var/cache, through the www symlinks" \
+	"test -d /var/cache/xymon/www/rep -a ! -L /var/cache/xymon/www/rep &&
+	 test -d /var/cache/xymon/www/snap -a ! -L /var/cache/xymon/www/snap &&
+	 test -L /var/lib/xymon/www/rep -a -L /var/lib/xymon/www/snap"
 
 # Whether httpd actually serves any of this cannot be read off the
 # filesystem. The symlinks cross from the www tree into /usr/share, and
@@ -217,6 +218,12 @@ done
 check "/xymon/menu is served through the symlink" \
 	"m=\$(ls /usr/share/xymon/menu | head -1) &&
 	 test \"\$(curl -s -o /dev/null -w '%{http_code}' http://localhost/xymon/menu/\$m)\" = 200"
+
+# A report under /var/cache is served at its old URL, through the symlink.
+echo '<html>report</html>' > /var/cache/xymon/www/rep/served.html
+check "/xymon/rep is served from /var/cache through the symlink" \
+	"test \"\$(curl -s -o /dev/null -w '%{http_code}' http://localhost/xymon/rep/served.html)\" = 200"
+rm -f /var/cache/xymon/www/rep/served.html
 
 # 404 and not 403: a missing file proves the Directory block grants
 # access, where a denial would look the same to every check above.

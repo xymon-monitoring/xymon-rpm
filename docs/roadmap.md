@@ -114,9 +114,10 @@ to a GitHub issue.
 
 ## Packaging work (no upstream PR)
 
-- **Reconcile the SELinux `.te` with `%posttrans`.** The modules still reference
-  `/var/cache/xymon`, which this layout does not use; the real labeling is in
-  `%posttrans` ([selinux.md](selinux.md)).
+- **Reconcile the SELinux `.te` with `%posttrans`.** The modules' `httpd_cache_t`
+  rules for `/var/cache/xymon` are unused: `rep` and `snap` live there but
+  `%posttrans` labels them `httpd_sys_rw_content_t`. Delete the rules, after an
+  enforcing check that nothing needs them ([selinux.md](selinux.md)).
 - **Validate on more enforcing hosts, and on genuine RHEL and OracleLinux.**
   SELinux is validated on AlmaLinux 8, 9 and 10 and Fedora 44; CI compiles
   the policy but never runs enforcing. `mls` is unsupported: it would need a

@@ -25,7 +25,8 @@ labeled.
 | `server/bin/cgiwrap` | `httpd_sys_script_exec_t` | every CGI is a hard link to it, so `bin_t` would relabel them all, to run as `httpd_t` |
 | `cgi-bin`, `cgi-secure` | `httpd_sys_script_exec_t` | httpd will not run the CGIs |
 | `/var/lib/xymon/www`, `/usr/share/xymon` | `httpd_sys_content_t` | httpd will not serve the pages |
-| `www/rep`, `www/snap` | `httpd_sys_rw_content_t` | on-demand reports and snapshots cannot be written |
+| `/var/cache/xymon` | `httpd_sys_content_t` | httpd cannot reach `rep` and `snap` through their symlinks |
+| `/var/cache/xymon/www/rep`, `snap` | `httpd_sys_rw_content_t` | on-demand reports and snapshots cannot be written |
 | `/var/lib/xymon/rrd` | `httpd_sys_content_t` | graphs cannot read their data |
 | `/var/lib/xymon/tmp` | `httpd_sys_rw_content_t` | graphs cannot flush pending updates (up to 4.3.31) |
 | `/run/xymon` | `httpd_sys_rw_content_t` | graphs cannot flush pending updates (from 4.3.32, where `xymond_rrd`'s sockets moved) |
@@ -101,7 +102,8 @@ Report AVCs, and which action triggered them, as an issue on
 
 ## Known issue
 
-The module's `httpd_cache_t` rules are for `/var/cache/xymon`, a path this
-layout does not use (`rpm/sources/xymon.te:9-11`, `53-55`). `rep` and `snap`
-are labeled under the `www` tree instead. Those dead rules should be
-reconciled with the actual `%posttrans` labeling.
+The module's `httpd_cache_t` rules are for `rep` and `snap` in
+`/var/cache/xymon` (`rpm/sources/xymon.te:9-11`, `53-55`), but nothing gives
+that type: `%posttrans` labels them `httpd_sys_rw_content_t`, as they were
+under the `www` tree, which is what has been validated enforcing. The rules
+are unused and should go.
