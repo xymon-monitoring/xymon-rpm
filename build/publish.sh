@@ -184,7 +184,20 @@ fi
 # directory and milestone, the newest $pkeep previews stay, each in its
 # newest packaging rebuild only. Whole builds go, never single files, for
 # the reason given for snapshots above.
+#
+# A released milestone keeps none: its X.Y.Z-1 in the stable channel
+# outranks every preview, and previews.yml builds no more of them, so
+# they would only sit there.
 pkeep=${XYMON_PREVIEW_KEEP:-2}
+
+# The milestones with a release in the stable channel. It is absent until
+# a first publish has mirrored it; under pipefail a find on a missing
+# directory would end the script.
+released=
+if [ -d "$repodir/xymon" ]; then
+	released=$(find "$repodir/xymon" -name '*.rpm' -printf '%f\n' \
+		| sed -nE 's/.*-([0-9]+\.[0-9]+\.[0-9]+)-[1-9][0-9]*\..*/\1/p' | sort -u)
+fi
 
 # xymon-client-4.3.32-0.preview1.202610311000pab12cd3.el10.x86_64.rpm ->
 # milestone, preview number, packaging half, tab-separated.
@@ -207,6 +220,11 @@ if [ -d "$repodir/xymon-preview" ]; then
 			[ -e "$f" ] || continue
 			id=$(previewid "$f")
 			[ -n "$id" ] || continue
+			if printf '%s\n' "$released" | grep -qxF "$(printf '%s\n' "$id" | cut -f1)"; then
+				rm -f "$f"
+				echo "  - ${dir#"$repodir"/}: dropped ${f##*/} (its milestone is released)"
+				continue
+			fi
 			printf '%s\n' "$kept" | grep -qxF "$id" && continue
 			rm -f "$f"
 			echo "  - ${dir#"$repodir"/}: dropped ${f##*/} (past the newest $pkeep previews of its milestone, or superseded packaging)"
@@ -222,13 +240,7 @@ fi
 # xymon-server-preview does. It is rebuilt from xymon-preview on every
 # publish, so a release moves it on to the following milestone by itself.
 if [ -d "$repodir/xymon-preview" ]; then
-	# The stable channel is absent until a first publish has mirrored it;
-	# under pipefail a find on a missing directory would end the script.
-	released=
-	if [ -d "$repodir/xymon" ]; then
-		released=$(find "$repodir/xymon" -name '*.rpm' -printf '%f\n' \
-			| sed -nE 's/.*-([0-9]+\.[0-9]+\.[0-9]+)-[1-9][0-9]*\..*/\1/p' | sort -u)
-	fi
+	# $released is the stable channel's milestones, from preview retention.
 	next=$(find "$repodir/xymon-preview" -name '*.rpm' -printf '%f\n' \
 		| sed -nE 's/.*-([0-9]+\.[0-9]+\.[0-9]+)-0\.preview[0-9]+\..*/\1/p' | sort -uV \
 		| while read -r m; do
