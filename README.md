@@ -29,24 +29,53 @@ are installed only by an opt-in `make install-tools`.
 
 ## Installing
 
-**4.3.31 is the first release**, carried as `4.3.31-1` by the stable channel the
-repo file enables, so `dnf install xymon` works straight after the repo file is
-in place. Builds of `main` go to the snapshot channel and previews to the
-preview channels (see
-[Previews](#previews-of-the-next-release-and-of-each-milestone)), both shipped
-disabled; enable one only to track something newer than the release.
+**4.3.31 is the first release.** The stable channel carries it as `4.3.31-1`,
+and the repo file enables that channel, so `dnf install xymon` works as soon as
+the repo file is in place.
 
-Published for **x86_64 only**. The repo file enables the stable channel on
-every host that installs it, and no tree exists for another architecture, so
-on aarch64 the 404 fails every `dnf` transaction on that machine — including
-ones that have nothing to do with Xymon. Do not install the repo file there.
+Snapshots of `main` and previews (see
+[Previews](#previews-of-the-next-release-and-of-each-milestone)) have channels
+of their own, shipped disabled because following a pre-release is a per-host
+decision: each stanza has `enabled=0` and, in a comment, the command that
+enables it. Enable one only to track something newer than the release.
 
-The procedures below fetch the repository file directly, which needs no
-package and no URL you have to look up. The landing page offers the other
-route: `xymon-release`, a small package carrying the same file and the signing
-key, where rpm verifies the key against the package's own signature instead of
-your trusting it on first fetch. It is linked there rather than named here,
-because its filename carries a version and that ages.
+Published for **x86_64 only**; do not install the repo file on aarch64 or any
+other architecture. It enables the stable channel, which has no tree there,
+and the 404 fails every `dnf` transaction on the machine, Xymon or not.
+
+The procedures below fetch the repo file directly, with no package or URL to
+look up. The landing page links the alternative, `xymon-release`: a small
+package carrying the same file and the signing key, so rpm verifies the key
+against the package's signature instead of you trusting it on first fetch.
+Its filename carries a version, which ages, so it is linked there rather than
+named here.
+
+Packages and repository metadata are signed. Verify the key against this
+fingerprint (see [docs/signing.md](docs/signing.md)):
+
+```
+Xymon Project (RPM signing key)
+BD24 FB87 154D 561B 66F6  66DF 639D E923 AA08 904A
+```
+
+Every host runs the same unit, `xymonlaunch.service`, which picks the server
+or client role by which package is installed. A client-only host sets the
+server address (`XYMSRV`) in `/etc/xymon-client/xymonclient.cfg`, then runs
+`systemctl enable --now xymonlaunch`. Installing the server on a client host
+fails on the package conflict, by design. Changing a host's role is one
+transaction:
+
+```sh
+dnf swap xymon-client xymon     # promote a client to the server
+dnf swap xymon xymon-client     # demote a server to a client
+systemctl restart xymonlaunch   # the swap stops the old role but starts
+                                # nothing; this brings the new one up
+```
+
+Demoting also needs `XYMSRV` set afterwards. A server installed before the
+packages conflicted upgrades with a plain `dnf upgrade`: the server package
+obsoletes that layout's `xymon-client`. Both, where every file lives, and
+everyday admin tasks are in [docs/admin-guide.md](docs/admin-guide.md).
 
 ### Snapshots, on EL 8, 9 and 10
 
@@ -89,12 +118,12 @@ dnf install xymon          # server
 dnf install xymon-client   # client only
 ```
 
-### Releases, once there is one
+### Releases
 
 The repo file enables the stable channel itself, so the `config-manager` line
-goes — and on EL, with it, the reason a client-only host needed
-`dnf-plugins-core`. Split by family for the same reason the snapshot
-procedures are: neither block runs whole on the other family.
+goes, and on EL so does the reason a client-only host needed
+`dnf-plugins-core`. Split by family because neither block runs whole on the
+other family.
 
 #### On EL 8, 9 and 10
 
@@ -122,17 +151,17 @@ dnf install xymon-client   # client only
 ### Previews of the next release and of each milestone
 
 A **preview** is a test build of an upcoming release: xymon's `main` plus the
-open pull requests of that milestone and of the unreleased milestones before
-it, as far as they merge together — one that does not is left out, which
-xymon-experimental's build report says — most of them not reviewed yet, as
+open pull requests of that milestone and of the unreleased ones before it,
+most not reviewed yet. A pull request that does not merge with the others is
+left out; xymon-experimental's build report names it.
 [xymon-experimental](https://github.com/xymon-monitoring/xymon-experimental/releases)
-publishes it once its test lanes pass. For testing, not production.
+publishes a preview once its test lanes pass. For testing, not production.
 
 | | Built from | Channel | Version, e.g. |
 | --- | --- | --- | --- |
 | release | an upstream `rel-X.Y.Z` tag | `xymon` (enabled) | `4.3.31-1` |
-| snapshot | upstream `main`, nightly | `xymon-snapshot` | `4.3.32-0.202611082105gitfd64efe.…` |
-| preview | a xymon-experimental preview | `xymon-preview-next`, `xymon-preview` | `4.3.31-0.preview4.…` |
+| snapshot | upstream `main`, nightly | `xymon-snapshot` | `4.3.32-0.202611091355git2dcad5d.…` |
+| preview | a xymon-experimental preview | `xymon-preview-next`, `xymon-preview` | `4.3.32-0.preview3.…` |
 
 Two preview channels, both shipped disabled. Enable **one**, and **not together
 with `xymon-snapshot`**: a snapshot of the same version sorts above a preview,
@@ -140,8 +169,11 @@ so dnf would install the snapshot.
 
 | Channel | Holds | Enable it to |
 | --- | --- | --- |
-| `xymon-preview-next` | the previews of the next release alone: the lowest milestone with no release yet (4.3.32 today); it moves on to the following one by itself once that is released, as Homebrew's `xymon-server-preview` does | follow the release that is coming — **the usual choice** |
+| `xymon-preview-next` | the next release's previews alone: the lowest milestone with a preview and no release yet (4.3.32 today) | follow the release that is coming — **the usual choice** |
 | `xymon-preview` | the 2 newest previews of every unreleased milestone | test a given milestone |
+
+`xymon-preview-next` moves on to the following milestone by itself once the
+release is in the stable channel, as Homebrew's `xymon-server-preview` does.
 
 ```sh
 dnf config-manager --set-enabled xymon-preview-next      # dnf4: EL
@@ -163,67 +195,40 @@ dnf install xymon-4.3.32     # 4.3.32's latest preview
 `0.`, so when its milestone is released, `X.Y.Z-1` in the stable channel
 outranks every preview of it.
 
-A preview reaches the channels through the **previews** workflow, which runs
-each night (01:47 UTC, often started hours later by GitHub). It takes the
-newest published preview of each unreleased milestone that is not in the
-channel yet and builds it like `main`: every target, the same tests, signed —
-except `upgrade.sh`, whose fixture is the snapshot channel. Only that newest
-preview is built, so one superseded the same day is skipped; a failed build is
-tried again the next night.
+A preview reaches the channels through the nightly **previews** workflow
+(01:47 UTC, often started hours later by GitHub). It takes the newest
+published preview of each unreleased milestone not in the channel yet, and
+builds it like `main`: every target, signed, with the same tests except
+`upgrade.sh`, whose fixture is the snapshot channel. A preview superseded the
+same day is skipped; a failed build is tried again the next night.
 
 ### Trying a snapshot without a host
 
-Trying a snapshot or a preview means installing a pre-release somewhere. A container is enough, and it has to be one running systemd —
-the packages install a unit, and the scriptlets that enable and reload
-services are guarded on `/run/systemd/system`, so in a container without an
-init they are skipped and the thing you wanted to try never runs:
+A container is enough to try a snapshot or a preview, if it runs systemd.
+The scriptlets that enable and reload services are guarded on
+`/run/systemd/system`, so without an init they are skipped and what you wanted
+to try never runs. The `fedora:44` image ships no systemd; derive one that
+has it, as CI does:
 
 ```sh
+docker build -t fedora-systemd - <<'EOF'
+FROM fedora:44
+RUN dnf -y install systemd && dnf clean all
+CMD ["/usr/lib/systemd/systemd"]
+EOF
 docker run -d --name snap --hostname xy-snap --privileged --cgroupns=host \
-  -v /sys/fs/cgroup:/sys/fs/cgroup:rw fedora:44 /usr/lib/systemd/systemd
+  -v /sys/fs/cgroup:/sys/fs/cgroup:rw fedora-systemd
 docker exec -it snap bash
 # then the Fedora procedure above, unchanged, inside the container
 ```
 
-**Install inside the running container, not in a `Dockerfile`.** `%post`
-writes `XYMONSERVERHOSTNAME` from the hostname it sees, and in an image build
-that is the builder's, frozen into the layer — the server then monitors a
-machine that does not exist. Installed in a running container it reads the
-real one. An image is the right shape for deploying rather than trying, and
-wants an entrypoint that redoes the host-specific configuration at start;
+**Install Xymon inside the running container, not in a `Dockerfile`.** `%post`
+writes `XYMONSERVERHOSTNAME` from the hostname it sees. In an image build that
+is the builder's, frozen into the layer, and the server then monitors a
+machine that does not exist. In a running container it reads the real one.
+An image is the right shape for deploying rather than trying, and wants an
+entrypoint that redoes the host-specific configuration at start;
 [roadmap.md](docs/roadmap.md) has the detail.
-
-Every host runs the same unit, `xymonlaunch.service`, which picks the server
-or client role by which package is installed. A client-only host sets the
-server address (`XYMSRV`) in `/etc/xymon-client/xymonclient.cfg`, then runs
-`systemctl enable --now xymonlaunch`. Installing the server on a client host
-fails on the package conflict, by design. Changing a host's role is one
-transaction:
-
-```sh
-dnf swap xymon-client xymon     # promote a client to the server
-dnf swap xymon xymon-client     # demote a server to a client
-systemctl restart xymonlaunch   # the swap stops the old role but starts
-                                # nothing; this brings the new one up
-```
-
-Demoting also needs `XYMSRV` set afterwards. A server installed before the
-packages conflicted upgrades with a plain `dnf upgrade`: the server package
-obsoletes that layout's `xymon-client`. Both, plus where every file lives and
-everyday admin tasks, are in
-[docs/admin-guide.md](docs/admin-guide.md).
-
-Packages and repository metadata are signed; verify the key against this
-fingerprint (see [docs/signing.md](docs/signing.md)):
-
-```
-Xymon Project (RPM signing key)
-BD24 FB87 154D 561B 66F6  66DF 639D E923 AA08 904A
-```
-
-Snapshots built from `main` ship disabled: following a pre-release is a per-host
-decision, so the stanza is there with `enabled=0` and the command sits in a
-comment beside it.
 
 ## Targets
 
@@ -239,9 +244,9 @@ comment beside it.
 | `fedora-rawhide` | `fedora:rawhide` | no — canary |
 
 EL builds run on AlmaLinux, a rebuild of *released* RHEL, so they cannot
-need a symbol version RHEL lacks; the dist tag carries no vendor marker, so
+need a symbol version RHEL lacks. The dist tag carries no vendor marker, so
 an `.el8` package runs on RHEL, Rocky, Oracle and Alma alike. CentOS Stream
-previews the next RHEL minor, so it is a canary alongside rawhide — allowed
+previews the next RHEL minor, so it is a canary alongside rawhide: allowed
 to fail, never published. Images are pinned so a moving tag cannot silently
 change the dist tag. Fedora is carried at N and N-1.
 
@@ -272,15 +277,15 @@ Four channels, which must sort correctly or dnf does the wrong thing silently;
 | tag `preview-X.Y.Z-N` (xymon-experimental) | `X.Y.Z` | `0.preview<N>.<pkgdate>p<pkgsha>%{?dist}` |
 
 A snapshot is a *pre-release of the next version* (`Release` starts with
-`0.`), naming the upstream commit and then the last commit here that could
-change a package — one touching `rpm/`, `build/` or `.github/`. That second
+`0.`). It names the upstream commit, then the last commit here that could
+change a package: one touching `rpm/`, `build/` or `.github/`. That second
 pair matters because a published NEVRA is immutable: without it a
 packaging-only fix rebuilds the same NEVRA and never ships. Keying on `HEAD`
 instead would mint a new NEVRA for every docs commit, so docs-only pushes
 skip the build. The two datetimes (UTC, to the minute) do the ordering:
 rpm compares the shas as text, which means nothing. Until Nov 2026 the
 upstream half was a date alone, so two commits of one day were ordered by
-their shas; twelve digits outrank those eight, so the old builds upgrade.
+their shas. Twelve digits outrank those eight, so the old builds upgrade.
 
 ```
 4.3.30-1
@@ -290,55 +295,56 @@ their shas; twelve digits outrank those eight, so the old builds upgrade.
  -> 4.3.31-1                                               upgrade (release lands)
 ```
 
-Snapshot users are absorbed into the stable channel when the release lands:
-once xymon tags `rel-X.Y.Z`, the nightly `previews` workflow builds it into
-the stable channel.
+Snapshot users are absorbed into the stable channel when the release lands.
+Once xymon tags `rel-X.Y.Z`, the nightly `previews` workflow builds it into
+the stable channel. It does so only for a milestone xymon-experimental has
+published a preview of; otherwise the build has to be dispatched by hand.
 A packaging-only fix to a *released* version ships by re-dispatching the same
 tag with `releasenum` bumped, giving `X.Y.Z-2`. `tests/vercmp.sh` asserts all
 of this in CI.
 
+`rpm/baseversion` names the version `main` is becoming. Upstream's
+`include/version.h` now says it too: `4.3.32-dev` since the 4.3.31 release,
+because xymon's `RELEASING.md` bumps it after each release. `baseversion`
+could be read from there; it stays a file here until that is done.
+
 ### Commit documentation separately
 
-Documentation is `**.md` and `docs/**`; everything else is code — **including
+Documentation is `**.md` and `docs/**`. Everything else is code — **including
 comments inside `rpm/`, `build/` and `.github/`**, because the packaging half
-of the version is keyed on those paths (`tests/` is not, so a tests-only edit
-mints no NEVRA). A comment-only edit
-there mints a new NEVRA for a byte-identical package.
+of the version is keyed on those paths: a comment-only edit there mints a new
+NEVRA for a byte-identical package. `tests/` is not, so a tests-only edit
+mints no NEVRA.
 
-The build skips only when the *whole push* is documentation (GitHub matches
-`paths-ignore` per push, not per commit), so splitting commits does not by
-itself save a build — but split them anyway: it keeps history revertable and
-makes a free docs-only push possible.
-
-`rpm/baseversion` names the version `main` is becoming. Upstream's
-`include/version.h` now says it too — `4.3.32-dev` since the 4.3.31 release,
-as xymon's `RELEASING.md` has it bumped after each release — so `baseversion`
-could be read from there; it stays a file here until that is done.
+The build skips only when the *whole push* is documentation: GitHub matches
+`paths-ignore` per push, not per commit. Splitting commits does not by itself
+save a build, but split them anyway: it keeps history revertable and makes a
+free docs-only push possible.
 
 ## Retention
 
-The stable channel keeps everything forever — people pin versions and roll
+The stable channel keeps everything forever: people pin versions and roll
 back. The snapshot channel keeps the newest **10 upstream commits** per
 directory, and of each only its newest packaging rebuild, to stay within
-GitHub Pages limits; the **build** workflow can override the number for one
+GitHub Pages limits. The **build** workflow can override the number for one
 run with `snapshot_keep`, or republish the channel from that run alone with
 `snapshot_reset`.
 
+Counting upstream commits rather than published runs is what makes those slots
+worth having. Rolling back on a snapshot channel means going back to a
+different state of Xymon; an older packaging of the state you already have is
+not that. So a morning of packaging merges can no longer spend every slot on
+one upstream commit.
+
 The preview channel keeps the newest **2 previews** of each unreleased
 milestone per directory, each in its newest packaging rebuild only
-(`XYMON_PREVIEW_KEEP` in `build/publish.sh`); a milestone's previews go once
+(`XYMON_PREVIEW_KEEP` in `build/publish.sh`). A milestone's previews go once
 its release is in the stable channel. `xymon-preview-next` is rebuilt from
 those on every publish.
 
-Counting upstream commits rather than published runs is what makes those slots
-worth having. Rolling back on a snapshot channel means going back to a different
-state of Xymon, and an older packaging of the state you already have is not
-that — so a morning of packaging merges can no longer spend every slot on one
-upstream commit.
-
-Pruning removes whole builds, never single packages — every package of a build
-goes together, or the repo resolves to a missing dependency — and each removal
-is named in the publish log, with which of the two rules dropped it.
+Pruning removes whole builds, never single packages: every package of a build
+goes together, or the repo resolves to a missing dependency. Each removal is
+named in the publish log, with which rule dropped it.
 
 ## Known gaps
 
@@ -357,8 +363,10 @@ with the build and install gaps this packaging compensates for.
 - `/run/xymon`, which `xymon-tmpfiles.conf` creates, holds the server's
   pidfiles and `xymond_rrd`'s control sockets only from 4.3.32:
   [xymon#219](https://github.com/xymon-monitoring/xymon/pull/219) added
-  `XYMONRUNDIR`, which the spec sets. Builds of 4.3.31 keep them in the log
-  directory and `/var/lib/xymon/tmp`. The client does not use it.
+  `XYMONRUNDIR`, which the spec sets. It merged on upstream `main` on
+  8 Nov 2026 and is in no release yet: snapshots built since then and 4.3.32
+  previews have it. The 4.3.31 release keeps them in the log directory and
+  `/var/lib/xymon/tmp`. The client does not use it.
 - `ExecReload` sends `SIGHUP`, which `xymonlaunch` acts on itself but does not
   relay to its children until
   [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172), so use
@@ -366,19 +374,20 @@ with the build and install gaps this packaging compensates for.
   behind the same gate.
 - On an SELinux-enforcing host, `%post` loads the packages' policy modules
   and `%posttrans` labels the daemons, the CGIs, the web and RRD trees and
-  port 1984 — but only when `semanage` is installed, which a default
-  `dnf install` brings as a weak dependency and an `rpm -i` does not.
+  port 1984. The labeling runs only when `semanage` is installed: a default
+  `dnf install` brings it as a weak dependency, an `rpm -i` does not.
   Validated on AlmaLinux 8, 9 and 10 and Fedora 44; CI runs nothing
   enforcing. Xymon does not run under the `mls` policy. The modules' rules
-  still reference `/var/cache/xymon`, which this layout does not use. Details, and how to
-  report a denial, in [docs/selinux.md](docs/selinux.md).
+  still reference `/var/cache/xymon`, which this layout does not use.
+  Details, and how to report a denial, in [docs/selinux.md](docs/selinux.md).
 - `XYMONSERVERHOSTNAME` is baked as `localhost` and rewritten from `uname -n`
   in `%post`, because a package must not carry the build host's name.
 
 ## Testing
 
-How the suites are layered and how to run one is in [docs/testing.md](docs/testing.md); the full pipeline is in [docs/build-pipeline.md](docs/build-pipeline.md).
-
+How the suites are layered and how to run one is in
+[docs/testing.md](docs/testing.md); the full pipeline is in
+[docs/build-pipeline.md](docs/build-pipeline.md).
 
 Every build runs `rpmspec -P` (a lua scriptlet with a `#` comment fails the
 spec parse), `vercmp.sh` on the `Release` strings, and three suites over the
@@ -400,31 +409,40 @@ them, and on the `lint` job:
 | `upgrade.sh` | installs the published build, seeds admin state, upgrades to this one and proves nothing was lost — the only suite starting from a non-empty root, so the only one exercising `%pretrans` |
 | `monitoring.sh` | starts a server, lets its own client report, and asserts the data is analysed into `cpu`, `disk`, `memory` and `procs` — with the board checked *before* any client runs, so a query that always returns something cannot pass |
 
-The last one earned its place immediately: a fresh install shipped `hosts.cfg`
+The last one earned its place immediately. A fresh install shipped `hosts.cfg`
 naming `localhost` while the server's own client reported under `uname -n`, and
 `xymond_client` silently discards a report whose host it cannot find. The host
 stayed green from the network tests while no threshold was ever evaluated.
 
-Two more run on their own workflow, `docs-drift.yml`, nightly and on every
-push to `main` that touches the docs or the specs: `compensations.sh` checks
-that every `xymon#NNN` the spec cites is still held by a tracker, and `docs.sh` that
-[docs/upstream.md](docs/upstream.md) still matches the source — the PR table's
-states, that every file its provenance table calls copied from `devel` still
-compares equal, and that the PRs named order-independent are exactly the open
-ones. They report drift without gating publishing: a stale sentence is worth a
-red run, not a held release. Separately, the build workflow rebuilds `main`
-nightly as an upstream drift detector — a moved install path or configure flag
+Two more run on their own workflow, `docs-drift.yml`: nightly, and on every
+push to `main` that touches the docs, the specs or a checker.
+
+- `compensations.sh` checks that every `xymon#NNN` the spec cites is still
+  held by a tracker.
+- `docs.sh` checks that [docs/upstream.md](docs/upstream.md) still matches the
+  source: the PR table's states, that every file its provenance table calls
+  copied from `devel` still compares equal, and that the PRs named
+  order-independent are exactly the open ones.
+
+They report drift without gating publishing: a stale sentence is worth a red
+run, not a held release. Separately, the build workflow rebuilds `main`
+nightly as an upstream drift detector: a moved install path or configure flag
 goes red the next day rather than at the next release.
 
 ## Building a branch or a pull request
 
 Actions → **build** → *Run workflow* with a ref: `main` (default), `devel`,
-`pr/163`, `preview-4.3.32-1`, or any sha or tag. Only `main`, dispatched
-`rel-*` tags (the release flow) and dispatched `preview-*` tags (fetched from
-xymon-experimental, published to `xymon-preview` and, for the next release,
-`xymon-preview-next`) publish; everything else
-produces downloadable artifacts only. The run logs the exact commit built. The `releasenum` input
-re-releases a tag with packaging fixes (see Versioning).
+`pr/163`, `preview-4.3.32-1`, or any sha or tag. Only three kinds of ref
+publish; everything else produces downloadable artifacts only:
+
+- `main`;
+- a dispatched `rel-*` tag, which is the release flow;
+- a dispatched `preview-*` tag from xymon-experimental, unless its release
+  there is still a draft; it goes to `xymon-preview` and, for the next
+  release, `xymon-preview-next`.
+
+The run logs the exact commit built. The `releasenum` input re-releases a tag
+with packaging fixes (see Versioning).
 
 ## Building locally
 
@@ -447,11 +465,12 @@ rpmbuild -ba rpm/xymon.spec --define 'baseversion 4.3.31'
 ## Contributing
 
 Changes go through a pull request. The rules are in
-[CONTRIBUTING.md](CONTRIBUTING.md): which repository a change belongs in —
-this one is not always the answer — how a title and a description are
-written, when a change may merge without a review, and what counts as saying
-how you tested it. [AGENTS.md](AGENTS.md) adds what a coding agent needs on
-top of those, and `CLAUDE.md` imports it for Claude Code.
+[CONTRIBUTING.md](CONTRIBUTING.md). It first settles which repository a change
+belongs in, since this one is not always the answer. It then covers how a
+title and a description are written, when a change may merge without a
+review, and what counts as saying how you tested it. [AGENTS.md](AGENTS.md)
+adds what a coding agent needs on top of those, and `CLAUDE.md` imports it for
+Claude Code.
 
 ## Relationship to upstream
 
@@ -459,9 +478,7 @@ Packaging lives here so it can iterate without a review round per change; the
 intent is to move it into `xymon-monitoring/xymon` once the spec is stable.
 What `rpm/sources/` contains and why, the upstream PRs that would let the spec
 drop its workarounds, and that plan in full are in
-[docs/upstream.md](docs/upstream.md). Which of the two repositories a given
-change belongs to is the first thing [CONTRIBUTING.md](CONTRIBUTING.md)
-settles.
+[docs/upstream.md](docs/upstream.md).
 
 ## License
 

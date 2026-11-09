@@ -6,9 +6,9 @@ because the server monitors itself through it. The separate `--client`
 build differs only by `-DCLIENTONLY`, which strips server-only code to
 shrink the binaries; it adds nothing the server build's client lacks.
 
-A fleet wants the opposite emphasis: one server, many small client-only
-hosts. So each packaging must decide what a "client package" is and how
-it relates to the server package. Four answers exist.
+A fleet wants one server and many small client-only hosts. So each
+packaging must decide what a "client package" is and how it relates to the
+server package. Four answers exist.
 
 ## Debian: amputate, then re-attach with a dependency
 
@@ -17,11 +17,14 @@ moved into `xymon-client`, and pulled back at install time by
 `Depends: xymon-client`. Every server installs both, so the filesystem
 ends up as the build made it; only package ownership differs.
 
-The cost is at runtime. Debian ships two SysV init scripts (`xymon`,
-`xymon-client`), and the client one carries a guard so it does not
-double-report on a server: `[ -x /usr/lib/xymon/server/bin/xymond ] &&
-exit 0`. The split also moves `xymond_client` into the `xymon-client`
-package (Debian #903614), leaving a symlink to it in the server tree.
+The cost is at runtime. Debian ships two services, `xymon` and
+`xymon-client`, and the client one carries a guard so it does not
+double-report on a server. Since 4.3.30-4 (trixie) each is a systemd unit
+beside its SysV init script. The unit's guard is
+`ExecCondition=test ! -x /usr/lib/xymon/server/bin/xymond`; the init
+script's is `[ -x /usr/lib/xymon/server/bin/xymond ] && exit 0`. The split
+also moves `xymond_client` into the `xymon-client` package (Debian #903614),
+leaving a symlink to it in the server tree.
 
 ## Terabithia: self-contained server, standalone client
 
@@ -41,7 +44,7 @@ exclusion has no clean metadata, and the scriptlets carry literal
 Two independent ports, two builds. `xymon-client` is a real
 `CLIENTONLY=yes` build; `xymon-server` runs a server build with the
 client removed at source (the port drops `client`/`install-client` from
-the build). Neither depends on nor conflicts with the other — different
+the build). Neither depends on nor conflicts with the other: different
 paths, co-installable, separate rc scripts. Nothing prevents both from
 running, or a server from running with no client; coordination is the
 admin's job.
@@ -58,8 +61,8 @@ filed off:
   alone** for non-server hosts.
 - **`Conflicts: xymon-client`** puts the exclusion in metadata:
   `dnf install xymon` on a client host fails with a clear message.
-- **One unit name everywhere.** Both packages ship `xymonlaunch.service`;
-  its `ExecStart` runs `xymonlaunch-run`, which picks the tree by which
+- **One unit name everywhere.** Both packages ship `xymonlaunch.service`.
+  Its `ExecStart` runs `xymonlaunch-run`, which picks the tree by which
   role's drop-in is present and execs `xymoncmd xymonlaunch --no-daemon`
   in the foreground, giving `Type=simple` a process to supervise. What
   differs between roles rides in a drop-in shipped only by that role's
@@ -70,15 +73,17 @@ filed off:
 - **Role changes are one transaction.** Scriptlets detect a swap by the
   other role's drop-in already being on disk (installs precede erases).
   The departing package stops the service *while its own drop-in still
-  applies* — that is what lets a server's xymond finish its checkpoints —
-  and leaves enablement alone, so the host still starts at boot. A
+  applies*, which lets a server's xymond finish its checkpoints. It
+  leaves enablement alone, so the host still starts at boot. A
   `systemctl restart` brings the new role up.
 
 Two costs, accepted deliberately: the client tree exists in two packages
-*in the repository* (never twice on a host — they conflict), and a role
-change is an explicit `dnf swap` rather than automatic. `Obsoletes:`
-would be automatic but would convert every client host into a server at
-its next update.
+*in the repository* (never twice on a host: they conflict), and a role
+change is an explicit `dnf swap` rather than automatic. An unversioned
+`Obsoletes: xymon-client` would be automatic but would convert every
+client host into a server at its next update. The spec's versioned one,
+`xymon-client < 4.3.31-1`, only folds the old layout's server pair into
+`xymon` (`rpm/xymon.spec:239-246`).
 
 ## Side by side
 
@@ -95,7 +100,7 @@ its next update.
 ## Where the files land
 
 Upstream installs everything under one `XYMONTOPDIR`, with `server/` and
-`client/` beside each other, and leaves each packager to decide how much
+`client/` beside each other, and leaves each packager to decide how far
 to bend towards the FHS.
 
 | | here | Debian | Terabithia | FreeBSD (`…` = `${PREFIX}/www`) |
@@ -120,70 +125,72 @@ must not live in `/usr/lib`: `server/etc → /etc/xymon`,
 The layout matches upstream's docs, nothing writes inside `/usr/lib`,
 and the spec needs no path rewriting or patches.
 
-Those links exist only under the *server* tree; the client tree gets
-none, so the spec makes the matching moves by hand:
-`client/etc → /etc/xymon-client`, `client/logs → /var/log/xymon`,
-`client/tmp → /var/tmp`. Three more take static content out of `/var`:
-`www/{gifs,help,menu} → /usr/share/xymon/…`.
+Those links exist only under the *server* tree, so the spec makes the
+client's by hand: `client/etc → /etc/xymon-client`,
+`client/logs → /var/log/xymon`, `client/tmp → /var/tmp`. Three more take
+static content out of `/var`: `www/{gifs,help,menu} → /usr/share/xymon/…`.
 
-The `www` tree actually holds three lifecycles, not two. `gifs`, `help`
-and `menu` are **static** — shipped, never changed on a running host — so
-they belong in `/usr/share`. `html`, `notes` and `wml` are **persistent**
-state the daemons write, so they stay in the writable docroot under
-`/var/lib`. `rep` and `snap` are **regenerable** — on-demand availability
-reports and snapshots, safe to delete and recreated on the next request,
-which is what the FHS puts in `/var/cache`. This spec moves only the
-static three today, symlinking them back so every `/xymon/` URL and
-on-disk path still works — nothing in `xymonserver.cfg` or the CGIs learns
-a second location, and httpd needs no extra config because the generated
-one already sets `FollowSymLinks` on the www directory. `rep` and `snap`
-stay in the `/var/lib` docroot for now. The `help` symlink is load-bearing —
-the daemon resolves that directory at runtime, a coupling xymon#414 removes
-(mechanics in [upstream.md](upstream.md)).
+The `www` tree holds three lifecycles, not two:
 
-Each hand-made move has an upstream proposal to make it build-native, all
-opt-in and no-op by default: the static three via `INSTALLSTATICWWWDIR` +
-`XYMONSTATICWWWDIR` ([xymon#414](https://github.com/xymon-monitoring/xymon/pull/414)),
-the client tree via `INSTALLCLIENT*DIR`
-([xymon#411](https://github.com/xymon-monitoring/xymon/pull/411)), and the
-regenerable `rep`/`snap` via `XYMONCACHEWWWDIR`
-([xymon#443](https://github.com/xymon-monitoring/xymon/pull/443), a `/var/cache`
-move this spec has not made yet). Their states, mechanics, and the spec changes
-that adopt them are tracked in [upstream.md](upstream.md).
+| | what | belongs in |
+| --- | --- | --- |
+| `gifs`, `help`, `menu` | **static**: shipped, never changed on a running host | `/usr/share` |
+| `html`, `notes`, `wml` | **persistent** state the daemons write | the writable docroot under `/var/lib` |
+| `rep`, `snap` | **regenerable**: on-demand availability reports and snapshots, safe to delete, recreated on the next request | `/var/cache` (FHS) |
+
+This spec moves only the static three, symlinking them back so every
+`/xymon/` URL and on-disk path still works and nothing in `xymonserver.cfg`
+or the CGIs learns a second location. httpd needs no extra config: the
+generated one already sets `FollowSymLinks` on the www directory. The `help`
+symlink is load-bearing: up to 4.3.31 the web pages derive the help
+directory from `XYMONNOTESDIR` at runtime (`lib/links.c:147`), a coupling
+xymon#414 removes.
+
+Each hand-made move has an opt-in upstream equivalent, no-op by default:
+`INSTALLSTATICWWWDIR` + `XYMONSTATICWWWDIR`
+([xymon#414](https://github.com/xymon-monitoring/xymon/pull/414)) for the
+static three and `XYMONCACHEWWWDIR`
+([xymon#443](https://github.com/xymon-monitoring/xymon/pull/443)) for
+`rep`/`snap`, both merged for 4.3.32 and not yet adopted here;
+`INSTALLCLIENT*DIR`
+([xymon#411](https://github.com/xymon-monitoring/xymon/pull/411), open)
+for the client tree.
+[xymon-rpm#109](https://github.com/xymon-monitoring/xymon-rpm/issues/109)
+tracks their states.
 
 ### Where the static web content should live
 
 This applies only to a packaging that **splits** the tree for the FHS. A
-source install — and FreeBSD — leave the static three where the build
-puts them, inside `INSTALLWWWDIR` (the `www` tree itself): that is
+source install, and FreeBSD, leave the static three where the build puts
+them, inside `INSTALLWWWDIR` (the `www` tree itself). That is
 `INSTALLSTATICWWWDIR`'s no-op default (`= INSTALLWWWDIR`), and it is
 correct there, because a self-contained tree has no `/usr`-vs-`/var` line
 to honour. When a packaging *does* pull the static three out into
-`/usr/share`, the recommended shape is **`/usr/share/xymon/www`**.
+`/usr/share`, the recommended shape, and `INSTALLSTATICWWWDIR` target, is
+**`/usr/share/xymon/www`**.
 
 - **`/usr/share`, because the FHS says so.** It defines `/usr/share` as
   read-only, architecture-independent package data, and `/var` as what a
-  program writes — which is exactly the static-vs-generated split. Every
-  Linux packaging that splits lands static in `/usr/share` (Debian, this
-  one, Terabithia); only FreeBSD keeps it under its port prefix, and only
-  because it follows BSD `hier(7)` rather than the FHS.
-- **A `www` subdir — not a bare directory, and not a `static`/`staticwww`
-  name.** `/usr/share` already *means* static, so naming the folder
-  `static` (or `staticwww`) states "static" twice. `www` adds the one thing
-  the location does not — "this is the web content" — and it mirrors the
-  served `/var/lib/xymon/www`, so the symlink reads as a clean parallel:
-  `/var/lib/xymon/www/gifs → /usr/share/xymon/www/gifs`. It also keeps
-  `/usr/share/xymon` free for any non-web data the package might add later.
+  program writes: exactly the static-vs-generated split. Every Linux
+  packaging that splits lands static in `/usr/share` (Debian, this one,
+  Terabithia). Only FreeBSD keeps it under its port prefix, because it
+  follows BSD `hier(7)` rather than the FHS.
+- **A `www` subdir, not a bare directory and not a `static`/`staticwww`
+  name.** `/usr/share` already *means* static, so a `static` (or
+  `staticwww`) folder says it twice. `www` adds what the location does
+  not, "this is the web content", and mirrors the served
+  `/var/lib/xymon/www`, so the symlink reads as a clean parallel:
+  `/var/lib/xymon/www/gifs → /usr/share/xymon/www/gifs`.
 
-For contrast: Terabithia nests under `/usr/share/xymon/static` because *its*
+Terabithia nests under `/usr/share/xymon/static` because *its*
 `/usr/share/xymon` is the whole server home (`bin`, `cgi-bin`, `etc`, `www`,
-…), so it has to namespace. A flat `/usr/share/xymon/{gifs,help,menu}` —
-Debian's layout, and what this spec installs today — is fine only while that
-directory holds nothing but web content; the `www` subdir is the more
-self-documenting and future-proof form, and the recommended target for the
-`INSTALLSTATICWWWDIR` the split will eventually use.
+…), so it has to namespace. A flat `/usr/share/xymon/{gifs,help,menu}`
+(Debian's layout, and what this spec installs today) is fine only while
+that directory holds nothing but web content; the `www` subdir leaves it
+free for non-web data the package might add later.
 
-The regenerable third's target is **`/var/cache/xymon/www`** — FHS §5.5,
-"data that can be regenerated" and "deleted without loss" — reached by
-pointing `XYMONCACHEWWWDIR` there and symlinking `www/rep`, `www/snap` back,
-as the static three are. This spec keeps them in the `/var/lib` docroot today.
+The regenerable third's target is **`/var/cache/xymon/www`** (FHS §5.5,
+"data that can be regenerated" and "deleted without loss"), reached by
+pointing `XYMONCACHEWWWDIR` there and symlinking `www/rep` and `www/snap`
+back, as the static three are. This spec keeps them in the `/var/lib`
+docroot today.

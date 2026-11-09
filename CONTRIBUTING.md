@@ -3,16 +3,16 @@
 Patches are welcome. This file covers what is easy to get wrong because it is
 not visible from the tree.
 
-Fork, remotes and the pull-request flow are the same for every repository in
-the organisation and are documented once, in the wiki: start with
+Fork, remotes and the pull-request flow are the same across the organisation
+and documented once, in the wiki: start with
 [first-contribution.md](https://github.com/xymon-monitoring/xymon-wiki/blob/main/docs/contributing/git/first-contribution.md);
 [git-setup.md](https://github.com/xymon-monitoring/xymon-wiki/blob/main/docs/contributing/git/git-setup.md)
 has the remote configuration.
 
 ## Which repository
 
-This is the first question, and it is the one most often answered wrong,
-because three trees can look like the right place for the same fix.
+This is the first question and the one most often answered wrong, because
+three trees can look like the right place for the same fix.
 
 **The rule: upstream provides mechanism and location, downstream provides
 activation and policy.**
@@ -25,10 +25,10 @@ activation and policy.**
 | the old `rpm/` directory inside `xymon-monitoring/xymon` | nowhere — it is unmaintained and builds nothing anyone ships |
 
 That last row is about today. [docs/upstream.md](docs/upstream.md) *Where the
-packaging should eventually live* intends to move this packaging into that
-repository once the spec is stable, and deciding what becomes of its stale
-`rpm/` and `debian/` is part of that move. Until it happens, a packaging change
-sent there is reviewed by nobody and shipped to nobody.
+packaging should eventually live* plans to move this packaging into that
+repository once the spec is stable, and to decide then what becomes of its
+stale `rpm/` and `debian/`. Until then, a packaging change sent there is
+reviewed by nobody and shipped to nobody.
 
 A directory that Xymon's own configuration declares but its `Makefile` never
 creates is an upstream gap, even though you meet it as a missing directory in
@@ -37,21 +37,19 @@ an RPM. Reloading a web server after dropping a configuration file into its
 distribution business, and upstream cannot make it for every packager.
 
 The middle case is the expensive one. A change to what `make install` produces
-lands on Debian and FreeBSD at the same time as on this packaging, so it needs
-those packagers told before it merges, not after. Say so in the pull request
-rather than discovering it at release time.
+lands on Debian and FreeBSD at the same time as here, so those packagers need
+telling before it merges, not at release time. Say so in the pull request.
 
 ### When upstream is right but not yet available
 
 The rule says where a fix belongs, not when you can have it. A gap that belongs
-upstream may be compensated here in the meantime — that is a good part of what
-this packaging is for — on one condition: **the compensation names the upstream
-pull request that will delete it**, in the spec comment beside it and in a
-row of the tracking issue, which [docs/upstream.md](docs/upstream.md) *Gaps
-sent back upstream* links to. That comment is
-what lets someone who was not there remove the workaround later. Without it,
-the override is not interim, it is a permanent divergence nobody will recognise
-as removable.
+upstream may be compensated here in the meantime; that is a good part of what
+this packaging is for. One condition: **the compensation names the upstream
+pull request that will delete it**, in the spec comment beside it and in a row
+of the tracking issue that [docs/upstream.md](docs/upstream.md) *Gaps sent back
+upstream* links to. That comment lets someone who was not there remove the
+workaround later. Without it, the override is not interim but a permanent
+divergence nobody will recognise as removable.
 
 ### The boundary moves
 
@@ -60,14 +58,16 @@ downstream because upstream does not offer the mechanism *today*; the day its
 pull request merges, the same code becomes divergence. So the table does not
 classify once and for all — it records where the line runs now.
 
-Two checks watch that, nightly, from opposite ends. `tests/docs.sh` reads the
-tracking issue's table and checks each pull request's real state: when
-one merges, the drift check goes red — not because something broke, but because
-a compensation just stopped being one. Its row is then marked `merged`, and
-goes with the change that consumes it. `tests/compensations.sh` takes the
-condition above and checks it the other way, that every `xymon#NNN` the spec
-cites is still held by a tracker — so a citation the merged proposal left
-behind is named rather than waiting for someone to read the spec.
+Two checks watch that nightly, from opposite ends:
+
+- `tests/docs.sh` reads the tracking issue's table and checks each pull
+  request's real state. When one merges, the drift check goes red: nothing
+  broke, but a compensation just stopped being one. Its row is then marked
+  `merged`, and goes with the change that consumes it.
+- `tests/compensations.sh` checks the condition above the other way: every
+  `xymon#NNN` the spec cites is still held by a tracker. A citation the merged
+  proposal left behind is named, rather than waiting for someone to read the
+  spec.
 
 ## Where to file an issue
 
@@ -79,12 +79,12 @@ apart is often the work the issue exists to do.
 - It went wrong in Xymon itself, however you installed it →
   **`xymon-monitoring/xymon`**.
 
-Triage is where the rule above applies, and it is the opportunity a report
-creates: understanding it is the only moment anyone knows enough to place the
-fix. Write it where it belongs, not where the issue happened to land — the
-repository that iterates fastest is the tempting one, and taking it is how a
-downstream accumulates divergence nobody decided on. The issue can stay with
-its reporter; say in it which repository took the work, and why.
+Triage is where the rule above applies. Understanding a report is the only
+moment anyone knows enough to place the fix. Write the fix where it belongs,
+not where the issue happened to land. The repository that iterates fastest is
+the tempting one, and taking it is how a downstream accumulates divergence
+nobody decided on. The issue can stay with its reporter; say in it which
+repository took the work, and why.
 
 ## Where a change gets written down
 
@@ -95,13 +95,13 @@ when the string changes.
 
 Reaching is not the whole test, and alone it forbids too much: inside one tree
 every reader can reach everything. The question underneath is a maintenance
-one — **the day this changes, does someone have to edit both places?** A
-premise restated so that a comment stands on its own fails that test and is
+one: **the day this changes, does someone have to edit both places?** A
+premise restated so that a comment stands on its own fails that test, so it is
 not a second copy. *A published NEVRA is immutable* opens comments in the
-spec, the workflow and `build/publish.sh`, each justifying a different local
-decision, and nothing this project does can make it false. What the rule is
-about is a fact this project maintains: a number, a path, a behaviour we
-chose, a rule we wrote. Those go in one place.
+spec, the workflow and `build/publish.sh`. Each justifies a different local
+decision, and nothing this project does can make it false. The rule is about a
+fact this project maintains: a number, a path, a behaviour we chose, a rule we
+wrote. Those go in one place.
 
 | surface | who reads it | what it carries |
 |---|---|---|
@@ -125,9 +125,8 @@ the wrong question:
   `git blame` offline;
 - **why not the obvious alternative** — the spec or workflow comment at the
   line someone would otherwise change back;
-- **what was weighed and rejected** — the issue or pull request that decided
-  it, which is the only place that record belongs and the only one nobody
-  needs in order to use the packages.
+- **what was weighed and rejected** — only the issue or pull request that
+  decided it, the one surface nobody needs in order to use the packages.
 
 The test for the last one: would the sentence still be true if the
 alternative had never been considered? If not, it is deliberation, not
@@ -147,7 +146,7 @@ the least read part of a page and the first to go stale.
 
 A pointer missing its other half is not a reason to open a change by itself.
 Add it while you are already editing that document for something else, or fix
-them together in one deliberate pass; scattered across unrelated pull requests,
+them together in one deliberate pass. Scattered across unrelated pull requests,
 each puts a reviewer in front of a diff whose subject is not the change's.
 
 One kind of pointer is not a link and must stay one-way: the `@file` imports
@@ -239,10 +238,10 @@ a length target, is the signal.
 
 ## Pull requests
 
-Every change goes through a pull request. `main` here is **not** protected —
+Every change goes through a pull request. `main` here is **not** protected:
 there is no ruleset and no required review, so nothing stops a direct push.
-That is a gap rather than a policy, and until it is closed the rule is the
-social one: open a pull request, and say in it if you merged your own.
+That is a gap, not a policy. Until it is closed the rule is the social one:
+open a pull request, and say in it if you merged your own.
 
 A second reader is always the better outcome. Packaging fails in ways that are
 invisible in a diff and expensive on a running host — a scriptlet that runs in
@@ -264,16 +263,15 @@ does not move to a tool.
   merge method. A correction found in review is folded into the commit it
   corrects rather than added after it.
 - Say what you verified, and how. "Built and installed on el9" is useful;
-  "should work" is not. A change to prose carries the same obligation with a
-  different instrument: name the grep that shows nothing else in the tree still
-  states the old rule — which is the grep the stale element under *Descriptions*
-  already costs you, so it is a sentence rather than an errand. If you could not
-  test something, say that too — it is not held against you, and it tells a
-  reviewer where to look.
-- **Name the distribution you actually tested on.** CI builds AlmaLinux and
-  Fedora containers. That is not RHEL, not SUSE, and not a machine with SELinux
-  in enforcing mode, so a report from any of those is worth more than another
-  green matrix.
+  "should work" is not. A change to prose verifies with a grep showing nothing
+  else in the tree still states the old rule. You already ran it for the
+  stale-documents element under *Descriptions*, so naming it costs a sentence.
+  If you could not test something, say that too. It is not held against you,
+  and it tells a reviewer where to look.
+- **Name the distribution you actually tested on.** CI builds in AlmaLinux and
+  Fedora containers, plus CentOS Stream canaries. That is not RHEL, not SUSE,
+  and not a machine with SELinux in enforcing mode, so a report from any of
+  those is worth more than another green matrix.
 - If your change fixes something a suite could have caught, adding the
   assertion is worth more than the fix. [docs/testing.md](docs/testing.md) says
   which suite it belongs in. Show that it fails without the fix — run it
@@ -285,7 +283,7 @@ does not move to a tool.
 ### Titles
 
 The title is the one line a reader gets in the pull request list and, after a
-squash merge, in `git log --oneline`; after a merge commit that line is each
+squash merge, in `git log --oneline`. After a merge commit that line is each
 commit's own subject instead, which is why a commit message stands alone too.
 Write the title so its line is enough.
 
@@ -329,19 +327,20 @@ several times the length of its change is usually the form being filled in.
   with no stated defect is a change nobody can review.
 - **Say which side of the boundary the change is on, and why** — whenever the
   change touches what a package installs, requires, starts, migrates or labels,
-  or what upstream provides. Not a formality there: it is the question most
-  often answered wrong, and answering it in writing is what stops a fix landing
-  here because here is convenient. If it is an interim override, name the
-  upstream pull request that will delete it. A change to this repository's own
-  prose has no side to be on, and saying so is noise.
+  or what upstream provides. It is the question most often answered wrong (see
+  *Which repository*), and answering it in writing stops a fix landing here
+  because here is convenient. If it is an interim override, name the upstream
+  pull request that will delete it. A change to this repository's own prose
+  has no side to be on, and saying so is noise.
 - **Name the documents the change makes stale, or say that none does.** A rule
   lives in a document and is proved in a pull request: the pull request is read
   once, by a reviewer deciding, and the document is read by everyone
-  afterwards. A change that rewrites a rule and explains itself only here
-  leaves the document stating the old one, and nothing catches that —
-  `tests/docs.sh` and `tests/compensations.sh` each watch one narrow claim, and
-  no check reads prose against behaviour. Grepping the tree for the behaviour
-  you changed is the whole cost, and *none* is a complete answer.
+  afterwards. A change that rewrites a rule and explains itself only in the
+  pull request leaves the document stating the old one, and nothing catches
+  that. `tests/docs.sh` checks only `docs/upstream.md` and its tracking issue,
+  `tests/compensations.sh` only upstream citations; no check reads other prose
+  against behaviour. Grepping the tree for the behaviour you changed is the
+  whole cost, and *none* is a complete answer.
 - Carry what a reviewer cannot infer from the diff — a distribution floor, an
   ordering against an upstream pull request, a scriptlet deliberately left
   alone, something you could not test.
@@ -350,21 +349,21 @@ several times the length of its change is usually the form being filled in.
   table of three rows says what three paragraphs say. A diff a reviewer can
   read whole is its own evidence.
 - Cite what can be checked. A claim about a particular place in the tree
-  carries `file:line` — naming a file as the subject of a sentence does not,
-  and a line number on prose that is about to be edited is worse than none. A
+  carries `file:line`. A sentence whose subject is a whole file needs none, and
+  a line number on prose that is about to be edited is worse than none. A
   claim about another change carries its number, and upstream ones are written
   `xymon#411` so a reader knows which repository to open.
 - A comment is not a second copy of the description. It answers a finding,
   records what a revision changed, or states a decision taken since. When the
-  same fact sits in both, one goes stale — and it is the description, because
-  that is the copy nobody re-reads.
+  same fact sits in both, the description goes stale, because that is the copy
+  nobody re-reads.
 - Shortening a description follows the same rule as shortening anything else,
   and it comes last: see [Shortening](#shortening).
 
 ### The last pass
 
-When a change has stopped moving — before a review is asked for, or before it
-merges without one — read the prose it adds or changes once more, and again
+When a change has stopped moving (before a review is asked for, or before it
+merges without one), read the prose it adds or changes once more. Read it again
 whenever that prose changes, through a review's findings or the pass's own
 edits. Only its own lines, and any existing line the change makes false: an
 older problem found on the way is a note, or another pull request.
@@ -392,8 +391,8 @@ again the suites that cover what it touched, and say in one comment what it
 changed. If it edits only the description or the commit message, the comment is
 enough.
 
-A review of that prose reports facts: a sentence that is false, misleading — a
-reader would act or decide differently on it — or in conflict with another
+A review of that prose reports facts: a sentence that is false, misleading (a
+reader would act or decide differently on it), or in conflict with another
 rule. A preference is not a finding, and neither is step 5, which is the
 author's own check, unless the sentence also misleads. When rounds keep
 reopening one choice, it is a principle, not wording: the author decides it,
@@ -412,8 +411,9 @@ prohibitions:
   hand-written version for it to describe.
 - Do not republish a NEVRA. Two builds producing the same one is a versioning
   bug to fix, not something to paper over. `build/publish.sh:85` will not
-  overwrite a published file — it leaves the first copy in place and says so,
-  so the second build's package is silently not the one users get.
+  overwrite a published file. It logs that it left the first copy in place and
+  carries on without failing, so the second build's package silently never
+  reaches users.
 
 ## Style
 
@@ -424,16 +424,16 @@ than it saves you.
 One thing the spec does deliberately, which looks like noise until you need it:
 **it is commented for *why*, not *what*.** `docs/spec-structure.md` is the map
 of where things are, so a comment that restates the map goes stale in two
-places at once. The other rule about spec comments — that a workaround names
-the upstream pull request that will delete it — is in *Which repository*
-above, because it is a condition on the override, not a matter of style.
+places at once. The other rule about spec comments, that a workaround names the
+upstream pull request that will delete it, is in *Which repository* above: it
+is a condition on the override, not a matter of style.
 
-Shell is POSIX-ish and runs under `set -eu`, and it does not live only in
-`build/` and `tests/` — `rpm/sources/xymonlaunch-run` is a shell script the
-packages ship, so a change there reaches users rather than CI. All of it is
-shellchecked by the `lint` job, described in
-[docs/build-pipeline.md](docs/build-pipeline.md).
+Shell in `build/` and `tests/` is POSIX-ish and runs under `set -eu`; the two
+bash scripts in `build/` add `pipefail`. Shell also lives in `rpm/sources/`:
+`xymonlaunch-run` and `clientupdate` are scripts the packages ship, so a change
+there reaches users rather than CI. All of it is shellchecked by the `lint`
+job, described in [docs/build-pipeline.md](docs/build-pipeline.md).
 
-Test scripts run in Fedora and EL containers, so GNU tools are available — but
-a test that depends on one is pinning the container, not the packaging, and
+Test scripts run in Fedora and EL containers, so GNU tools are available. A
+test that depends on one is pinning the container, not the packaging, and
 should say so.
