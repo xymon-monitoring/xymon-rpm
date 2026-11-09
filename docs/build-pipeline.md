@@ -52,6 +52,13 @@ Three test jobs run outside the container matrix, on `el10` and `fc44` only:
 `systemd-lifecycle` needs PID 1, `upgrade` a non-empty root, and `monitoring`
 starts daemons that would disturb the install test.
 
+Every job stops after 30 minutes. The slowest takes about 6; GitHub's own
+limit is 6 hours, which is how long a hung distribution mirror could hold a
+job, and every merge waiting on it, without an error. A job stopped this way
+fails visibly, and re-running it is the fix. For `publish` it is no worse than
+any other failure: the tree reaches users only through the archive push near
+its end.
+
 ## What the `rpm` job does, per target
 
 1. **enable build repos** — EPEL/CRB on EL for `rrdtool-devel`, `c-ares-devel`
