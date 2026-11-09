@@ -144,8 +144,8 @@ if [ -n "$rundir" ]; then
 	# On failure, show what is there and whether xymond_rrd runs at all.
 	check "and xymond_rrd its control sockets" \
 		"ls /run/xymon/rrdctl.* >/dev/null 2>&1 || {
-		 ls -la /run/xymon; ps -eo pid,etimes,args | grep '[x]ymond_rrd';
-		 tail -5 /var/log/xymon/rrd-status.log /var/log/xymon/rrd-data.log; false; }"
+		 ls -la /run/xymon; systemctl status $unit --no-pager -l | tail -n 15;
+		 tail -n 8 /var/log/xymon/xymonlaunch.log /var/log/xymon/history.log /var/log/xymon/rrd-status.log; false; }"
 else
 	echo "skip     no XYMONRUNDIR in xymonserver.cfg: a build before 4.3.32"
 fi
