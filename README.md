@@ -139,7 +139,7 @@ so dnf would install the snapshot.
 | Channel | Holds | Enable it to |
 | --- | --- | --- |
 | `xymon-preview-next` | the previews of the next release alone: the lowest milestone with no release yet (4.3.32 today); it moves on to the following one by itself once that is released, as Homebrew's `xymon-server-preview` does | follow the release that is coming — **the usual choice** |
-| `xymon-preview` | the 2 newest previews of every milestone | test a given milestone |
+| `xymon-preview` | the 2 newest previews of every unreleased milestone | test a given milestone |
 
 ```sh
 dnf config-manager --set-enabled xymon-preview-next      # dnf4: EL
@@ -171,8 +171,7 @@ tried again the next night.
 
 ### Trying a snapshot without a host
 
-There has been no release, so trying one means installing a pre-release
-somewhere. A container is enough, and it has to be one running systemd —
+Trying a snapshot or a preview means installing a pre-release somewhere. A container is enough, and it has to be one running systemd —
 the packages install a unit, and the scriptlets that enable and reload
 services are guarded on `/run/systemd/system`, so in a container without an
 init they are skipped and the thing you wanted to try never runs:
@@ -206,9 +205,10 @@ systemctl restart xymonlaunch   # the swap stops the old role but starts
                                 # nothing; this brings the new one up
 ```
 
-Demoting also needs `XYMSRV` set afterwards, and a host installed before the
-packages conflicted needs the same swap before `dnf upgrade` will resolve.
-Both, plus where every file lives and everyday admin tasks, are in
+Demoting also needs `XYMSRV` set afterwards. A server installed before the
+packages conflicted upgrades with a plain `dnf upgrade`: the server package
+obsoletes that layout's `xymon-client`. Both, plus where every file lives and
+everyday admin tasks, are in
 [docs/admin-guide.md](docs/admin-guide.md).
 
 Packages and repository metadata are signed; verify the key against this
@@ -425,10 +425,13 @@ re-releases a tag with packaging fixes (see Versioning).
 
 ```sh
 dnf -y install rpm-build rpmdevtools dnf-plugins-core
-# On EL, rrdtool-devel and c-ares-devel need EPEL and CRB:
-dnf -y install epel-release && dnf config-manager --set-enabled crb
+# On EL, rrdtool-devel and c-ares-devel need EPEL and CRB (PowerTools on EL8):
+dnf -y install epel-release
+dnf config-manager --set-enabled crb || dnf config-manager --set-enabled powertools
 rpmdev-setuptree
-git clone https://github.com/xymon-monitoring/xymon.git src
+# The 4.3.31 release; for the next version, check out main and use the
+# version in rpm/baseversion instead.
+git clone --branch rel-4.3.31 https://github.com/xymon-monitoring/xymon.git src
 git -C src archive --format=tar --prefix=xymon-4.3.31/ HEAD \
   | gzip -9 > ~/rpmbuild/SOURCES/xymon-4.3.31.tar.gz
 cp rpm/sources/* ~/rpmbuild/SOURCES/

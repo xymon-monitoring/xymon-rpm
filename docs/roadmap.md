@@ -184,6 +184,13 @@ to a GitHub issue.
   that script in the package would put a file on every host where it means
   nothing, and an example nothing runs is an example that rots.
 
+- **Tests the last changes lack.** The old-layout upgrade through
+  `Obsoletes` (#119) and the pidfiles and sockets in `/run/xymon` (#121) were
+  checked by hand only. `tests/upgrade.sh` upgrades from the snapshot
+  channel even on a release build, so a `4.3.31-2` re-release would be
+  tested against a newer 4.3.32 snapshot. Two upstream commits in the same
+  minute still order by sha; `tests/publish.sh` copies a single package, so
+  it cannot see half a build pruned.
 - **Watch the signing key expiry** ([signing.md](signing.md) *Renewing before
   expiry*).
 
@@ -191,7 +198,9 @@ to a GitHub issue.
 
 - Enabling distribution hardening — the Debian `CPPFLAGS` gap,
   [xymon#444](https://github.com/xymon-monitoring/xymon/issues/444)
-- `/run/xymon` + `SIGHUP` relay — the `#219 → #172` stack (README *Known gaps*)
+- The `SIGHUP` relay to the daemons —
+  [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172) (README
+  *Known gaps*); `/run/xymon` itself is in use since xymon#219 merged
 - Consuming a merged upstream feature — one spec PR each, e.g.
   [xymon-rpm#4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) once
   [xymon#414](https://github.com/xymon-monitoring/xymon/pull/414) lands

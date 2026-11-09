@@ -5,7 +5,8 @@ tests, and publishes. It runs on every push and pull request that changes more
 than documentation, on a nightly cron (upstream drift), and on manual dispatch
 (any ref — see README *Building a branch or a pull request*). The nightly
 `previews.yml` dispatches it once per new xymon-experimental preview, with
-`xymon_ref=preview-<milestone>-<n>`; only `main` publishes.
+`xymon_ref=preview-<milestone>-<n>`. A build of `main`, of a `rel-*` tag or of
+a preview publishes; one of any other ref leaves artifacts only.
 
 ## The job graph
 
