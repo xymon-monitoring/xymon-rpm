@@ -90,17 +90,19 @@ below "4.3.32-0.preview10.209912312359pfffffff.el10" "4.3.32-1.el10"
 # following the channel moves forward when a milestone ships.
 below "4.3.31-1.el10" "4.3.32-0.preview1.202610311000pab12cd3.el10"
 
-# When the upstream clone is present (CI runs from the repo root with the
-# source checked out in src/), assert that rpm/baseversion is ahead of the
-# newest release tag. A missed bump after a release makes every later
-# snapshot sort below the stable build -- exactly the ordering asserted
-# above -- and snapshot users silently stop receiving updates, with CI
-# green throughout.
-if [ -f rpm/baseversion ] && [ -e src/.git ]; then
+# On a build of main (CI runs from the repo root with the source checked out
+# in src/), assert that the version upstream's include/version.h names, the
+# snapshots' Version, is ahead of the newest release tag. A missed bump after
+# a release makes every later snapshot sort below the stable build -- exactly
+# the ordering asserted above -- and snapshot users silently stop receiving
+# updates, with CI green throughout. Only main publishes snapshots: a release
+# tag's own version.h names that release, and an old pull request's may
+# predate the bump, and neither is a snapshot anyone receives.
+if [ "${XYMON_REF:-}" = main ] && [ -f src/include/version.h ] && [ -e src/.git ]; then
+	base=$(sed -n 's/^#define VERSION "\([0-9][0-9.]*\).*"$/\1/p' src/include/version.h)
 	newest=$(git -C src tag -l 'rel-*' | sed 's/^rel-//' | sort -V | tail -1)
 	if [ -n "$newest" ]; then
-		below "${newest}-1.el10" \
-		      "$(cat rpm/baseversion)-0.20990101gitabcdefa.209901010000p1234abc.el10"
+		below "${newest}-1.el10" "${base}-0.20990101gitabcdefa.209901010000p1234abc.el10"
 	fi
 fi
 
