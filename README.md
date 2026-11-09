@@ -122,7 +122,9 @@ dnf install xymon-client   # client only
 ### Previews of the next release and of each milestone
 
 A **preview** is a test build of an upcoming release: xymon's `main` plus the
-pull requests planned for one milestone, most of them not reviewed yet, as
+pull requests of that milestone and of the unreleased milestones before it,
+as far as they merge together — one that does not is left out, and the
+release page says so — most of them not reviewed yet, as
 [xymon-experimental](https://github.com/xymon-monitoring/xymon-experimental/releases)
 publishes it once its test lanes pass. For testing, not production.
 
@@ -306,9 +308,10 @@ The build skips only when the *whole push* is documentation (GitHub matches
 itself save a build — but split them anyway: it keeps history revertable and
 makes a free docs-only push possible.
 
-`rpm/baseversion` exists because upstream's `include/version.h` records the
-*last released* version (`4.3.30`, set in 2019), not what `main` is becoming;
-it goes away if upstream starts bumping `version.h`.
+`rpm/baseversion` names the version `main` is becoming. Upstream's
+`include/version.h` now says it too — `4.3.32-dev` since the 4.3.31 release,
+as xymon's `RELEASING.md` has it bumped after each release — so `baseversion`
+could be read from there; it stays a file here until that is done.
 
 ## Retention
 

@@ -194,7 +194,8 @@ Three kinds of package come from the same spec:
   packaging has moved — the bleeding edge, in the `xymon-snapshot` channel
   (off by default).
 - **Previews** are test builds of an upcoming release from xymon-experimental:
-  `main` plus a milestone's pull requests, mostly unreviewed — in
+  `main` plus the pull requests of a milestone and the unreleased ones before
+  it, mostly unreviewed — in
   `xymon-preview-next` (the next release) and `xymon-preview` (every unreleased milestone),
   both off by default. Enable one, not together with the snapshot channel; the
   README's *Previews* has the commands.

@@ -59,7 +59,10 @@ not here: their state changes every time one moves, and a document only
 changes when someone edits it. That issue is the only copy. It has the
 build and install compensations and the runtime shortfalls, each row naming
 the pull request and what it would add; README *Known gaps* says what each
-shortfall means on a host. A row goes once its pull request merges.
+shortfall means on a host. When its pull request merges, a row is marked
+`merged` and stays until the change that consumes it — for a build feature,
+that waits for the release carrying it, as the stable channel builds the last
+release — and goes with that change.
 
 `tests/docs.sh` and `tests/compensations.sh` read the issue's body, and find
 it through the link above, so that link is the one place its number is
@@ -67,8 +70,8 @@ written.
 
 The spec adopts each feature as it lands, via its own consuming PRs — e.g.
 [xymon-rpm #4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) swaps the
-hand-rolled static `mv`+`ln` loop for `INSTALLSTATICWWWDIR` once xymon#414
-merges.
+hand-rolled static `mv`+`ln` loop for `INSTALLSTATICWWWDIR`: xymon#414 has
+merged, and #4 follows once 4.3.32, which carries it, is released.
 
 `rpm/terabithia/` archives the reference spec and the documentation published
 beside it at <https://repo.terabithia.org/rpms/xymon/>, for provenance only;
