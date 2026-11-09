@@ -77,7 +77,7 @@ URL:            https://github.com/xymon-monitoring/xymon
 %{!?gitref: %global gitref %{version}}
 Source0:        %{url}/archive/%{gitref}/%{name}-%{version}.tar.gz
 
-# Runtime integration files; README.md tables their provenance and why.
+# Runtime integration files; docs/upstream.md tables their provenance and why.
 #   ONE unit for both roles, shipped identically by both packages;
 #   xymonlaunch-run picks the role by which tree is installed:
 Source1:        xymonlaunch.service
@@ -123,7 +123,7 @@ Source16:       clientupdate
 # citation in a spec comment names what would -- to a reader, and to
 # tests/compensations.sh, which would ask for the glob to be deleted the day
 # that pull request merged. docs/roadmap.md *The client's drop-in directories*
-# carries the upstream pull request and the decision still open.
+# carries the upstream pull request and the decision.
 %global client_tree_filelist %{expand:
 %{xymonhome}/client
 %dir %{_sysconfdir}/xymon-client
