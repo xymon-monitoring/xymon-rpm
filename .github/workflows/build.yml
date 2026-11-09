@@ -66,6 +66,10 @@ jobs:
   lint:
     name: lint
     runs-on: ubuntu-latest
+    # A hung mirror held an el8 job at "Enable build repositories" for
+    # hours on 2026-11-09: GitHub's default limit is 6 h. The slowest job
+    # takes about 6 minutes, so 30 fails a hang visibly and leaves room.
+    timeout-minutes: 30
     steps:
       - name: Checkout packaging
         uses: actions/checkout@v6
@@ -100,6 +104,7 @@ jobs:
   rpm:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     container:
       image: ${{ matrix.image }}
       # rpmbuild needs no privileges; running straight in a distro container
@@ -339,6 +344,7 @@ jobs:
   upgrade:
     name: upgrade-${{ matrix.name }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: rpm
     strategy:
       fail-fast: false
@@ -383,6 +389,7 @@ jobs:
   monitoring:
     name: monitoring-${{ matrix.name }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: rpm
     strategy:
       fail-fast: false
@@ -427,6 +434,7 @@ jobs:
   systemd-lifecycle:
     name: systemd-${{ matrix.name }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: rpm
     strategy:
       fail-fast: false
@@ -518,6 +526,7 @@ jobs:
           || startsWith(github.event.inputs.xymon_ref, 'rel-')
           || startsWith(github.event.inputs.xymon_ref, 'preview-'))
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     container:
       image: fedora:44
     permissions:
@@ -762,6 +771,7 @@ jobs:
     needs: publish
     if: needs.publish.result == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       pages: write
       id-token: write
