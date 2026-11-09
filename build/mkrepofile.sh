@@ -61,8 +61,9 @@ gpgcheck=1
 repo_gpgcheck=1
 gpgkey=$gpgkey
 
-# Previews, from xymon-experimental: main plus the pull requests planned
-# for a milestone, most of them not reviewed yet. For testing, not
+# Previews, from xymon-experimental: main plus the pull requests of a
+# milestone and the unreleased ones before it, most of them not reviewed
+# yet. For testing, not
 # production. Enable ONE preview channel, and not together with
 # xymon-snapshot: a snapshot of the same version sorts above a preview, so
 # dnf would install the snapshot.
