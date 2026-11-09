@@ -10,10 +10,11 @@
 Name:           xymon-release
 # A published NEVRA is immutable: bump Version whenever the repo file or
 # the key changes, or the publish step will refuse to ship the new copy.
-Version:        6
+Version:        7
 Release:        1
 Summary:        Xymon repository configuration and signing key
-License:        GPL-2.0-only
+# Its two files, the repo file and the key, are this repository's own.
+License:        GPL-2.0-or-later
 URL:            https://github.com/xymon-monitoring/xymon-rpm
 BuildArch:      noarch
 

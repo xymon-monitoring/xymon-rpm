@@ -2,6 +2,9 @@
 # Xymon RPM package. Built from the xymon-monitoring/xymon tree with no
 # patches at all; fixes belong upstream.
 #
+# This spec file is GPL-2.0-or-later; the License tag below is Xymon's,
+# which the packages contain (see README.md *License*).
+#
 #   release   --define 'baseversion 4.3.31'
 #   snapshot  ... --define 'gitsnapshot 0.202607300915git3a07523.202607301210pab12cd3'
 #
@@ -54,6 +57,8 @@ Name:           xymon
 Version:        %{baseversion}
 Release:        %{xymonrelease}%{?dist}
 Summary:        Xymon network and systems monitor
+# Xymon's: GPL version 2, with an exemption for linking with OpenSSL, and
+# a few BSD-like and public-domain files (its README, "License").
 License:        GPL-2.0-only
 URL:            https://github.com/xymon-monitoring/xymon
 # The file rpmbuild reads is produced by the build -- a git archive of the

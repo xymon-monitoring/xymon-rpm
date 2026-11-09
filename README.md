@@ -460,4 +460,18 @@ settles.
 
 ## License
 
-GPL-2.0-only, matching Xymon.
+This repository's own work — the specs, the build, publish and test
+scripts, the workflows, the documentation and the `rpm/sources/` files
+written here — is GPL-2.0-or-later. The `LICENSE` file is the GPL version 2
+text that applies.
+
+Two things keep their own terms:
+
+- **Xymon itself**, which the packages contain, is GPL version 2 with an
+  explicit exemption for linking with OpenSSL, and includes a few files
+  under BSD-like terms or in the public domain; its `README` and `COPYING`
+  say which. The `License:` tag in `rpm/xymon.spec` describes that, not
+  this repository.
+- **The `rpm/sources/` files copied or adapted from Xymon's `devel` branch**
+  keep Xymon's GPL version 2. [docs/upstream.md](docs/upstream.md) says which
+  files those are.
