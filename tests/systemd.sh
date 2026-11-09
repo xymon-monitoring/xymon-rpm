@@ -127,6 +127,25 @@ check "the unit is active in the server role after the restart" \
 check "the server role protects xymond's children on stop" \
 	"systemctl show -p KillMode --value $unit | grep -qx 'process'"
 
+echo "== the server's pidfiles and control sockets go to /run/xymon =="
+# From 4.3.32 (xymon#219) they follow XYMONRUNDIR, which the spec sets to
+# /run/xymon, labelled for the CGIs; left at its default, the log directory,
+# showgraph cannot reach xymond_rrd's sockets under SELinux. A 4.3.31 build
+# has no XYMONRUNDIR line, and keeps them in the log directory and tmp/.
+rundir=$(sed -n 's/^XYMONRUNDIR="\([^"]*\)".*/\1/p' /etc/xymon/xymonserver.cfg)
+if [ -n "$rundir" ]; then
+	check "xymonserver.cfg sets XYMONRUNDIR to /run/xymon (got $rundir)" \
+		"test '$rundir' = /run/xymon"
+	i=0
+	while [ $i -lt 30 ] && ! { [ -s /run/xymon/xymond.pid ] && ls /run/xymon/rrdctl.* >/dev/null 2>&1; }; do
+		sleep 1; i=$((i + 1))
+	done
+	check "xymond writes its pidfile there" "test -s /run/xymon/xymond.pid"
+	check "and xymond_rrd its control sockets" "ls /run/xymon/rrdctl.* >/dev/null 2>&1"
+else
+	echo "skip     no XYMONRUNDIR in xymonserver.cfg: a build before 4.3.32"
+fi
+
 echo "== a deliberately disabled unit must stay disabled across a swap =="
 systemctl disable --now "$unit" >/dev/null 2>&1 || :
 
