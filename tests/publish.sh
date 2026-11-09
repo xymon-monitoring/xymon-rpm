@@ -234,6 +234,12 @@ check "a 0.0.1 release in the stable channel moves it on to 0.0.2" \
 	 test -z \"\$(find $repo/xymon-preview-next -name '$n1')\""
 check "the stable channel filed the release" \
 	"find $repo/xymon -name '$rel' | grep -q ."
+check "and the released 0.0.1's preview left xymon-preview" \
+	"test -z \"\$(find $repo/xymon-preview -name '$n1')\""
+check "while the unreleased 0.0.2's stayed" \
+	"find $repo/xymon-preview -name '$n2' | grep -q ."
+check "the drop says why" \
+	"grep -q 'its milestone is released' $work/next2.log"
 rm -f "$art/$n1" "$art/$n2" "$art/$rel"
 
 echo "== reset republishes from this run alone =="
