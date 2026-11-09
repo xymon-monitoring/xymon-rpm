@@ -67,7 +67,7 @@ gpgkey=$gpgkey
 # xymon-snapshot: a snapshot of the same version sorts above a preview, so
 # dnf would install the snapshot.
 #
-# This one holds the 2 newest previews of every milestone: plain
+# This one holds the 2 newest previews of every unreleased milestone: plain
 # "dnf install xymon" takes the newest milestone, "dnf install
 # xymon-4.3.32" that one.
 #

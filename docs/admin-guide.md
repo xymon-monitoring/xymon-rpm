@@ -58,8 +58,9 @@ The service and its role drop-in, on both:
 ```
 
 Nothing writes inside `/usr/lib`: symlinks redirect everything mutable into
-`/etc`, `/var` and `/tmp`. `/run/xymon` is created by tmpfiles but unused —
-see the README's known gaps.
+`/etc`, `/var` and `/tmp`. `/run/xymon`, created by tmpfiles, holds the
+server's pidfiles and `xymond_rrd`'s control sockets from 4.3.32; a 4.3.31
+server keeps them in `/var/log/xymon` and `/var/lib/xymon/tmp`.
 
 ## Running the service
 
@@ -194,7 +195,7 @@ Three kinds of package come from the same spec:
   (off by default).
 - **Previews** are test builds of an upcoming release from xymon-experimental:
   `main` plus a milestone's pull requests, mostly unreviewed — in
-  `xymon-preview-next` (the next release) and `xymon-preview` (every milestone),
+  `xymon-preview-next` (the next release) and `xymon-preview` (every unreleased milestone),
   both off by default. Enable one, not together with the snapshot channel; the
   README's *Previews* has the commands.
 - **Releases** are cut from a `rel-*` tag — the stable channel, enabled by the

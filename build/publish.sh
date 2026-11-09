@@ -8,10 +8,10 @@
 # that target's .rpm files. <repo-dir> is a checkout of the published
 # repository, which is updated in place; the caller commits and pushes it.
 #
-# Existing packages are kept. A dnf repository is not a snapshot of the
-# latest build -- users pin versions, roll back, and install older releases,
-# so removing a published package breaks them. Only the metadata is
-# regenerated.
+# The stable channel's packages are kept. A dnf repository is not a
+# snapshot of the latest build -- users pin versions, roll back, and install
+# older releases, so removing a published package breaks them. The snapshot
+# and preview channels are pre-releases, bounded by the retention below.
 
 set -euo pipefail
 
@@ -55,7 +55,7 @@ arch_for() {
 
 # Empty the snapshot channel before this build is folded in, so the tree
 # holds exactly what was just built. Pruning cannot do this: retention
-# keeps every packaging rebuild of one upstream commit as a single build.
+# keeps the newest packaging rebuild of each recent upstream commit.
 # Snapshot only -- the stable channel is what people pin to.
 if [ "${XYMON_SNAPSHOT_RESET:-}" = "1" ]; then
 	echo "== resetting the snapshot channel =="

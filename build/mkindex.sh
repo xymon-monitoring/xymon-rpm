@@ -95,11 +95,9 @@ relrpm=${relrpm:-xymon-release-1-1.noarch.rpm}
 	fetch <a href="xymon.repo">xymon.repo</a> into
 	<code>/etc/yum.repos.d/</code> instead.</p>
 
-	<p><strong>There has been no release yet.</strong> The stable channel
-	the release package enables answers, but holds no package &mdash; so the
-	second command finds nothing until a snapshot or preview channel is enabled too,
-	as <a href="#channels">Channels</a> below describes. That step goes once
-	the first release is out.</p>
+	<p>On EL, enable EPEL first (<code>dnf install epel-release</code>): the
+	server needs <code>fping</code>, which only EPEL carries there. Fedora has
+	everything in its own repositories.</p>
 
 	<p>Supported: EL8, EL9, EL10 and Fedora 43, 44 on x86_64.</p>
 
@@ -112,7 +110,7 @@ relrpm=${relrpm:-xymon-release-1-1.noarch.rpm}
 	  <tr><td><a href="xymon-preview/">xymon-preview/</a></td>
 	      <td>previews of each unreleased milestone, from
 	      <a href="https://github.com/xymon-monitoring/xymon-experimental/releases">xymon-experimental</a>
-	      &mdash; the 2 newest of every milestone, disabled by default;
+	      &mdash; the 2 newest of every unreleased milestone, disabled by default;
 	      <code>dnf install xymon-4.3.32</code> picks a milestone</td></tr>
 	  <tr><td><a href="xymon-preview-next/">xymon-preview-next/</a></td>
 	      <td>the previews of the next release alone &mdash; disabled by

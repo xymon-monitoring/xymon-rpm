@@ -24,7 +24,8 @@ labeled.
 | `/var/lib/xymon/www`, `/usr/share/xymon` | `httpd_sys_content_t` | httpd will not serve the pages |
 | `www/rep`, `www/snap` | `httpd_sys_rw_content_t` | on-demand reports and snapshots cannot be written |
 | `/var/lib/xymon/rrd` | `httpd_sys_content_t` | graphs cannot read their data |
-| `/var/lib/xymon/tmp` | `httpd_sys_rw_content_t` | graphs cannot flush pending updates |
+| `/var/lib/xymon/tmp` | `httpd_sys_rw_content_t` | graphs cannot flush pending updates (up to 4.3.31) |
+| `/run/xymon` | `httpd_sys_rw_content_t` | graphs cannot flush pending updates (from 4.3.32, where `xymond_rrd`'s sockets moved) |
 | TCP port 1984 | `xymon_port_t` | the CGIs cannot query xymond |
 
 The client package labels `client/bin` itself. Erasing either package removes

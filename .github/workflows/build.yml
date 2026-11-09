@@ -45,7 +45,7 @@ on:
         default: ''
       # Empties the snapshot channel before publishing, so it ends up
       # holding only this run's packages. Retention alone cannot do that:
-      # it keeps every packaging rebuild of one upstream commit together.
+      # it keeps the newest packaging rebuild of each recent upstream commit.
       snapshot_reset:
         description: 'Set to 1 to drop all published snapshots and republish from this run'
         required: false
@@ -494,8 +494,8 @@ jobs:
     # shellcheck could stop a publish -- because a release held by a lint
     # is recoverable in a way a half-published repository is not.
     needs: [lint, rpm, systemd-lifecycle, upgrade, monitoring]
-    # Publish only genuine builds of xymon's main branch or of a release
-    # tag.
+    # Publish only genuine builds of xymon's main branch, of a release tag,
+    # or of a xymon-experimental preview.
     #
     # Never from a pull request against this repository: a fork must not be
     # able to reach the signing key or write to the published tree. And
