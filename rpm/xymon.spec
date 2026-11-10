@@ -479,8 +479,9 @@ ln -sf %{xymonhome}/server/bin/xymoncmd %{buildroot}%{_bindir}/xymoncmd
 ln -sf %{xymonhome}/server/bin/xymonlaunch %{buildroot}%{_sbindir}/xymonlaunch
 
 # The build generates this into Xymon's own etc, which no web server
-# reads; move it where httpd does. xymon#412 (INSTALLHTTPDCONFDIR) would
-# let the build put it there directly.
+# reads; move it where httpd does. Policy, not an upstream gap: where a
+# web server reads its drop-ins, and whether it loads one by itself, is
+# each distribution's business (Debian stages it for dh_apache2 instead).
 install -d %{buildroot}%{_sysconfdir}/httpd/conf.d
 mv %{buildroot}%{_sysconfdir}/xymon/xymon-apache.conf \
    %{buildroot}%{_sysconfdir}/httpd/conf.d/xymon-apache.conf
