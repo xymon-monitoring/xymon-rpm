@@ -166,6 +166,71 @@ tr '\0' ' ' < /proc/"$(systemctl show -p MainPID --value xymonlaunch)"/cmdline; 
   embedded client against `/etc/xymon-client/xymonclient.cfg`. That is why a
   server's `XYMSRV` stays `127.0.0.1`. Do not "fix" it.
 
+## Another web server instead of Apache
+
+The packages set up Apache: httpd loads `/etc/httpd/conf.d/xymon-apache.conf`
+as soon as it runs. From 4.3.32 (snapshots once
+[xymon#431](https://github.com/xymon-monitoring/xymon/pull/431) is merged),
+the server package also ships examples for lighttpd, nginx and caddy in
+`/usr/lib/xymon/server/examples/`, with this package's paths. Nothing reads
+them; copy the one you want. The steps below were tested on Fedora 44 and
+AlmaLinux 10, where lighttpd, caddy and fcgiwrap come from EPEL: the pages,
+a CGI, and a password-protected CGI refusing no login and accepting one.
+
+First, for any of the three:
+
+```sh
+# The CGIs keep running as apache, as under httpd, so they can write the
+# reports in rep/ and snap/. nginx and caddy cannot run CGIs themselves;
+# fcgiwrap runs them, here on /run/fcgiwrap/fcgiwrap-apache.sock.
+dnf install fcgiwrap                              # nginx and caddy only
+systemctl enable --now fcgiwrap@apache.socket     # nginx and caddy only
+
+# The web server's user joins the apache group: to reach that socket, to
+# read xymonpasswd, and for lighttpd, which runs the CGIs itself, to write
+# the reports. xymonpasswd ships readable by apache alone.
+usermod -aG apache nginx                          # or lighttpd, or caddy
+chmod 0640 /etc/xymon/xymonpasswd
+```
+
+**nginx.** The file is `location` blocks, and `/etc/nginx/default.d/` is read
+inside nginx's default server. For another server, include the file inside
+that `server { }` block instead.
+
+```sh
+sed 's|unix:/run/fcgiwrap.socket|unix:/run/fcgiwrap/fcgiwrap-apache.sock|' \
+  /usr/lib/xymon/server/examples/xymon-nginx.conf > /etc/nginx/default.d/xymon.conf
+nginx -t && systemctl enable --now nginx
+```
+
+**lighttpd.** It runs the CGIs itself, so it needs no fcgiwrap. Its main
+config reads only the files it names, so name this one:
+
+```sh
+cp /usr/lib/xymon/server/examples/xymon-lighttpd.conf /etc/lighttpd/conf.d/xymon.conf
+echo 'include conf_dir + "/conf.d/xymon.conf"' >> /etc/lighttpd/lighttpd.conf
+lighttpd -tt -f /etc/lighttpd/lighttpd.conf && systemctl enable --now lighttpd
+```
+
+**caddy.** The file holds directives for a site block, but the Caddyfile's
+own `import Caddyfile.d/*.caddyfile` sits outside any block, so import it
+from inside the `http:// { }` block. caddy cannot read `xymonpasswd`: the
+password-protected CGIs take a bcrypt hash written in the file, and stay
+locked until you put yours there.
+
+```sh
+sed 's|unix//run/fcgiwrap.socket|unix//run/fcgiwrap/fcgiwrap-apache.sock|' \
+  /usr/lib/xymon/server/examples/xymon-caddy.conf > /etc/caddy/xymon.caddy
+caddy hash-password       # put the output on the "admin" line of /etc/caddy/xymon.caddy
+# add "import xymon.caddy" as the first line inside "http:// {" in /etc/caddy/Caddyfile
+caddy validate --config /etc/caddy/Caddyfile && systemctl enable --now caddy
+```
+
+Only one of them, or httpd, can listen on port 80. The firewall step under
+*Server tasks* applies to each. SELinux was off in these tests: under
+enforcing, this packaging's policy covers httpd running the CGIs, not nginx
+or caddy reaching fcgiwrap.
+
 ## Changing a host's role
 
 ```sh
