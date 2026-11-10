@@ -180,6 +180,16 @@ check "rep and snap are writable state in /var/cache, through the www symlinks" 
 	 test -d /var/cache/xymon/www/snap -a ! -L /var/cache/xymon/www/snap &&
 	 test -L /var/lib/xymon/www/rep -a -L /var/lib/xymon/www/snap"
 
+# report.cgi and snapshot.cgi run as apache and write there. Being a
+# directory is not enough: 4.3.31-1 shipped both 0755 xymon:xymon, the
+# whole-tree %attr overriding theirs, and every report and snapshot failed.
+# Written through the www symlinks, the paths the CGIs use. runuser is
+# util-linux, which a minimal image may lack; never fatally, as above.
+command -v runuser >/dev/null 2>&1 || dnf -y install util-linux >/dev/null 2>&1 || :
+check "apache can write a report and a snapshot" \
+	"runuser -u apache -- sh -c 'touch /var/lib/xymon/www/rep/.probe /var/lib/xymon/www/snap/.probe &&
+	 rm -f /var/lib/xymon/www/rep/.probe /var/lib/xymon/www/snap/.probe'"
+
 # Whether httpd actually serves any of this cannot be read off the
 # filesystem. The symlinks cross from the www tree into /usr/share, and
 # httpd 2.4 denies every path no Directory block grants -- so the
