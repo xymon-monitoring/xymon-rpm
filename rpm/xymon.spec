@@ -532,35 +532,14 @@ touch %{buildroot}%{_sysconfdir}/xymon/xymongroups
 # %%doc cannot take a %%{SOURCEn} path directly.
 cp -p %{SOURCE9} %{SOURCE10} .
 
-# Development files. The build installs neither headers nor the static
-# libraries, so take them from the build tree. include/ and lib/ must stay
-# siblings: libxymon.h pulls in 52 further headers as "../lib/...", so a
-# flat include directory would break on the first #include.
-install -d %{buildroot}%{_includedir}/xymon/include \
-           %{buildroot}%{_includedir}/xymon/lib \
-           %{buildroot}%{_libdir}/xymon
-install -pm 0644 include/*.h %{buildroot}%{_includedir}/xymon/include/
-install -pm 0644 lib/*.h     %{buildroot}%{_includedir}/xymon/lib/
-install -pm 0644 lib/*.a     %{buildroot}%{_libdir}/xymon/
-
-# xymon.pc: ship a pkg-config file with -devel, written by hand. The one
-# install-devel generates (xymon#410) is close but not the same: its prefix is
-# Xymon's home, unused since includedir and libdir are absolute, and its
-# Libs.private has no -lz, which nothing in lib/ needs. Shipping it instead
-# would drop -lz here.
-mkdir -p %{buildroot}%{_libdir}/pkgconfig
-cat > %{buildroot}%{_libdir}/pkgconfig/xymon.pc <<'PC'
-prefix=%{_prefix}
-includedir=%{_includedir}/xymon
-libdir=%{_libdir}/xymon
-
-Name: xymon
-Description: Xymon monitoring system libraries and headers
-Version: %{version}
-Cflags: -I${includedir}/include
-Libs: -L${libdir} -lxymon -lxymoncomm -lxymontime
-Libs.private: -lpcre2-8 -lssl -lcrypto -lz -ltirpc -lrrd
-PC
+# Development files: the headers, the static libraries and xymon.pc, through
+# Xymon's opt-in install-devel target, which keeps include/ and lib/ siblings
+# because libxymon.h reaches its headers as "../lib/...". PKGBUILD skips its
+# $XYMONHOME/sdk link, which no file list here would own.
+%{__make} install-devel INSTALLROOT=%{buildroot} PKGBUILD=1 \
+    INSTALLINCDIR=%{_includedir}/xymon \
+    INSTALLLIBDIR=%{_libdir}/xymon \
+    INSTALLPCDIR=%{_libdir}/pkgconfig
 
 # Diagnostic tools. The build makes them in its `all` target, but only the
 # opt-in install-tools target installs them, so %%make_install above does
