@@ -54,21 +54,6 @@ then port 1984 stays unlabeled and the CGIs cannot reach xymond.
   control sockets.
 - **`httpd_sys_script_t` → `var_log_t` read**: the ack/notification CGIs.
 - **`ping_t`**: fping's temp files.
-- **`xymon_httpd_relay`, a boolean, off by default**: lets httpd itself
-  (`httpd_t`), not a CGI, connect to a daemon's Unix socket. It is for the
-  [xymonapi](https://github.com/xymon-monitoring/xymon-plugins) plugin, whose
-  web server snippets proxy `/xymon/api/` to the API's relay socket,
-  `/run/xymon/xymonapi/relay.sock`; without it Apache gets an AVC and
-  answers 503. The API runs under xymonlaunch, as `unconfined_service_t`
-  like every daemon, so the rule cannot name the API alone: switched on, it
-  lets httpd connect to the stream sockets of every unconfined daemon on the
-  host, which is why it is off unless the plugin is used:
-
-  ```sh
-  setsebool -P xymon_httpd_relay on
-  ```
-
-  Naming the API alone would need a domain of its own for it.
 
 `%post` loads the `targeted` and `minimum` modules the host has, best-effort.
 A container, or a host with SELinux disabled, just skips it.
@@ -98,8 +83,7 @@ The `/run/xymon` label came later
 and did not apply until the rule named it `/var/run/xymon`: the policy makes
 `/run` equivalent to `/var/run`, and `semanage` refuses a rule under `/run`,
 an error the scriptlet hides. Checked enforcing on AlmaLinux 9.8 since:
-`/run/xymon` and what is made in it take `httpd_sys_rw_content_t`, and with
-`xymon_httpd_relay` on, Apache reaches the xymonapi relay socket. CI compiles the modules on every target but runs nothing enforcing. So RHEL
+`/run/xymon` and what is made in it take `httpd_sys_rw_content_t`. CI compiles the modules on every target but runs nothing enforcing. So RHEL
 itself, and any release not listed, is still worth a report:
 
 ```sh
@@ -121,7 +105,7 @@ Report AVCs, and which action triggered them, as an issue on
 ## Known issue
 
 The module's `httpd_cache_t` rules are for `rep` and `snap` in
-`/var/cache/xymon` (`rpm/sources/xymon.te:14-16`, `60-62`), but nothing gives
+`/var/cache/xymon` (`rpm/sources/xymon.te:9-11`, `53-55`), but nothing gives
 that type: `%posttrans` labels them `httpd_sys_rw_content_t`, as they were
 under the `www` tree, which is what has been validated enforcing. The rules
 are unused and should go.

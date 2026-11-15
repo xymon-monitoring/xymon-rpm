@@ -6,11 +6,6 @@
 ## Read to var_log_t:file needed for acknowledgements and notifications.cgi's to work
 ## xymon_port_t is 1984 (%posttrans labels it): the CGIs query xymond there, and the
 ##	only other route is the host-wide httpd_can_network_connect boolean
-## xymon_httpd_relay (off by default) lets httpd itself, not a CGI, connect to a
-##	Unix socket of a daemon: the xymonapi plugin's relay socket, which the web
-##	server proxies /xymon/api/ to, in /run/xymon. The daemons all run as
-##	unconfined_service_t, so it reaches every unconfined daemon's stream
-##	sockets: for an admin who runs the plugin, setsebool -P xymon_httpd_relay on
 ## httpd_cache_t is for /rep and /snap in /var/cache/xymon/
 ##	add write/unlink/rename to httpd_cache_t:file
 ##	add read to httpd_cache_t:lnk_file
@@ -33,8 +28,6 @@ require {
 	type initrc_state_t;
 	type initrc_var_run_t;
 	type httpd_sys_script_t;
-	type httpd_t;
-	type httpd_sys_rw_content_t;
 	type unconfined_service_t;
 	attribute port_type;
 	class tcp_socket name_connect;
@@ -61,13 +54,6 @@ allow httpd_sys_script_t httpd_cache_t:dir manage_dir_perms;
 allow httpd_sys_script_t httpd_cache_t:file { create_file_perms write unlink rename };
 allow httpd_sys_script_t httpd_cache_t:lnk_file { create read };
 allow httpd_sys_script_t var_log_t:file { open read };
-
-#============= httpd_t ==============
-gen_tunable(xymon_httpd_relay, false)
-tunable_policy(`xymon_httpd_relay',`
-	allow httpd_t unconfined_service_t:unix_stream_socket connectto;
-	allow httpd_t httpd_sys_rw_content_t:sock_file write;
-')
 
 #============= ping_t ==============
 allow ping_t { tmp_t initrc_tmp_t var_lib_t }:file { getattr write };
