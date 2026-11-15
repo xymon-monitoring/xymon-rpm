@@ -94,9 +94,12 @@ enforcing VMs, with the `targeted` policy unless noted:
   scriptlet fails under `minimum` enforcing.
 
 The `/run/xymon` label came later
-([xymon-rpm#121](https://github.com/xymon-monitoring/xymon-rpm/pull/121)) and
-has not been checked enforcing. It is the same type as `tmp/`, which
-xymon-rpm#103 validated. CI compiles the modules on every target but runs nothing enforcing. So RHEL
+([xymon-rpm#121](https://github.com/xymon-monitoring/xymon-rpm/pull/121)),
+and did not apply until the rule named it `/var/run/xymon`: the policy makes
+`/run` equivalent to `/var/run`, and `semanage` refuses a rule under `/run`,
+an error the scriptlet hides. Checked enforcing on AlmaLinux 9.8 since:
+`/run/xymon` and what is made in it take `httpd_sys_rw_content_t`, and with
+`xymon_httpd_relay` on, Apache reaches the xymonapi relay socket. CI compiles the modules on every target but runs nothing enforcing. So RHEL
 itself, and any release not listed, is still worth a report:
 
 ```sh

@@ -680,6 +680,10 @@ done
 #    reads the RRD files and writes xymond_rrd's rrdctl sockets to flush
 #    them -- in tmp/ up to 4.3.31, in XYMONRUNDIR from 4.3.32.
 #  - port 1984 as xymon_port_t, which the module lets only the CGIs reach.
+# /run/xymon is named /var/run/xymon: the policy makes /run equivalent to
+# /var/run, and semanage refuses a rule under /run ("conflicts with
+# equivalency rule"); the label then applies to /run/xymon, as matchpathcon
+# shows.
 # Best-effort by design -- semanage only exists where the SELinux tooling
 # is installed, and a container or disabled-SELinux host needs none of
 # this. An upgrade re-adds rules it already has, which semanage refuses.
@@ -700,7 +704,7 @@ if command -v semanage >/dev/null 2>&1; then
     semanage fcontext -a -t httpd_sys_script_exec_t '%{xymonhome}/server/bin/cgiwrap' 2>/dev/null || :
     semanage fcontext -a -t httpd_sys_content_t '%{_sharedstatedir}/xymon/rrd(/.*)?'    2>/dev/null || :
     semanage fcontext -a -t httpd_sys_rw_content_t '%{_sharedstatedir}/xymon/tmp(/.*)?' 2>/dev/null || :
-    semanage fcontext -a -t httpd_sys_rw_content_t '/run/xymon(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_rw_content_t '/var/run/xymon(/.*)?' 2>/dev/null || :
     restorecon -R %{xymonhome}/cgi-bin %{xymonhome}/cgi-secure \
         %{xymonhome}/server/bin %{xymonhome}/client/bin \
         %{_sharedstatedir}/xymon/www %{_sharedstatedir}/xymon/rrd \
@@ -764,7 +768,7 @@ if [ $1 -eq 0 ] && command -v semanage >/dev/null 2>&1; then
     semanage fcontext -d '%{xymonhome}/server/bin/cgiwrap'         2>/dev/null || :
     semanage fcontext -d '%{_sharedstatedir}/xymon/rrd(/.*)?'      2>/dev/null || :
     semanage fcontext -d '%{_sharedstatedir}/xymon/tmp(/.*)?'      2>/dev/null || :
-    semanage fcontext -d '/run/xymon(/.*)?'                         2>/dev/null || :
+    semanage fcontext -d '/var/run/xymon(/.*)?'                     2>/dev/null || :
     # Shared with the client package: in a demotion it is installed by
     # now (see %%preun), and its client/bin still needs the rule.
     if [ ! -e %{clientconf} ]; then
