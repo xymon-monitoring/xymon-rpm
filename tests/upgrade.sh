@@ -139,10 +139,10 @@ check "the added task survived" \
 	"grep -q '^\[mycheck\]' /etc/xymon-client/clientlaunch.cfg"
 
 check "the custom gif survived" \
-	"test -f /usr/share/xymon/gifs/mine.gif"
+	"test -f /usr/share/xymon/www/gifs/mine.gif"
 
 check "the nested help directory survived" \
-	"grep -qx 'local note' /usr/share/xymon/help/mydocs/note.txt"
+	"grep -qx 'local note' /usr/share/xymon/www/help/mydocs/note.txt"
 
 check "the report moved to /var/cache" \
 	"grep -qx 'old report' /var/cache/xymon/www/rep/r1/index.html"
@@ -164,7 +164,7 @@ check "client config is in /etc, reachable the upstream way" \
 
 for d in gifs help menu; do
 	check "www/$d points at the static tree" \
-		"readlink /var/lib/xymon/www/$d | grep -qx /usr/share/xymon/$d"
+		"readlink /var/lib/xymon/www/$d | grep -qx /usr/share/xymon/www/$d"
 done
 
 for d in rep snap; do
