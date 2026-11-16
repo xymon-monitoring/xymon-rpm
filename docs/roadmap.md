@@ -58,6 +58,23 @@ to a GitHub issue.
   Three things remain, and only one is a decision:
   - `%changelog` is empty because the version is derived; Fedora wants entries.
     One written at each release satisfies it without touching the model.
+    What goes in it is the package's history, not Xymon's: upstream's
+    `Changes` and `RELEASENOTES` already ship as `%doc`. Two ways to fill it:
+    - **In Fedora, `%autochangelog`** (rpmautospec), which Koji expands from
+      the dist-git commit log. It is the tool Fedora expects, and it fits
+      dist-git: a repository holding the spec at its root, where every
+      commit is a packaging change and the version is written in the spec.
+    - **Here, not `%autochangelog`.** Tried on 2026-11-16 with rpmautospec
+      0.8.4 on Fedora 44 (`rpmautospec generate-changelog rpm/xymon.spec`,
+      the spec committed with `%autochangelog`): one generic entry at
+      `4.3.31-1`, the spec's default, and no history. Whatever the cause in
+      that run, the model does not fit: the spec sits in `rpm/` beside the
+      CI, tests and docs, so commits are not all packaging changes; and the
+      version and release are injected at build (`baseversion`,
+      `gitsnapshot`), so the history cannot see them. If entries are wanted
+      before a submission, a release build (`rel-X`) can write one from the
+      titles of the pull requests merged since the previous release, which
+      CONTRIBUTING already asks to read as a line each.
   - `Conflicts: xymon-client` between subpackages is what a review pushes back
     on hardest, and it is
     [deployment-strategies.md](deployment-strategies.md) rather than an
