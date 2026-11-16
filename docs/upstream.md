@@ -25,8 +25,12 @@ modification ever happens between clone and build. It is made with the recipe
 of upstream's release workflow (`tar.umask=0022`, `gzip -n -9`), so for a
 release it is byte for byte the tarball the release publishes, and matches its
 `.sha256`. A release build checks it: it fetches the release's `.sha256` and
-fails if the hashes differ, or if it cannot fetch it; a release published
-before that recipe, which has no `.sha256`, gets a warning instead.
+fails if the hashes differ, or if it cannot fetch it. A release from before
+4.3.31, the first published with a `.sha256`, has none, and gets a warning
+instead; from 4.3.31 on, a missing `.sha256` fails too -- the release is not
+published yet, its workflow running on the tag push while the nightly
+dispatch builds as soon as the tag exists -- and the next night's dispatch
+tries again.
 
 ## Where the files in `rpm/sources/` come from
 

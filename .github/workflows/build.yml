@@ -282,12 +282,20 @@ jobs:
           # fails here instead of shipping an SRPM the release cannot vouch
           # for. A release published before the reproducible recipe has no
           # .sha256: there is nothing to compare, and it says so.
-          if [ -z "${{ steps.ver.outputs.snapshot }}" ]; then
-            tag="${{ steps.ver.outputs.gitref }}"
+          # A release is a rel-X tag: "Compute version" gives every exact
+          # tag an empty snapshot part, and only a rel-X one has a release.
+          tag="${{ steps.ver.outputs.gitref }}"
+          if [ -z "${{ steps.ver.outputs.snapshot }}" ] && [ "${tag#rel-}" != "$tag" ]; then
             asset="xymon-${{ steps.ver.outputs.base }}.tar.gz"
             ours=$(sha256sum ~/rpmbuild/SOURCES/"$asset" | cut -d' ' -f1)
-            # 404: the release has no .sha256. Anything else but 200 -- the
-            # network, GitHub -- is a check that did not happen, and fails.
+            # 404: no .sha256 -- expected only of a release from before the
+            # reproducible recipe, which 4.3.31 is the first to publish. From
+            # 4.3.31 on it means the release is not published yet (its
+            # workflow runs on the tag push, and a nightly build is
+            # dispatched as soon as the tag exists) or failed: that fails
+            # too, and the next night's dispatch retries. Anything else but
+            # 200 -- the network, GitHub -- is a check that did not happen,
+            # and fails.
             code=$(curl -sSL --retry 3 -o /tmp/release.sha256 -w '%{http_code}' \
               "https://github.com/xymon-monitoring/xymon/releases/download/${tag}/${asset}.sha256") || code=000
             case $code in
@@ -300,7 +308,11 @@ jobs:
               echo "::notice::${asset} matches release ${tag}'s .sha256 (${ours})"
               ;;
             404)
-              echo "::warning::release ${tag} publishes no ${asset}.sha256: the tarball is not checked against it"
+              if [ "$(printf '%s\n' 4.3.31 "${{ steps.ver.outputs.base }}" | sort -V | head -n 1)" = 4.3.31 ]; then
+                echo "::error::release ${tag} publishes no ${asset}.sha256 (yet): the tarball is not checked"
+                exit 1
+              fi
+              echo "::warning::release ${tag}, from before 4.3.31, publishes no ${asset}.sha256: the tarball is not checked against it"
               ;;
             *)
               echo "::error::could not fetch release ${tag}'s ${asset}.sha256 (HTTP ${code}): the tarball is not checked"
