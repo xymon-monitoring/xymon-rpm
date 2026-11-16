@@ -145,7 +145,8 @@ Source16:       clientupdate
 # rpm will not replace a directory with a symlink -- the transaction
 # fails on the existing directory -- so layout moves must happen before
 # anything is unpacked. Two need it: client/etc -> /etc/xymon-client, and
-# the static www trees -> %%{_datadir}/xymon/www. Contents are carried over,
+# the static www trees -> %%{_datadir}/xymon/www, from www/ itself or from
+# the flat %%{_datadir}/xymon of the layout before. Contents are carried over,
 # so an admin's edited xymonclient.cfg or a custom gif survives; whatever
 # the package ships is overwritten a moment later anyway.
 %global migrate_tree %{expand:
@@ -619,6 +620,11 @@ movetree("%{xymonhome}/client/etc", "%{_sysconfdir}/xymon-client")
 movetree("%{_sharedstatedir}/xymon/www/gifs", "%{_datadir}/xymon/www/gifs")
 movetree("%{_sharedstatedir}/xymon/www/help", "%{_datadir}/xymon/www/help")
 movetree("%{_sharedstatedir}/xymon/www/menu", "%{_datadir}/xymon/www/menu")
+-- The flat layout before it, %{_datadir}/xymon/{gifs,help,menu}: what an
+-- admin added there follows into www/.
+movetree("%{_datadir}/xymon/gifs", "%{_datadir}/xymon/www/gifs")
+movetree("%{_datadir}/xymon/help", "%{_datadir}/xymon/www/help")
+movetree("%{_datadir}/xymon/menu", "%{_datadir}/xymon/www/menu")
 movetree("%{_sharedstatedir}/xymon/www/rep", "%{_localstatedir}/cache/xymon/www/rep")
 movetree("%{_sharedstatedir}/xymon/www/snap", "%{_localstatedir}/cache/xymon/www/snap")
 
