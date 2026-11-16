@@ -21,7 +21,10 @@ and it defaults to `main`. It accepts:
   where previews are made.
 
 The source tarball is `git archive` of the checked-out `HEAD`, so no tree
-modification ever happens between clone and build.
+modification ever happens between clone and build. It is made with the recipe
+of upstream's release workflow (`tar.umask=0022`, `gzip -n -9`), so for a
+release it is byte for byte the tarball the release publishes, and matches its
+`.sha256`.
 
 ## Where the files in `rpm/sources/` come from
 
