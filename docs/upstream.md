@@ -24,7 +24,9 @@ The source tarball is `git archive` of the checked-out `HEAD`, so no tree
 modification ever happens between clone and build. It is made with the recipe
 of upstream's release workflow (`tar.umask=0022`, `gzip -n -9`), so for a
 release it is byte for byte the tarball the release publishes, and matches its
-`.sha256`.
+`.sha256`. A release build checks it: it fetches the release's `.sha256` and
+fails if the hashes differ, or if it cannot fetch it; a release published
+before that recipe, which has no `.sha256`, gets a warning instead.
 
 ## Where the files in `rpm/sources/` come from
 

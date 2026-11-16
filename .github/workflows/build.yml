@@ -276,6 +276,38 @@ jobs:
               --prefix="xymon-${{ steps.ver.outputs.base }}/" HEAD \
             | gzip -n -9 > ~/rpmbuild/SOURCES/xymon-${{ steps.ver.outputs.base }}.tar.gz
           sha256sum ~/rpmbuild/SOURCES/xymon-${{ steps.ver.outputs.base }}.tar.gz
+          # On a release, check it rather than trust it: the tarball must be
+          # the one the release publishes, which its .sha256 names. A change
+          # to either recipe, or a gzip that compresses differently, then
+          # fails here instead of shipping an SRPM the release cannot vouch
+          # for. A release published before the reproducible recipe has no
+          # .sha256: there is nothing to compare, and it says so.
+          if [ -z "${{ steps.ver.outputs.snapshot }}" ]; then
+            tag="${{ steps.ver.outputs.gitref }}"
+            asset="xymon-${{ steps.ver.outputs.base }}.tar.gz"
+            ours=$(sha256sum ~/rpmbuild/SOURCES/"$asset" | cut -d' ' -f1)
+            # 404: the release has no .sha256. Anything else but 200 -- the
+            # network, GitHub -- is a check that did not happen, and fails.
+            code=$(curl -sSL --retry 3 -o /tmp/release.sha256 -w '%{http_code}' \
+              "https://github.com/xymon-monitoring/xymon/releases/download/${tag}/${asset}.sha256") || code=000
+            case $code in
+            200)
+              theirs=$(cut -d' ' -f1 /tmp/release.sha256)
+              [ "$ours" = "$theirs" ] || {
+                echo "::error::${asset} is ${ours}, but release ${tag} publishes ${theirs}"
+                exit 1
+              }
+              echo "::notice::${asset} matches release ${tag}'s .sha256 (${ours})"
+              ;;
+            404)
+              echo "::warning::release ${tag} publishes no ${asset}.sha256: the tarball is not checked against it"
+              ;;
+            *)
+              echo "::error::could not fetch release ${tag}'s ${asset}.sha256 (HTTP ${code}): the tarball is not checked"
+              exit 1
+              ;;
+            esac
+          fi
           cp rpm/sources/* ~/rpmbuild/SOURCES/
 
       # A lua scriptlet with a syntax error (lua comments are --, not #)

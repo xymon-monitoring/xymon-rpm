@@ -69,7 +69,8 @@ its end.
    *Versioning*)
 5. **create source tarball** — `git archive` of the checked-out HEAD (the
    "no patches" rule), made as upstream's release tarball is, so a release's
-   SRPM carries that tarball
+   SRPM carries that tarball; on a release, checked against the release's
+   `.sha256`, the build failing if they differ
 6. **parse the spec** — `rpmspec -P` (a lua `#` comment fails this)
 7. **install builddeps**, **build** — `rpmbuild`
 8. **test the built rpms** — `vercmp`, `packages`, `publish`, `install`
