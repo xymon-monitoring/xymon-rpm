@@ -150,7 +150,8 @@ xymon#414 removes.
 Each hand-made move has an opt-in upstream equivalent, no-op by default:
 `INSTALLSTATICWWWDIR` + `XYMONSTATICWWWDIR`
 ([xymon#414](https://github.com/xymon-monitoring/xymon/pull/414)) for the
-static three, merged for 4.3.32 and not yet adopted here, and
+static three, merged for 4.3.32 and set here, the hand-made move kept as a
+fallback while the stable channel builds 4.3.31, and
 `XYMONCACHEWWWDIR`
 ([xymon#443](https://github.com/xymon-monitoring/xymon/pull/443)) for
 `rep`/`snap`, merged for 4.3.32 and set in the shipped `xymonserver.cfg`;

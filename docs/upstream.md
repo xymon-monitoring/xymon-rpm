@@ -89,9 +89,11 @@ through the link above. So that link is the one place its number is written.
 
 The spec adopts each feature as it lands, in a pull request of its own. For
 example,
-[xymon-rpm #4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) swaps the
-hand-rolled static `mv`+`ln` loop for `INSTALLSTATICWWWDIR`. xymon#414 has
-merged, and #4 follows once 4.3.32, which carries it, is released.
+[xymon-rpm #4](https://github.com/xymon-monitoring/xymon-rpm/pull/4) sets
+`INSTALLSTATICWWWDIR` (xymon#414, from 4.3.32), and keeps the hand-rolled
+static `mv`+`ln` loop as a fallback, since 4.3.31 ignores the setting and
+the stable channel still builds it; the loop goes once that channel builds
+4.3.32.
 
 `rpm/terabithia/` archives the reference spec and the documentation published
 beside it at <https://repo.terabithia.org/rpms/xymon/>, for provenance only;
