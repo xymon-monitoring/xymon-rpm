@@ -155,12 +155,12 @@ echo "== static web content is package data, not state =="
 # The symlinks are what keep every /xymon/ URL and on-disk path working
 # after the move.
 for d in gifs help menu; do
-	check "$d ships in /usr/share/xymon" \
-		"test -d $work/server/usr/share/xymon/$d &&
-		 test -n \"\$(ls -A $work/server/usr/share/xymon/$d)\""
+	check "$d ships in /usr/share/xymon/www" \
+		"test -d $work/server/usr/share/xymon/www/$d &&
+		 test -n \"\$(ls -A $work/server/usr/share/xymon/www/$d)\""
 	check "www/$d is a symlink to it" \
 		"test -L $work/server/var/lib/xymon/www/$d &&
-		 readlink $work/server/var/lib/xymon/www/$d | grep -qx /usr/share/xymon/$d"
+		 readlink $work/server/var/lib/xymon/www/$d | grep -qx /usr/share/xymon/www/$d"
 done
 
 # xymongen writes the generated pages into www itself, and these

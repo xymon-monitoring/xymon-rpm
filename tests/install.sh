@@ -172,7 +172,7 @@ check "apache drop-in is installed" \
 # the /xymon/ URLs serving it.
 check "static web content resolves through the www symlinks" \
 	"test -f /var/lib/xymon/www/gifs/green.gif &&
-	 test -f /usr/share/xymon/gifs/green.gif &&
+	 test -f /usr/share/xymon/www/gifs/green.gif &&
 	 test -L /var/lib/xymon/www/gifs"
 
 check "rep and snap are writable state in /var/cache, through the www symlinks" \
@@ -226,7 +226,7 @@ for f in gifs/green.gif help/about.html; do
 done
 
 check "/xymon/menu is served through the symlink" \
-	"m=\$(ls /usr/share/xymon/menu | head -1) &&
+	"m=\$(ls /usr/share/xymon/www/menu | head -1) &&
 	 test \"\$(curl -s -o /dev/null -w '%{http_code}' http://localhost/xymon/menu/\$m)\" = 200"
 
 # A report under /var/cache is served at its old URL, through the symlink.

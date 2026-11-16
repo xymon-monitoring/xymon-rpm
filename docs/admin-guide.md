@@ -30,7 +30,7 @@ A **server host** (`xymon`):
 ├── server/bin/                 xymond, xymongen, xymonnet, xymond_*
 ├── cgi-bin/  cgi-secure/       web CGIs (cgi-secure needs a login)
 └── client/                     the embedded client
-/usr/share/xymon/               gifs/ help/ menu/ — static web content
+/usr/share/xymon/www/           gifs/ help/ menu/ — static web content
 /var/lib/xymon/                 rrd/ hist/ histlogs/ hostdata/ acks/ …
 └── www/                        what xymongen writes, + symlinks to the static content and to rep/ snap/
 /var/cache/xymon/www/           rep/ snap/ — on-demand reports and snapshots, safe to delete

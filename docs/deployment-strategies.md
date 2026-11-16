@@ -109,7 +109,7 @@ to bend towards the FHS.
 | Client config | `/etc/xymon-client/` | `/etc/xymon/` | `/etc/xymon-client/` | `…/xymon/client/etc/` |
 | Server binaries | `/usr/lib/xymon/server/bin/` | same | `/usr/libexec/xymon/`, `/usr/sbin/` | `…/xymon/server/bin/` |
 | Client binaries | `/usr/lib/xymon/client/bin/` | same | `/usr/libexec/xymon-client/` | `…/xymon/client/bin/` |
-| Static web assets | `/usr/share/xymon/` | `/usr/share/xymon/` | `/usr/share/xymon/static/` | `…/xymon/server/www/` |
+| Static web assets | `/usr/share/xymon/www/` | `/usr/share/xymon/` | `/usr/share/xymon/static/` | `…/xymon/server/www/` |
 | Generated pages | `/var/lib/xymon/www/` | `/var/lib/xymon/www/` | `/var/www/xymon/` | `…/xymon/server/www/` |
 | Server data / logs | `/var/lib/xymon/`, `/var/log/xymon/` | same | same | `…/xymon/data/`, `…/data/logs/` |
 
@@ -128,7 +128,7 @@ and the spec needs no path rewriting or patches.
 Those links exist only under the *server* tree, so the spec makes the
 client's by hand: `client/etc → /etc/xymon-client`,
 `client/logs → /var/log/xymon`, `client/tmp → /var/tmp`. Three more take
-static content out of `/var`: `www/{gifs,help,menu} → /usr/share/xymon/…`.
+static content out of `/var`: `www/{gifs,help,menu} → /usr/share/xymon/www/…`.
 
 The `www` tree holds three lifecycles, not two:
 
@@ -138,7 +138,7 @@ The `www` tree holds three lifecycles, not two:
 | `html`, `notes`, `wml` | **persistent** state the daemons write | the writable docroot under `/var/lib` |
 | `rep`, `snap` | **regenerable**: on-demand availability reports and snapshots, safe to delete, recreated on the next request | `/var/cache` (FHS) |
 
-This spec moves the static three to `/usr/share/xymon` and `rep`/`snap` to
+This spec moves the static three to `/usr/share/xymon/www` and `rep`/`snap` to
 `/var/cache/xymon/www`, symlinking each back so every `/xymon/` URL and
 on-disk path still works, including in a `xymonserver.cfg` kept from an older
 install. httpd needs no extra config: the
@@ -188,9 +188,10 @@ to honour. When a packaging *does* pull the static three out into
 Terabithia nests under `/usr/share/xymon/static` because *its*
 `/usr/share/xymon` is the whole server home (`bin`, `cgi-bin`, `etc`, `www`,
 …), so it has to namespace. A flat `/usr/share/xymon/{gifs,help,menu}`
-(Debian's layout, and what this spec installs today) is fine only while
-that directory holds nothing but web content; the `www` subdir leaves it
-free for non-web data the package might add later.
+(Debian's layout, and what this spec installed until 2026-11) is fine only
+while that directory holds nothing but web content; the `www` subdir leaves
+it free for non-web data the package might add later. This spec installs
+`/usr/share/xymon/www`.
 
 The regenerable third's target is **`/var/cache/xymon/www`** (FHS §5.5,
 "data that can be regenerated" and "deleted without loss"), reached by

@@ -145,7 +145,7 @@ Source16:       clientupdate
 # rpm will not replace a directory with a symlink -- the transaction
 # fails on the existing directory -- so layout moves must happen before
 # anything is unpacked. Two need it: client/etc -> /etc/xymon-client, and
-# the static www trees -> %%{_datadir}/xymon. Contents are carried over,
+# the static www trees -> %%{_datadir}/xymon/www. Contents are carried over,
 # so an admin's edited xymonclient.cfg or a custom gif survives; whatever
 # the package ships is overwritten a moment later anyway.
 %global migrate_tree %{expand:
@@ -416,7 +416,7 @@ INSTALLWEBDIR=%{_sysconfdir}/xymon/web \
 INSTALLEXTDIR=%{xymonhome}/server/ext \
 INSTALLTMPDIR=%{_sharedstatedir}/xymon/tmp \
 INSTALLWWWDIR=%{_sharedstatedir}/xymon/www \
-INSTALLSTATICWWWDIR=%{_datadir}/xymon \
+INSTALLSTATICWWWDIR=%{_datadir}/xymon/www \
 ./configure --server
 
 %make_build PKGBUILD=1
@@ -494,7 +494,7 @@ mv %{buildroot}%{_sysconfdir}/xymon/xymon-apache.conf \
 # where it is.
 #
 # INSTALLSTATICWWWDIR (configured above, xymon#414, from 4.3.32) makes the
-# build install the static three into /usr/share/xymon and symlink them back
+# build install the static three into /usr/share/xymon/www and symlink them back
 # into the www tree, so every /xymon/ URL and on-disk path still works and
 # nothing in xymonserver.cfg or the CGIs learns a second location. httpd
 # needs no extra config: the generated one sets FollowSymLinks on the www
@@ -504,11 +504,11 @@ mv %{buildroot}%{_sysconfdir}/xymon/xymon-apache.conf \
 # still builds it: there the loop below does the move by hand. Where the
 # build already made the link it does nothing; it goes once the stable
 # channel builds 4.3.32.
-install -d %{buildroot}%{_datadir}/xymon
+install -d %{buildroot}%{_datadir}/xymon/www
 for d in gifs help menu; do
     [ -L %{buildroot}%{_sharedstatedir}/xymon/www/$d ] && continue
-    mv %{buildroot}%{_sharedstatedir}/xymon/www/$d %{buildroot}%{_datadir}/xymon/$d
-    ln -sf %{_datadir}/xymon/$d %{buildroot}%{_sharedstatedir}/xymon/www/$d
+    mv %{buildroot}%{_sharedstatedir}/xymon/www/$d %{buildroot}%{_datadir}/xymon/www/$d
+    ln -sf %{_datadir}/xymon/www/$d %{buildroot}%{_sharedstatedir}/xymon/www/$d
 done
 
 # rep and snap, the on-demand reports and snapshots, are the third kind:
@@ -616,9 +616,9 @@ ln -sf %{_sysconfdir}/xymon-client %{buildroot}%{xymonhome}/client/etc
 %pretrans -p <lua>
 %migrate_tree
 movetree("%{xymonhome}/client/etc", "%{_sysconfdir}/xymon-client")
-movetree("%{_sharedstatedir}/xymon/www/gifs", "%{_datadir}/xymon/gifs")
-movetree("%{_sharedstatedir}/xymon/www/help", "%{_datadir}/xymon/help")
-movetree("%{_sharedstatedir}/xymon/www/menu", "%{_datadir}/xymon/menu")
+movetree("%{_sharedstatedir}/xymon/www/gifs", "%{_datadir}/xymon/www/gifs")
+movetree("%{_sharedstatedir}/xymon/www/help", "%{_datadir}/xymon/www/help")
+movetree("%{_sharedstatedir}/xymon/www/menu", "%{_datadir}/xymon/www/menu")
 movetree("%{_sharedstatedir}/xymon/www/rep", "%{_localstatedir}/cache/xymon/www/rep")
 movetree("%{_sharedstatedir}/xymon/www/snap", "%{_localstatedir}/cache/xymon/www/snap")
 
@@ -827,8 +827,8 @@ fi
 %exclude %{xymonhome}/server/bin/xymonnetprobe
 %{xymonhome}/cgi-bin
 %{xymonhome}/cgi-secure
-# Static web content -- gifs, help, menu -- reached through symlinks in
-# the www tree (see %%install).
+# Static web content -- gifs, help, menu -- in %%{_datadir}/xymon/www,
+# reached through symlinks in the www tree (see %%install).
 %{_datadir}/xymon
 # The embedded client: the same tree the build produces for the
 # standalone package, shipped here because the server runs it on itself
