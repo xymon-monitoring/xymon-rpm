@@ -43,7 +43,11 @@ below). The `devel` (4.4) branch carries a hand-written
 `tools/xymonlaunch.service`, its preset and `xymon-tmpfiles.conf` (by J.C.
 Cleaver); the files below are still adapted from `devel` where one existed, and
 written here where none did -- consuming `main`'s generated unit instead is a
-follow-up. Nothing in this repository waits on an upstream merge to work.
+follow-up, held until this packaging's stable `baseversion` reaches 4.3.32:
+xymon#415's generation (the `INSTALLSYSTEMDDIR` build variable and the
+`.service.DIST` template) is 4.3.32-only, so a 4.3.31 build has no unit to
+generate and still needs the files below. Nothing in this repository waits on
+an upstream merge to work.
 
 That unit already wraps `xymoncmd` around `xymonlaunch
 --no-daemon`, the conclusion this packaging reached independently by testing.
