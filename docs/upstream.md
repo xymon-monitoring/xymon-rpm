@@ -34,19 +34,22 @@ tries again.
 
 ## Where the files in `rpm/sources/` come from
 
-Upstream `main` ships no systemd or SELinux integration. Its two logrotate
-files live only in its own unmaintained `rpm/` and `debian/` packagings
-(described below). The `devel` (4.4) branch does carry
-`tools/xymonlaunch.service`, its preset and `xymon-tmpfiles.conf` (written by
-J.C. Cleaver), but they have never been merged to `main`. So the files below
-are adapted from `devel` where one existed, and written here where none did.
-Nothing in this repository waits on an upstream merge to work.
+Upstream `main` now carries a systemd unit -- `tools/xymonlaunch.service.DIST`
+and its preset, generated from the build's paths by
+[xymon#415](https://github.com/xymon-monitoring/xymon/pull/415) (merged,
+4.3.32). It still ships no SELinux integration, and its two logrotate files
+live only in its own unmaintained `rpm/` and `debian/` packagings (described
+below). The `devel` (4.4) branch carries a hand-written
+`tools/xymonlaunch.service`, its preset and `xymon-tmpfiles.conf` (by J.C.
+Cleaver); the files below are still adapted from `devel` where one existed, and
+written here where none did -- consuming `main`'s generated unit instead is a
+follow-up. Nothing in this repository waits on an upstream merge to work.
 
-That unmerged unit already wraps `xymoncmd` around `xymonlaunch
+That unit already wraps `xymoncmd` around `xymonlaunch
 --no-daemon`, the conclusion this packaging reached independently by testing.
-[xymon#415](https://github.com/xymon-monitoring/xymon/pull/415) carries it to
+[xymon#415](https://github.com/xymon-monitoring/xymon/pull/415) carried it to
 `main`, with paths substituted from the build rather than hardcoded, so it
-serves a source install and any packaging, not only RPM. Once it lands, only
+serves a source install and any packaging, not only RPM. Only
 the four differences this packaging makes to the unit remain:
 
 - `ExecStart` calls `xymonlaunch-run`, for role dispatch;

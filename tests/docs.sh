@@ -168,8 +168,8 @@ fi
 
 echo "== what main does and does not carry =="
 
-check "main still has no systemd unit, as the opening paragraph claims" \
-	"! git -C $src ls-tree -r --name-only main | grep -qE '\.service(\.DIST)?$'"
+check "main now carries a systemd unit, as the opening paragraph says" \
+	"git -C $src ls-tree -r --name-only main | grep -qE '\.service(\.DIST)?$'"
 check "main still has no SELinux policy, as the opening paragraph claims" \
 	"! git -C $src ls-tree -r --name-only main | grep -qE '\.te$'"
 # The same paragraph says main's only logrotate file is in its own
