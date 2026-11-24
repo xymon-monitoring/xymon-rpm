@@ -46,8 +46,15 @@ written here where none did -- consuming `main`'s generated unit instead is a
 follow-up, held until this packaging's stable `baseversion` reaches 4.3.32:
 xymon#415's generation (the `INSTALLSYSTEMDDIR` build variable and the
 `.service.DIST` template) is 4.3.32-only, so a 4.3.31 build has no unit to
-generate and still needs the files below. Nothing in this repository waits on
-an upstream merge to work.
+generate and still needs the files below. And even on 4.3.32 it is a deliberate
+refactor, not a source swap: the generated unit bakes `KillMode=process` for
+both roles (so this packaging's server-only kill override must move into a
+client drop-in that resets it), adds `RuntimeDirectory=xymon` (which removes
+`/run/xymon` at stop, where this packaging keeps it persistent via tmpfiles),
+and carries no `Alias`. The `build` CI packages the rpm without booting
+systemd, so it cannot check any of that -- validate such a switch on a running
+host, not by a green build. Nothing in this repository waits on an upstream
+merge to work.
 
 That unit already wraps `xymoncmd` around `xymonlaunch
 --no-daemon`, the conclusion this packaging reached independently by testing.
