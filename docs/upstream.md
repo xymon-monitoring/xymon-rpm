@@ -59,9 +59,12 @@ host, not by a green build. A trial composition (the generated unit, a common
 `EnvironmentFile`) was checked on a booted systemd: the client's kill reverts
 to `control-group` (it kills its children again) while the server keeps
 `process`, and the ExecStart override and both EnvironmentFiles compose. So the
-drop-in model is proven; a real switch still needs the `RuntimeDirectory`
-decision and an end-to-end smoke test (start, stop, confirm the child tree
-dies). Nothing in this repository waits on an upstream merge to work.
+drop-in model is proven. The `RuntimeDirectory` question is settled too: the
+generated unit's `RuntimeDirectory=xymon` removes `/run/xymon` at stop, but a
+drop-in `RuntimeDirectoryPreserve=yes` keeps it (checked on the same booted
+systemd). What a real switch still needs is only an end-to-end smoke test
+(start a real `xymonlaunch`, stop it, confirm the child tree dies). Nothing in
+this repository waits on an upstream merge to work.
 
 That unit already wraps `xymoncmd` around `xymonlaunch
 --no-daemon`, the conclusion this packaging reached independently by testing.
