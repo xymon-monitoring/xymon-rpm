@@ -94,6 +94,10 @@ Source3:        xymonlaunch-run
 #   (the buildroot can hold only one file per path):
 Source14:       xymonlaunch-server.conf
 Source15:       xymonlaunch-client.conf
+#   the same two for the generated unit (xymon#415): its base is upstream's,
+#   so only this packaging's differences ride in the drop-ins
+Source17:       xymonlaunch-generated-server.conf
+Source18:       xymonlaunch-generated-client.conf
 Source4:        xymonlaunch.service.preset
 Source5:        xymon-tmpfiles.conf
 Source6:        xymon.logrotate
@@ -482,28 +486,8 @@ install -d %{buildroot}%{dropindir}
 # file, not the version: a preview integrating #415 is 4.3.32 before it merges,
 # and the stable channel stays 4.3.31 until it does.
 if [ -f %{buildroot}%{_unitdir}/xymonlaunch.service ]; then
-    cat > %{buildroot}%{serverconf} <<EOF
-[Service]
-ExecStart=
-ExecStart=%{xymonhome}/client/bin/xymonlaunch-run \$XYMONLAUNCHOPTS
-RuntimeDirectoryPreserve=yes
-[Install]
-Alias=xymon.service
-EOF
-    cat > %{buildroot}%{clientconf} <<EOF
-[Unit]
-Wants=network-online.target
-After=network-online.target
-[Service]
-ExecStart=
-ExecStart=%{xymonhome}/client/bin/xymonlaunch-run \$XYMONLAUNCHOPTS
-RuntimeDirectoryPreserve=yes
-KillMode=control-group
-SendSIGKILL=yes
-EnvironmentFile=-%{_sysconfdir}/sysconfig/xymon-client
-[Install]
-Alias=xymon.service
-EOF
+    install -Dpm 0644 %{SOURCE17} %{buildroot}%{serverconf}
+    install -Dpm 0644 %{SOURCE18} %{buildroot}%{clientconf}
 else
     install -Dpm 0644 %{SOURCE1}  %{buildroot}%{_unitdir}/xymonlaunch.service
     install -Dpm 0644 %{SOURCE14} %{buildroot}%{serverconf}
