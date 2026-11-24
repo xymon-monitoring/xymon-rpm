@@ -53,8 +53,15 @@ client drop-in that resets it), adds `RuntimeDirectory=xymon` (which removes
 `/run/xymon` at stop, where this packaging keeps it persistent via tmpfiles),
 and carries no `Alias`. The `build` CI packages the rpm without booting
 systemd, so it cannot check any of that -- validate such a switch on a running
-host, not by a green build. Nothing in this repository waits on an upstream
-merge to work.
+host, not by a green build. A trial composition (the generated unit, a common
+`ExecStart=` reset to `xymonlaunch-run`, and a client drop-in resetting
+`KillMode=control-group`/`SendSIGKILL=yes` and adding the second
+`EnvironmentFile`) was checked on a booted systemd: the client's kill reverts
+to `control-group` (it kills its children again) while the server keeps
+`process`, and the ExecStart override and both EnvironmentFiles compose. So the
+drop-in model is proven; a real switch still needs the `RuntimeDirectory`
+decision and an end-to-end smoke test (start, stop, confirm the child tree
+dies). Nothing in this repository waits on an upstream merge to work.
 
 That unit already wraps `xymoncmd` around `xymonlaunch
 --no-daemon`, the conclusion this packaging reached independently by testing.
