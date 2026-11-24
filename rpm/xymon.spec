@@ -406,7 +406,7 @@ export CFLAGS="%{optflags}"
 # INSTALLSYSTEMDDIR and INSTALLENVDIR (xymon#415, from 4.3.32): where `make
 # install` places the generated systemd unit, and where that unit reads its
 # EnvironmentFile. Set, a 4.3.32 source generates and installs the unit;
-# 4.3.31 ignores both and installs none, which %install detects below and
+# 4.3.31 ignores both and installs none, which %%install detects below and
 # falls back to the hand-maintained unit for.
 USEXYMONPING=%{?with_xymonping:y}%{!?with_xymonping:n} \
 USERFPING=%{_sbindir}/fping \
@@ -475,7 +475,7 @@ done
 install -Dpm 0755 %{SOURCE3}  %{buildroot}%{xymonhome}/client/bin/xymonlaunch-run
 install -d %{buildroot}%{dropindir}
 # The unit itself. On a source that carries xymon#415's generated unit,
-# %make_install above already placed it (paths and EnvironmentFile substituted
+# %%make_install above already placed it (paths and EnvironmentFile substituted
 # from the build), and this packaging's differences from it ride in the
 # drop-ins, which systemctl composes over the generated base: ExecStart
 # dispatches the role through xymonlaunch-run, RuntimeDirectoryPreserve keeps
