@@ -117,13 +117,20 @@ check "the server package owns only server.conf" \
 check "the client package owns only client.conf" \
 	"test -s $work/client/$clientconf && ! test -e $work/client/$serverconf"
 
-# What each drop-in exists to do. The base unit carries the client's
-# semantics, so these assertions are what keep the server's checkpoint
-# protection and the client's boot-time network wait from being
-# silently dropped into (or out of) the shared unit.
-check "server.conf protects xymond's children on stop" \
-	"grep -q '^KillMode=process' $work/server/$serverconf &&
-	 grep -q '^SendSIGKILL=no' $work/server/$serverconf"
+# What the composed unit must do, whichever way it was built. On the Source1
+# path the base is the client's default and server.conf carries the server's
+# kill; on the generated path (xymon#415) the base carries the server's kill
+# and the client drop-in reverts it. These assert the effective behaviour,
+# keyed on which base was shipped, so neither the server's checkpoint
+# protection nor the client's cgroup kill is silently dropped.
+check "the server's effective kill protects xymond's children on stop" \
+	"if grep -qE '^KillMode=' $work/server/$unit; then
+	   grep -q '^KillMode=process' $work/server/$unit &&
+	   ! grep -qE '^KillMode=' $work/server/$serverconf
+	 else
+	   grep -q '^KillMode=process' $work/server/$serverconf &&
+	   grep -q '^SendSIGKILL=no' $work/server/$serverconf
+	 fi"
 
 check "client.conf waits for the network" \
 	"grep -q '^Wants=network-online.target' $work/client/$clientconf &&
@@ -134,10 +141,17 @@ check "client.conf waits for the network" \
 check "the base unit does not wait for the network" \
 	"! grep -q 'network-online' $work/server/$unit"
 
-# Default cgroup kill in the base unit is what stops a wedged client
-# from running alongside its replacement; the server overrides it.
-check "the base unit keeps the client's cgroup kill" \
-	"! grep -qE '^(KillMode|SendSIGKILL)=' $work/server/$unit"
+# A wedged client must not run beside its replacement, so the client's
+# effective kill is control-group. On the Source1 path the base's default
+# gives it (no override); on the generated path the base is process and
+# client.conf resets it to control-group.
+check "the client's effective kill is control-group" \
+	"if grep -qE '^KillMode=' $work/client/$unit; then
+	   grep -q '^KillMode=control-group' $work/client/$clientconf
+	 else
+	   ! grep -qE '^(KillMode|SendSIGKILL)=' $work/client/$unit &&
+	   ! grep -qE '^KillMode=' $work/client/$clientconf
+	 fi"
 
 echo "== enablement policy =="
 
