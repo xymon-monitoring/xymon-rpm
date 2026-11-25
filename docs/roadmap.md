@@ -92,7 +92,9 @@ to a GitHub issue.
 
 - **The client's drop-in directories.** *Decided and done:* the spec creates
   them, and gives `clientlaunch.d` to the client package alone. Only the
-  `install -d` is an interim override xymon#411 will delete.
+  `install -d` is an interim override: xymon#411, merged for 4.3.32, makes the
+  build create them, and the `install -d` stays for 4.3.31, which the stable
+  channel still builds.
   `clientlaunch.cfg` and `xymonclient.cfg` each end in
   `optional directory @XYMONHOME@/etc/<name>`, and nothing created either.
   `optional` means nothing fails: a drop-in file is silently never read,
@@ -119,8 +121,8 @@ to a GitHub issue.
   whatever upstream's `client/etc` holds is packaged. A list would not do:
   `check-files` lists `-type f -o -type l`, so an unpackaged *directory* is
   never reported, and the package would ship without xymon#411's directories
-  with the build still green. When xymon#411 merges, the `install -d` goes and
-  the glob keeps packaging whatever upstream makes.
+  with the build still green. Once the stable channel builds 4.3.32, the
+  `install -d` goes and the glob keeps packaging whatever upstream makes.
 
   The one exception is `clientlaunch.d`, which `%files` excludes from the
   server package. A server reads its task list from `tasks.cfg` and never
