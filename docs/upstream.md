@@ -43,7 +43,7 @@ below). The `devel` (4.4) branch carries a hand-written
 `tools/xymonlaunch.service`, its preset and `xymon-tmpfiles.conf` (by J.C.
 Cleaver). Which of the two this packaging ships is feature-detected at build
 time. A source that carries xymon#415's generated unit -- a 4.3.32 source, and
-a preview that integrates #415 before it merges -- has `make install` place it
+a preview that integrates xymon#415 before it merges -- has `make install` place it
 (`INSTALLSYSTEMDDIR`/`INSTALLENVDIR` set in `%build`), and this packaging's
 differences from it ride in the `xymonlaunch.service.d` drop-ins, which
 systemctl composes over the generated base: `ExecStart` dispatches the role
