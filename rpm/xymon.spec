@@ -483,7 +483,7 @@ install -d %{buildroot}%{dropindir}
 # kill reverts to control-group (so the client kills its children) with its own
 # EnvironmentFile. On a source that does not (4.3.31, no .service.DIST), ship
 # the hand-maintained copy and the drop-ins as before. Keyed on the generated
-# file, not the version: a preview integrating #415 is 4.3.32 before it merges,
+# file, not the version: a preview integrating xymon#415 is 4.3.32 before it merges,
 # and the stable channel stays 4.3.31 until it does.
 if [ -f %{buildroot}%{_unitdir}/xymonlaunch.service ]; then
     install -Dpm 0644 %{SOURCE17} %{buildroot}%{serverconf}
