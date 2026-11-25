@@ -94,6 +94,10 @@ Source3:        xymonlaunch-run
 #   (the buildroot can hold only one file per path):
 Source14:       xymonlaunch-server.conf
 Source15:       xymonlaunch-client.conf
+#   the same two for the generated unit (xymon#415): its base is upstream's,
+#   so only this packaging's differences ride in the drop-ins
+Source17:       xymonlaunch-generated-server.conf
+Source18:       xymonlaunch-generated-client.conf
 Source4:        xymonlaunch.service.preset
 Source5:        xymon-tmpfiles.conf
 Source6:        xymon.logrotate
@@ -398,6 +402,12 @@ export CFLAGS="%{optflags}"
 # client's configuration, temporary files and logs there and links each back
 # from the client tree. The 4.3.31 configure ignores them too; %%install has
 # the fallback, and says why these three places.
+#
+# INSTALLSYSTEMDDIR and INSTALLENVDIR (xymon#415, from 4.3.32): where `make
+# install` places the generated systemd unit, and where that unit reads its
+# EnvironmentFile. Set, a 4.3.32 source generates and installs the unit;
+# 4.3.31 ignores both and installs none, which %%install detects below and
+# falls back to the hand-maintained unit for.
 USEXYMONPING=%{?with_xymonping:y}%{!?with_xymonping:n} \
 USERFPING=%{_sbindir}/fping \
 ENABLESSL=y \
@@ -426,6 +436,8 @@ INSTALLSTATICWWWDIR=%{_datadir}/xymon/www \
 INSTALLCLIENTETCDIR=%{_sysconfdir}/xymon-client \
 INSTALLCLIENTTMPDIR=%{_tmppath} \
 INSTALLCLIENTLOGDIR=%{_localstatedir}/log/xymon \
+INSTALLSYSTEMDDIR=%{_unitdir} \
+INSTALLENVDIR=%{_sysconfdir}/sysconfig \
 ./configure --server
 
 %make_build PKGBUILD=1
@@ -460,10 +472,27 @@ done
 # systemd: ONE unit for both roles, shipped by both packages (they
 # conflict, so it is never on a host twice). xymonlaunch-run picks the
 # role by which tree is installed.
-install -Dpm 0644 %{SOURCE1}  %{buildroot}%{_unitdir}/xymonlaunch.service
 install -Dpm 0755 %{SOURCE3}  %{buildroot}%{xymonhome}/client/bin/xymonlaunch-run
-install -Dpm 0644 %{SOURCE14} %{buildroot}%{serverconf}
-install -Dpm 0644 %{SOURCE15} %{buildroot}%{clientconf}
+install -d %{buildroot}%{dropindir}
+# The unit itself. On a source that carries xymon#415's generated unit,
+# %%make_install above already placed it (paths and EnvironmentFile substituted
+# from the build), and this packaging's differences from it ride in the
+# drop-ins, which systemctl composes over the generated base: ExecStart
+# dispatches the role through xymonlaunch-run, RuntimeDirectoryPreserve keeps
+# /run/xymon across restarts, the Alias is restored, and -- client only -- the
+# kill reverts to control-group (so the client kills its children) with its own
+# EnvironmentFile. On a source that does not (4.3.31, no .service.DIST), ship
+# the hand-maintained copy and the drop-ins as before. Keyed on the generated
+# file, not the version: a preview integrating #415 is 4.3.32 before it merges,
+# and the stable channel stays 4.3.31 until it does.
+if [ -f %{buildroot}%{_unitdir}/xymonlaunch.service ]; then
+    install -Dpm 0644 %{SOURCE17} %{buildroot}%{serverconf}
+    install -Dpm 0644 %{SOURCE18} %{buildroot}%{clientconf}
+else
+    install -Dpm 0644 %{SOURCE1}  %{buildroot}%{_unitdir}/xymonlaunch.service
+    install -Dpm 0644 %{SOURCE14} %{buildroot}%{serverconf}
+    install -Dpm 0644 %{SOURCE15} %{buildroot}%{clientconf}
+fi
 install -Dpm 0644 %{SOURCE4}  %{buildroot}%{_presetdir}/50-xymonlaunch.preset
 install -Dpm 0644 %{SOURCE5}  %{buildroot}%{_tmpfilesdir}/xymon.conf
 install -Dpm 0644 %{SOURCE6}  %{buildroot}%{_sysconfdir}/logrotate.d/xymon

@@ -41,30 +41,29 @@ and its preset, generated from the build's paths by
 live only in its own unmaintained `rpm/` and `debian/` packagings (described
 below). The `devel` (4.4) branch carries a hand-written
 `tools/xymonlaunch.service`, its preset and `xymon-tmpfiles.conf` (by J.C.
-Cleaver); the files below are still adapted from `devel` where one existed, and
-written here where none did -- consuming `main`'s generated unit instead is a
-follow-up, held until this packaging's stable `baseversion` reaches 4.3.32:
-xymon#415's generation (the `INSTALLSYSTEMDDIR` build variable and the
-`.service.DIST` template) is 4.3.32-only, so a 4.3.31 build has no unit to
-generate and still needs the files below. And even on 4.3.32 it is a deliberate
-refactor, not a source swap: the generated unit bakes `KillMode=process` for
-both roles (so this packaging's server-only kill override must move into a
-client drop-in that resets it), adds `RuntimeDirectory=xymon` (which removes
-`/run/xymon` at stop, where this packaging keeps it persistent via tmpfiles),
-and carries no `Alias`. The `build` CI packages the rpm without booting
-systemd, so it cannot check any of that -- validate such a switch on a running
-host, not by a green build. A trial composition (the generated unit, a common
-`ExecStart=` reset to `xymonlaunch-run`, and a client drop-in resetting
-`KillMode=control-group`/`SendSIGKILL=yes` and adding the second
-`EnvironmentFile`) was checked on a booted systemd: the client's kill reverts
-to `control-group` (it kills its children again) while the server keeps
-`process`, and the ExecStart override and both EnvironmentFiles compose. So the
-drop-in model is proven. The `RuntimeDirectory` question is settled too: the
-generated unit's `RuntimeDirectory=xymon` removes `/run/xymon` at stop, but a
-drop-in `RuntimeDirectoryPreserve=yes` keeps it (checked on the same booted
-systemd). What a real switch still needs is only an end-to-end smoke test
-(start a real `xymonlaunch`, stop it, confirm the child tree dies). Nothing in
+Cleaver). Which of the two this packaging ships is feature-detected at build
+time. A source that carries xymon#415's generated unit -- a 4.3.32 source, and
+a preview that integrates #415 before it merges -- has `make install` place it
+(`INSTALLSYSTEMDDIR`/`INSTALLENVDIR` set in `%build`), and this packaging's
+differences from it ride in the `xymonlaunch.service.d` drop-ins, which
+systemctl composes over the generated base: `ExecStart` dispatches the role
+through `xymonlaunch-run`, `RuntimeDirectoryPreserve=yes` keeps `/run/xymon`
+across restarts, the `Alias` is restored, and -- client only -- the kill
+reverts to `KillMode=control-group` (so the client kills its children) with its
+own `EnvironmentFile`. A source without it (4.3.31, no `.service.DIST`) ships
+the hand-maintained copy and the drop-ins below instead; those are adapted from
+`devel` where one existed, and written here where none did. The keying is on
+the generated file, not the version: the `.service.DIST` template and its build
+variables are 4.3.32-only, so a 4.3.31 build generates nothing and falls to the
+copy, while a 4.3.32 build or preview consumes the generated unit. Nothing in
 this repository waits on an upstream merge to work.
+
+The drop-in composition was checked on a booted systemd: the kill reverts to
+`control-group` for the client while the server keeps `process`, the `ExecStart`
+override and both `EnvironmentFile`s compose, and `RuntimeDirectoryPreserve=yes`
+keeps `/run/xymon` across a stop. The one check the `build` CI cannot run, since
+it packages the rpm without booting systemd, is a live end-to-end smoke test:
+start a real `xymonlaunch`, stop it, confirm the child tree dies.
 
 That unit already wraps `xymoncmd` around `xymonlaunch
 --no-daemon`, the conclusion this packaging reached independently by testing.
