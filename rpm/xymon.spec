@@ -708,6 +708,20 @@ if [ $1 -eq 1 ]; then
     sed -i -e "s/^\\(127\\.0\\.0\\.1[[:space:]]\\+\\)localhost\\b/\\1$(uname -n)/" \
         %{_sysconfdir}/xymon/hosts.cfg || :
 fi
+# An upgrade keeps the xymonserver.cfg that is there: the rewrite above makes
+# every installed copy a changed one, so rpm never replaces it and the new
+# file arrives as .rpmnew. A copy from before 4.3.32 has no XYMONRUNDIR, and
+# 4.3.32 then falls back to the log directory for its pidfiles and
+# xymond_rrd's control sockets -- where the CGIs may not go under SELinux, so
+# a graph is drawn without the updates still pending. Nothing tells an admin
+# to merge the .rpmnew, so the one line is added here. Only when it is
+# missing: a value the admin set stands. 4.3.31 does not read it, so there
+# the line waits for the upgrade that does.
+if [ $1 -ge 2 ] && [ -f %{_sysconfdir}/xymon/xymonserver.cfg ] &&
+   ! grep -q '^XYMONRUNDIR=' %{_sysconfdir}/xymon/xymonserver.cfg; then
+    printf '\n# Added on upgrade by the xymon package; xymonserver.cfg.rpmnew says what it is.\nXYMONRUNDIR="/run/xymon"\n' \
+        >> %{_sysconfdir}/xymon/xymonserver.cfg || :
+fi
 %if %{with selinux}
 # Never fatal: a container or a machine with SELinux disabled has no
 # working semodule, and failing there would abort an otherwise fine

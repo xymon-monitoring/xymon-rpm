@@ -81,7 +81,11 @@ echo 'local note' > /var/lib/xymon/www/help/mydocs/note.txt
 mkdir -p /var/lib/xymon/www/rep/r1 /var/lib/xymon/www/snap
 echo 'old report' > /var/lib/xymon/www/rep/r1/index.html
 echo 'old snapshot' > /var/lib/xymon/www/snap/s1.html
-echo "         XYMSRV edited, a task added, a gif, a help subdir, a report and a snapshot dropped in"
+# A xymonserver.cfg from before 4.3.32, which is what a stable host upgrades
+# with: rpm keeps the installed copy, and that copy has no XYMONRUNDIR.
+sed -i '/^XYMONRUNDIR=/d' /etc/xymon/xymonserver.cfg
+echo "         XYMSRV edited, a task added, a gif, a help subdir, a report and a snapshot dropped in,"
+echo "         and XYMONRUNDIR taken out of xymonserver.cfg"
 
 echo "== upgrading to the build under test =="
 set -- $(find "$rpmdir" -name '*.rpm' \
@@ -149,6 +153,11 @@ check "the report moved to /var/cache" \
 
 check "the snapshot moved to /var/cache" \
 	"grep -qx 'old snapshot' /var/cache/xymon/www/snap/s1.html"
+
+# Without it 4.3.32 keeps its pidfiles and the graphs' control sockets in the
+# log directory, which the CGIs may not reach on an enforcing host.
+check "the kept xymonserver.cfg has XYMONRUNDIR again, once" \
+	"test \"\$(grep -c '^XYMONRUNDIR=\"/run/xymon\"\$' /etc/xymon/xymonserver.cfg)\" = 1"
 
 # The migration keeps anything it could not move rather than deleting
 # it. Nothing here should have been unmovable, so a leftover means the
