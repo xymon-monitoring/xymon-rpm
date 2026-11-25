@@ -125,9 +125,10 @@ must not live in `/usr/lib`: `server/etc → /etc/xymon`,
 The layout matches upstream's docs, nothing writes inside `/usr/lib`,
 and the spec needs no path rewriting or patches.
 
-Those links exist only under the *server* tree, so the spec makes the
-client's by hand: `client/etc → /etc/xymon-client`,
-`client/logs → /var/log/xymon`, `client/tmp → /var/tmp`. Three more take
+Up to 4.3.31 those links exist only under the *server* tree, so the spec
+makes the client's by hand: `client/etc → /etc/xymon-client`,
+`client/logs → /var/log/xymon`, `client/tmp → /var/tmp`. From 4.3.32 the build
+makes these three as well. Three more take
 static content out of `/var`: `www/{gifs,help,menu} → /usr/share/xymon/www/…`.
 
 The `www` tree holds three lifecycles, not two:
@@ -156,8 +157,8 @@ fallback while the stable channel builds 4.3.31, and
 ([xymon#443](https://github.com/xymon-monitoring/xymon/pull/443)) for
 `rep`/`snap`, merged for 4.3.32 and set in the shipped `xymonserver.cfg`;
 `INSTALLCLIENT*DIR`
-([xymon#411](https://github.com/xymon-monitoring/xymon/pull/411), open)
-for the client tree.
+([xymon#411](https://github.com/xymon-monitoring/xymon/pull/411)) for the
+client tree, merged for 4.3.32 and set here, with the same fallback.
 [xymon-rpm#109](https://github.com/xymon-monitoring/xymon-rpm/issues/109)
 tracks their states.
 
