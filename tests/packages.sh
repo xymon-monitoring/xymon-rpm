@@ -219,6 +219,14 @@ for role in server client; do
 	check "the $role package links client/etc to /etc/xymon-client" \
 		"test -L $work/$role/usr/lib/xymon/client/etc &&
 		 readlink $work/$role/usr/lib/xymon/client/etc | grep -qx /etc/xymon-client"
+	# The same for what the client writes. From 4.3.32 the build makes all
+	# three links and the spec's own moves are skipped when the etc one is
+	# there, so a build that made only that one would ship the other two as
+	# directories under /usr.
+	check "the $role package links client/tmp to /var/tmp" \
+		"readlink $work/$role/usr/lib/xymon/client/tmp | grep -qx /var/tmp"
+	check "the $role package links client/logs to /var/log/xymon" \
+		"readlink $work/$role/usr/lib/xymon/client/logs | grep -qx /var/log/xymon"
 done
 
 # The one place the two halves of /etc/xymon-client differ on purpose.

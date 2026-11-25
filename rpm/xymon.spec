@@ -120,9 +120,9 @@ Source16:       clientupdate
 #
 # The config directory is globbed, as the server's is below: whatever
 # upstream's client/etc holds gets packaged, rather than a list that silently
-# drops what is added to it. It holds three files today; the drop-in
-# directories clientlaunch.cfg and xymonclient.cfg each declare are coming,
-# and an unpackaged directory is never reported -- check-files lists
+# drops what is added to it. It holds three files and, from 4.3.32, the
+# drop-in directories clientlaunch.cfg and xymonclient.cfg each declare. An
+# unpackaged directory is never reported -- check-files lists
 # -type f -o -type l -- so a list would ship without them and say nothing.
 # clientlaunch.d is the exception: the glob would ship it in both, and
 # %%files xymon excludes it. Only the client package reads clientlaunch.cfg.
@@ -393,6 +393,11 @@ export CFLAGS="%{optflags}"
 # sockets, in the directory xymon-tmpfiles.conf creates. Left unset, they go
 # to the log directory, which the CGIs may not reach under SELinux. The
 # 4.3.31 configure does not ask for it and ignores it.
+#
+# INSTALLCLIENT{ETC,TMP,LOG}DIR (xymon#411, from 4.3.32): the build puts the
+# client's configuration, temporary files and logs there and links each back
+# from the client tree. The 4.3.31 configure ignores them too; %%install has
+# the fallback, and says why these three places.
 USEXYMONPING=%{?with_xymonping:y}%{!?with_xymonping:n} \
 USERFPING=%{_sbindir}/fping \
 ENABLESSL=y \
@@ -418,6 +423,9 @@ INSTALLEXTDIR=%{xymonhome}/server/ext \
 INSTALLTMPDIR=%{_sharedstatedir}/xymon/tmp \
 INSTALLWWWDIR=%{_sharedstatedir}/xymon/www \
 INSTALLSTATICWWWDIR=%{_datadir}/xymon/www \
+INSTALLCLIENTETCDIR=%{_sysconfdir}/xymon-client \
+INSTALLCLIENTTMPDIR=%{_tmppath} \
+INSTALLCLIENTLOGDIR=%{_localstatedir}/log/xymon \
 ./configure --server
 
 %make_build PKGBUILD=1
@@ -576,43 +584,51 @@ PC
 # install. It takes INSTALLBINDIR and MANROOT from the configure step.
 %{__make} install-tools INSTALLROOT=%{buildroot} PKGBUILD=1
 
-# The client tree ships its own tmp/logs as real dirs; redirect them.
-rm -rf %{buildroot}%{xymonhome}/client/tmp %{buildroot}%{xymonhome}/client/logs
-ln -sf %{_tmppath}            %{buildroot}%{xymonhome}/client/tmp
-ln -sf %{_localstatedir}/log/xymon %{buildroot}%{xymonhome}/client/logs
-
-# Client configuration belongs in /etc: the FHS wants /usr shareable and
-# read-only, and xymonclient.cfg (XYMSRV) is the most-edited file on a
-# client host. Upstream's build does this for the server -- server/etc ->
-# INSTALLETCDIR -- but offers no client equivalent until xymon#411, so
-# the same move is made here. Every reference to these files, in
-# clientlaunch.cfg and the server's tasks.cfg alike, is spelled
-# $XYMONCLIENTHOME/etc/... and resolves through the symlink.
-install -d %{buildroot}%{_sysconfdir}/xymon-client
-mv %{buildroot}%{xymonhome}/client/etc/* %{buildroot}%{_sysconfdir}/xymon-client/
-
-# The drop-in directories clientlaunch.cfg and xymonclient.cfg each declare,
-# which nothing creates: xymond/Makefile makes all nine of the server's, and
-# client/Makefile makes neither of these, until xymon#411. They are empty --
-# the point is the directory, not its contents. Without it the only way to
-# add a client task is to edit clientlaunch.cfg, which is %%config(noreplace):
-# an edited copy stops following upstream, and the day the shipped file does
-# change it arrives as a .rpmnew to merge by hand rather than as an upgrade.
-# With the directory, a customisation is a file of the admin's own and the
-# shipped config keeps upgrading. The `optional` in the declaration means a
-# missing directory is skipped silently (lib/stackio.c, dbgprintf rather than
-# errprintf), so nothing says why a drop-in was never read.
+# The client's temporary files and logs belong in /var and its configuration
+# in /etc: the FHS wants /usr shareable and read-only, and xymonclient.cfg
+# (XYMSRV) is the most-edited file on a client host. Upstream's build has
+# always done this for the server -- server/etc -> INSTALLETCDIR -- and from
+# 4.3.32 does it for the client, from the INSTALLCLIENT*DIR configured above
+# (xymon#411). Every reference to these places, in clientlaunch.cfg and the
+# server's tasks.cfg alike, is spelled $XYMONCLIENTHOME/... and resolves
+# through the symlink.
 #
-# Both are mkdir'd here because there is one buildroot. xymonclient.d ships
-# in both packages -- the server's embedded client still reads
-# xymonclient.cfg. clientlaunch.d ships only in the client package: the
+# 4.3.31's configure ignores INSTALLCLIENT*DIR, and the stable channel still
+# builds it: there the block below makes the same moves by hand. Where the
+# build already made the etc link it is skipped; it goes once the stable
+# channel builds 4.3.32.
+if [ ! -L %{buildroot}%{xymonhome}/client/etc ]; then
+    rm -rf %{buildroot}%{xymonhome}/client/tmp %{buildroot}%{xymonhome}/client/logs
+    ln -sf %{_tmppath}            %{buildroot}%{xymonhome}/client/tmp
+    ln -sf %{_localstatedir}/log/xymon %{buildroot}%{xymonhome}/client/logs
+
+    install -d %{buildroot}%{_sysconfdir}/xymon-client
+    mv %{buildroot}%{xymonhome}/client/etc/* %{buildroot}%{_sysconfdir}/xymon-client/
+    rmdir %{buildroot}%{xymonhome}/client/etc
+    ln -sf %{_sysconfdir}/xymon-client %{buildroot}%{xymonhome}/client/etc
+
+    # The drop-in directories clientlaunch.cfg and xymonclient.cfg each
+    # declare, which nothing creates in 4.3.31: xymond/Makefile makes all nine
+    # of the server's, and client/Makefile makes these two only from 4.3.32
+    # (xymon#411). They are empty -- the point is the directory, not its
+    # contents. Without it the only way to add a client task is to edit
+    # clientlaunch.cfg, which is %%config(noreplace): an edited copy stops
+    # following upstream, and the day the shipped file does change it arrives
+    # as a .rpmnew to merge by hand rather than as an upgrade. With the
+    # directory, a customisation is a file of the admin's own and the shipped
+    # config keeps upgrading. The `optional` in the declaration means a
+    # missing directory is skipped silently (lib/stackio.c, dbgprintf rather
+    # than errprintf), so nothing says why a drop-in was never read.
+    install -d %{buildroot}%{_sysconfdir}/xymon-client/clientlaunch.d \
+               %{buildroot}%{_sysconfdir}/xymon-client/xymonclient.d
+fi
+
+# Both drop-in directories are in the one buildroot, whoever made them.
+# xymonclient.d ships in both packages -- the server's embedded client still
+# reads xymonclient.cfg. clientlaunch.d ships only in the client package: the
 # server never reads clientlaunch.cfg (it launches the embedded client from
 # tasks.cfg), so a drop-in there would be silently unused; extra server
 # tasks belong in tasks.d. The %%files split is next to each listing.
-install -d %{buildroot}%{_sysconfdir}/xymon-client/clientlaunch.d \
-           %{buildroot}%{_sysconfdir}/xymon-client/xymonclient.d
-rmdir %{buildroot}%{xymonhome}/client/etc
-ln -sf %{_sysconfdir}/xymon-client %{buildroot}%{xymonhome}/client/etc
 
 %pretrans -p <lua>
 %migrate_tree
