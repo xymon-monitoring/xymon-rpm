@@ -736,6 +736,13 @@ done
 #  - rrd/ readable, and tmp/ and /run/xymon writable, by the CGIs: showgraph
 #    reads the RRD files and writes xymond_rrd's rrdctl sockets to flush
 #    them -- in tmp/ up to 4.3.31, in XYMONRUNDIR from 4.3.32.
+#  - hist/, histlogs/ and hostdata/ readable by the CGIs: the history pages,
+#    an availability report or a snapshot, and an earlier client report are
+#    all read from them. Left var_lib_t, the history page is refused and a
+#    report is built without the history it summarises.
+#  - critical.cfg, its backup and xymonpasswd writable by the CGIs: the
+#    critical-systems editor and the user pages rewrite them in place. They
+#    are apache's by owner already (%%files); etc_t alone still refuses.
 #  - port 1984 as xymon_port_t, which the module lets only the CGIs reach.
 # /run/xymon is named /var/run/xymon: the policy makes /run equivalent to
 # /var/run, and semanage refuses a rule under /run ("conflicts with
@@ -762,11 +769,20 @@ if command -v semanage >/dev/null 2>&1; then
     semanage fcontext -a -t httpd_sys_content_t '%{_sharedstatedir}/xymon/rrd(/.*)?'    2>/dev/null || :
     semanage fcontext -a -t httpd_sys_rw_content_t '%{_sharedstatedir}/xymon/tmp(/.*)?' 2>/dev/null || :
     semanage fcontext -a -t httpd_sys_rw_content_t '/var/run/xymon(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_content_t '%{_sharedstatedir}/xymon/hist(/.*)?'     2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_content_t '%{_sharedstatedir}/xymon/histlogs(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_content_t '%{_sharedstatedir}/xymon/hostdata(/.*)?' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_rw_content_t '%{_sysconfdir}/xymon/critical\.cfg(\.bak)?' 2>/dev/null || :
+    semanage fcontext -a -t httpd_sys_rw_content_t '%{_sysconfdir}/xymon/xymonpasswd' 2>/dev/null || :
     restorecon -R %{xymonhome}/cgi-bin %{xymonhome}/cgi-secure \
         %{xymonhome}/server/bin %{xymonhome}/client/bin \
         %{_sharedstatedir}/xymon/www %{_sharedstatedir}/xymon/rrd \
         %{_sharedstatedir}/xymon/tmp %{_datadir}/xymon /run/xymon \
-        %{_localstatedir}/cache/xymon 2>/dev/null || :
+        %{_localstatedir}/cache/xymon \
+        %{_sharedstatedir}/xymon/hist %{_sharedstatedir}/xymon/histlogs \
+        %{_sharedstatedir}/xymon/hostdata \
+        %{_sysconfdir}/xymon/critical.cfg %{_sysconfdir}/xymon/critical.cfg.bak \
+        %{_sysconfdir}/xymon/xymonpasswd 2>/dev/null || :
 %if %{with selinux}
     semanage port -a -t xymon_port_t -p tcp 1984 2>/dev/null || :
 %endif
@@ -826,6 +842,11 @@ if [ $1 -eq 0 ] && command -v semanage >/dev/null 2>&1; then
     semanage fcontext -d '%{_sharedstatedir}/xymon/rrd(/.*)?'      2>/dev/null || :
     semanage fcontext -d '%{_sharedstatedir}/xymon/tmp(/.*)?'      2>/dev/null || :
     semanage fcontext -d '/var/run/xymon(/.*)?'                     2>/dev/null || :
+    semanage fcontext -d '%{_sharedstatedir}/xymon/hist(/.*)?'     2>/dev/null || :
+    semanage fcontext -d '%{_sharedstatedir}/xymon/histlogs(/.*)?' 2>/dev/null || :
+    semanage fcontext -d '%{_sharedstatedir}/xymon/hostdata(/.*)?' 2>/dev/null || :
+    semanage fcontext -d '%{_sysconfdir}/xymon/critical\.cfg(\.bak)?' 2>/dev/null || :
+    semanage fcontext -d '%{_sysconfdir}/xymon/xymonpasswd'        2>/dev/null || :
     # Shared with the client package: in a demotion it is installed by
     # now (see %%preun), and its client/bin still needs the rule.
     if [ ! -e %{clientconf} ]; then
