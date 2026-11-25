@@ -366,7 +366,9 @@ with the build and install gaps this packaging compensates for.
   `XYMONRUNDIR`, which the spec sets. It merged on upstream `main` on
   8 Nov 2026 and is in no release yet: snapshots built since then and 4.3.32
   previews have it. The 4.3.31 release keeps them in the log directory and
-  `/var/lib/xymon/tmp`. The client does not use it.
+  `/var/lib/xymon/tmp`. The client does not use it. An upgrade keeps the
+  `xymonserver.cfg` already installed, which has no `XYMONRUNDIR` when it
+  dates from 4.3.31, so `%post` adds the line to it when it is missing.
 - `ExecReload` sends `SIGHUP`, which `xymonlaunch` acts on itself but does not
   relay to its children until
   [xymon#172](https://github.com/xymon-monitoring/xymon/pull/172), so use
