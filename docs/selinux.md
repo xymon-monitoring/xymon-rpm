@@ -30,6 +30,8 @@ labeled.
 | `/var/lib/xymon/rrd` | `httpd_sys_content_t` | graphs cannot read their data |
 | `/var/lib/xymon/tmp` | `httpd_sys_rw_content_t` | graphs cannot flush pending updates (up to 4.3.31) |
 | `/run/xymon` | `httpd_sys_rw_content_t` | graphs cannot flush pending updates (from 4.3.32, where `xymond_rrd`'s sockets moved) |
+| `/var/lib/xymon/hist`, `histlogs`, `hostdata` | `httpd_sys_content_t` | the history pages and an earlier client report are refused, and an availability report or a snapshot is built without its history |
+| `/etc/xymon/critical.cfg`, `critical.cfg.bak`, `xymonpasswd` | `httpd_sys_rw_content_t` | the critical-systems editor and the user pages cannot save |
 | TCP port 1984 | `xymon_port_t` | the CGIs cannot query xymond |
 
 TCP port 1985, xymond's TLS port from 4.3.32, gets no label. Only the CGIs
@@ -83,7 +85,18 @@ The `/run/xymon` label came later
 and did not apply until the rule named it `/var/run/xymon`: the policy makes
 `/run` equivalent to `/var/run`, and `semanage` refuses a rule under `/run`,
 an error the scriptlet hides. Checked enforcing on AlmaLinux 9.8 since:
-`/run/xymon` and what is made in it take `httpd_sys_rw_content_t`. CI compiles the modules on every target but runs nothing enforcing. So RHEL
+`/run/xymon` and what is made in it take `httpd_sys_rw_content_t`.
+
+The labels on `hist`, `histlogs` and `hostdata`, and on the three files the
+CGIs rewrite, came with
+[xymon-rpm#147](https://github.com/xymon-monitoring/xymon-rpm/pull/147). Until
+then the history pages, a report's history and the critical-systems editor
+were refused on an enforcing host. Checked enforcing on AlmaLinux 9.9, on a
+fresh install and on an upgrade from 4.3.31: those pages, the user pages, an
+acknowledgement, a report, a snapshot and a graph, with no AVC from any of
+them.
+
+CI compiles the modules on every target but runs nothing enforcing. So RHEL
 itself, and any release not listed, is still worth a report:
 
 ```sh
@@ -91,7 +104,8 @@ getenforce                         # Enforcing
 dnf install xymon httpd
 systemctl enable --now httpd xymonlaunch
 ps -eZ | grep -E ' (xymond|xymonlaunch)$'   # unconfined_service_t, not init_t
-# open a host page, a graph, an acknowledgement, a report and a snapshot
+# open a host page, its history, a graph, an acknowledgement, a report and
+# a snapshot, and save an entry in the critical-systems editor
 ausearch -m avc -ts recent         # any AVC is a policy gap
 ```
 
